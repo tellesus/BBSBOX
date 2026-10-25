@@ -3,9 +3,9 @@
 | Document control | Value |
 | --- | --- |
 | Document ID | BBSBOX-T1-001 |
-| Version | **0.1.0** |
+| Version | **0.2.0** |
 | Date | **2026-10-25** |
-| Status | Initial consolidated scope baseline; proposals remain unapproved |
+| Status | Source-audited scope baseline; proposals remain unapproved |
 | Product owner | Michael |
 | Canonical location | `BBSBOX_MASTER_SPEC.md` in [tellesus/BBSBOX](https://github.com/tellesus/BBSBOX) |
 | Authority | Tier 1: product purpose, requirements, boundaries, and scope control |
@@ -39,9 +39,9 @@ For this initial edition, the phase plan, acceptance scenarios, and editorial de
 
 ### 1.2 Evidence and precedence
 
-The source is [Build A Local BBS](https://chatgpt.com/c/6adc295f-a36c-83e9-a133-64b770da8a2a), supplemented by the 2026-10-25 request to create and commit this master specification. The full visible discussion was consulted, including earlier turns beyond the cached preview.
+The source is [Build A Local BBS](https://chatgpt.com/c/6adc295f-a36c-83e9-a133-64b770da8a2a), supplemented by the requests to create this specification and audit it against the exported conversation. Version 0.2.0 was checked directly against all 16 user turns and their assistant responses in `ChatGPT-Build A Local BBS-20261025-0035.md`, not just the cached preview or conversation summaries. Export timestamps and line references are recorded in §17.4.
 
-Later user corrections take precedence over earlier proposals. Broad agreement establishes the direction of a discussion, but does not turn every named library, example screen, fictional character's demand, or speculative implementation into a binding requirement.
+Read the conversation as a developing brainstorm: later user conclusions and corrections take precedence over earlier formulations. Later synthesis helps identify the resulting direction, but an assistant's assertion that something is settled is not sufficient evidence by itself. Broad agreement establishes the direction of a discussion without selecting every named library or implementation detail. The simulated roundtable is part of the brainstorm: retain its useful ideas as proposals, and give them settled status where the user subsequently adopts or clarifies them. Neither the fictional speakers' assertions nor their simulated agreement constitute independent approvals.
 
 The source anchors below use distinctive user wording so they can be found in the original conversation. They are references, not a transcript.
 
@@ -61,11 +61,12 @@ The source anchors below use distinctive user wording so they can be found in th
 | U12 | Modern devices/Wi-Fi/UI, neighborhood mission, all-open-source/sharealike intent, friends' posts and event invitations without paid reach, games, multiplayer, desired character portability; possible inter-node competition, signature dungeons, business game promotions |
 | U13 | Redemption at issuing BBS only, optional purchase-related game bonuses supporting the host business; approval of mission/design test; explicit objection to invented caveats becoming canon |
 | U14 | Request for a Tier 1 master design/reference document, updates when scope changes, and storage in new BBSBOX GitHub repository |
-| U15 | Current request: explicit status separation, versioned scope control, development phases, acceptance criteria, and repository commit if access permits |
+| U15 | Initial specification request in this chat: explicit status separation, versioned scope control, development phases, acceptance criteria, and repository commit if access permits |
+| U16 | Source-audit request in this chat: inspect the export directly, give eventual conclusions more weight than early brainstorming, and treat the simulated discussion as part of that brainstorming |
 
 ## 2. Mission and people
 
-**R01 — Neighborhood community and enjoyable participation.** BBSBOX serves real local communities: neighbors, friends, clubs, organizers, local businesses, and people with shared interests. It should support everyday communication, useful local services, creative activity, games, and gathering in person. It is designed around small communities whose participants can form meaningful relationships. [U02, U09, U12–U13]
+**R01 — Neighborhood community and enjoyable participation.** BBSBOX serves real local communities: neighbors, friends, clubs, organizers, local businesses, and people with shared interests. It should support everyday communication, useful local services, creative activity, games, and gathering in person. It is designed around small communities whose participants can form meaningful relationships, with local control over unwanted spam and coordinated manipulation. This mission is not a promise that internet-connected visitors cannot bring in outside material. [U02, U07, U09, U12–U13]
 
 **R02 — Independent places with individual SysOps.** Every full BBS is useful on its own and has its own character, local content, administration, and chosen relationships. Joining a mesh does not turn nodes into interchangeable fronts for one centrally controlled service. [U03–U04, U12–U13]
 
@@ -129,7 +130,7 @@ Welcome art, themes, custom menus, message-of-the-day content, layouts, and loca
 
 Detailed chat, profile, notification, search, online-presence, and caller-history designs remain proposals (P03). “Classic features” is not blanket approval for every feature found in old BBS packages.
 
-**R08 — File libraries remain local.** Do not automatically synchronize file libraries through mesh federation or Pigeons. Local uploads/downloads are separate from message synchronization. No current requirement authorizes bulk attachments, media archives, or file mirroring as a way around this boundary. [U03]
+**R08 — File libraries remain local.** Do not automatically synchronize file libraries through mesh federation or Pigeons. Local uploads/downloads are separate from message synchronization. The conversation did not settle a general policy for message attachments or compact art embedded in messages; define any such support and its limits in Tier 2 without turning it into file-library replication. [U03]
 
 An offline software-release package is a deliberate maintenance artifact, not an automatically federated file library. Its packaging and transport workflow must be specified separately.
 
@@ -162,11 +163,11 @@ Active portable devices and passive removable-media packages are proposed forms 
 
 ### 5.3 Delivery principles and unresolved mechanics
 
-**R12 — Signed-event and asynchronous-delivery foundation.** Signed information, distinct identities/authority, interrupted connectivity, protected carriage, and sequence-based ordering form the design direction. Accurate synchronized clocks and courier arrival order must not decide authoritative state. [U03–U08, U15]
+**R12 — Signed-event and asynchronous-delivery foundation.** Signed information, distinct identities/authority, interrupted connectivity, protected carriage, and sequence-based ordering form the resulting design direction. Out-of-order delivery preserves valid missing information without rolling back newer authorized state; accurate synchronized clocks and courier arrival order must not decide authoritative state. These are the later discussion's delivery principles, distinct from the specific protocol implementation pitched beneath them. [U03–U08, U10, U15–U16]
 
 The exact event format and reconciliation algorithm were requested as a **pitch**. They are retained below as **P06**, not presented as a ratified wire protocol.
 
-A necessary correction remains visible for scope review: U07 suggested rejecting an older delivery after a newer sequence had arrived. The subsequent pitch showed that whole-package rejection can discard unseen valid messages. Version 0.1.0 preserves the user's goal—prevent stale replacement—while recommending event-level reconciliation. It does not silently claim that the user separately approved every step of that algorithm.
+U07 initially suggested rejecting an older delivery after a newer sequence had arrived. The subsequent explanation, protocol pitch, and later foundation recap consistently developed event-level reconciliation because an older package can contain unseen valid messages. The resulting direction preserves the user's anti-rollback goal while accepting missing valid history. Keep the earlier whole-package rejection idea in the correction history, not as a competing current requirement. The specific stream structure, encoding, conflict-handling machinery, and algorithm below remain P06; the conversation did not separately ratify each implementation choice.
 
 The proposed reconciliation contract is:
 
@@ -207,7 +208,7 @@ Desired continuity is that a community can retain its identity and available his
 
 ### 6.2 Infrastructure trust
 
-**R14 — Local trust and exposure reporting.** Evidence of a node's internet exposure can be reported to other participating nodes. Each receiving SysOp independently chooses whether to investigate, contact the other operator, restrict, banish, or later restore association. No node's report compels the whole network to ban another node. [U05–U07]
+**R14 — Local trust and exposure reporting.** Evidence of a node's internet exposure can be reported to other participating nodes, with signed reports identifying their origin in the resulting design direction. Each receiving SysOp independently chooses whether to investigate, contact the other operator, restrict, banish, or later restore association. No node's report compels the whole network to ban another node. The report format, diagnostic implementation, and any aggregation thresholds remain P08. [U05–U08, U10]
 
 The later user clarification supersedes any interpretation that clients with internet connections must be banished. A report is evidence for human/local policy judgment, not proof of compromise or a mandatory vote result.
 
@@ -273,7 +274,7 @@ These services were discussed; their status is explicit.
 | P02 | Public guest reading and kiosk mode | Proposed accessibility/deployment feature |
 | D02 | Postcards, custom node stamps, guestbooks, souvenirs, traveling exhibitions/stories, scavenger hunts | Deferred creative ideas; no foundation commitment |
 
-The fictional roundtable's enthusiasm for classifieds, kiosks, newspapers, and other features is not user approval of those individual features.
+The simulated roundtable contributes feature ideas to this register. Later user statements settle the direction where they adopt or clarify an idea—for example, owner-led encrypted moderation, local trust decisions, modern usability, events, and games. Classifieds, kiosks, newspapers, and other ideas without that later adoption remain available proposals.
 
 ## 9. Games and business-hosted play
 
@@ -297,7 +298,7 @@ A signed “Game Passport” with game ID/version, state, origin, and import val
 
 Implementation of receipt rewards, game-earned coupons, and promotion tools remains **P20**. The issuing-node-only rule and optional, game-related nature are settled if this feature is built. Promotion mechanics belong in a game or optional integration rather than expanding the BBS core into a retail platform. That placement follows the user's stated preference; the exact shared API is still open.
 
-The BBS platform supplies the relevant identity, game integration, and transport facilities. Each game owns its rules, rewards, progression, and supported portability. Purchase processing, point-of-sale integration, and a centralized redemption service are not current scope.
+The BBS platform supplies the relevant identity, game integration, and transport facilities. Each game owns its rules, rewards, progression, and supported portability. A purchase-processing or point-of-sale integration has not been designed; it is not a prerequisite for the optional receipt-code idea. Issuing-node redemption is the settled boundary.
 
 ## 10. Open-source and project identity
 
@@ -317,11 +318,11 @@ This register retains useful choices without confusing them with requirements.
 | --- | --- | --- |
 | P01 | Dedicated relay profile | Is a separate install/profile useful for the first federation release? |
 | P02 | Guest reading, kiosk mode, session reset | Which public actions require accounts; kiosk scope and supported devices |
-| P03 | Detailed classic BBS feature set | Which chat/profile/search/notification/presence features earn a place in the first local release |
+| P03 | Detailed classic BBS feature set; local blocks, leaving groups, invitation permissions, voluntary report disclosure | Which chat/profile/search/notification/presence and personal-control features belong in the first local release; group moderators and hosts retain their distinct roles |
 | P04 | Offline backup/recovery/export, retention quotas, node succession, simple installer and restart behavior | Recovery ownership, retained-history behavior, installation/update/recovery workflow |
-| P05 | Active and USB Pigeons, multi-hop/Pigeon exchanges, route/status UI, storage and queue controls | First supported device/transport; routing, capacity, retention, acknowledgment behavior |
+| P05 | Active and USB Pigeons, multi-hop/Pigeon exchanges, route/status UI, storage and transparent queue controls; optional aggregate public-mail counters | First supported device/transport; routing, capacity, retention, acknowledgment behavior; useful status without unnecessary courier movement or private-group activity disclosure |
 | P06 | Immutable signed events; per-key hash-linked feeds; event reconciliation; durable integration; compatible mesh/Pigeon sync | Exact format, authorization model, dependency rules, fork handling, and conformance examples |
-| P07 | Node/forum/user-device/Pigeon key namespaces; portable personas; forum genesis/governance chain | Key ownership, delegation, migration, succession, device separation, and recovery |
+| P07 | Node/forum/user-device/Pigeon key namespaces; portable personas; forum genesis/governance chain | Key ownership, delegation, migration, succession, device separation, recovery, and optional new-member access to earlier group history; preserve user identity separately from a banished home node |
 | P08 | Identity-backed exposure diagnostics/reports; Trust Ledger; alert severity/channel/priority | Evidence, sharing, local automation, reinstatement, and clear distinction from compulsory voting |
 | P09 | Offline secure browser delivery, independently verifiable client, established encryption library, hardened deployment | Client trust model, group-key scheme, supported secure contexts, release packaging |
 | P10 | Friend/follow semantics, feed chronology details, event calendars/RSVPs/reminders | Minimum social/event workflow and treatment of delayed updates |
@@ -330,7 +331,9 @@ This register retains useful choices without confusing them with requirements.
 | P18–P19 | Cross-node competition; signature dungeons/rewards | Select a game prototype and its rules; do not make every node a game world |
 | P20 | Receipt-code game rewards and game-earned business coupons | Optional game integration and issuing-node redemption workflow |
 | P21 | Small versioned protocol core, extension negotiation, independent implementations | Required interoperability surface and upgrade compatibility policy |
-| P22 | Physical key introductions through QR codes/fingerprints/signed invitations | Operator/user introduction UX without a central authority |
+| P22 | Physical key introductions through QR codes/fingerprints/signed invitations; public Node Passport/identity cards | Operator/user introduction UX without a central authority; public identity details separate from recovery secrets |
+
+Additional brainstorm detail remains attached to these proposals rather than becoming new requirements: P02 includes readable public announcements, screen-reader/semantic navigation and descriptions for art, and simple walk-up use; P04 includes headless operation, measured power needs, graceful shutdown, and ordinary power-failure recovery; P13 includes printable editions and a possible paper-flyer-to-local-post workflow; P16 includes operator-chosen public directory details and location disclosure; P21 includes offline interoperability checks and clear core/optional/extension boundaries. D02 also retains ANSI-art galleries/competitions, custom welcome-screen challenges, and collaborative local-history projects. These details are candidates to assess when their parent feature is designed.
 
 ### 11.1 Technology candidates, not selections
 
@@ -370,7 +373,7 @@ These entries are parked in this edition to protect the foundation. “Deferred�
 | N08 | Mandatory global membership coordination/posting shutdown solely to deliver instant universal exclusion | R17 |
 | N09 | Nostalgia fidelity that compromises ordinary modern-device usability | R03 |
 | N10 | Designing for massive anonymous parasocial groups as the target community model | R01/U09 |
-| N11 | A universal game economy, mandatory purchase-to-participate system, or centralized business redemption network | R21/R22; not proposed scope |
+| N11 | Making a host-business purchase mandatory for ordinary participation, selling social reach through game bonuses, or redeeming host-business codes at a different BBS | R22/U13; game-economy design itself remains open |
 | N12 | Treating this spec as approval of every brainstormed feature, a selected technology stack, or a selected license | §1, R23 |
 
 ## 13. Development phases
@@ -488,7 +491,7 @@ Document versions are independent of software and protocol versions.
 - **Minor** (0.1.0 → 0.2.0): approved additions, removals, status transitions, or material phase/acceptance changes within the mission.
 - **Major** (1.x → 2.0, or explicit pre-1.0 rebaseline): changes to foundational product boundaries or the document's authority model.
 
-Version 0.1.0 is the initial consolidation. It is not “protocol v1,” a product release, a completion claim, or a declaration that all open decisions are resolved. Git history preserves earlier versions; use tags for deliberate baselines when needed.
+Version 0.1.0 was the initial consolidation; version 0.2.0 is the source-audited revision. Neither is “protocol v1,” a product release, a completion claim, or a declaration that all open decisions are resolved. Git history preserves earlier versions; use tags for deliberate baselines when needed.
 
 ## 17. Decision corrections and change history
 
@@ -499,16 +502,19 @@ Version 0.1.0 is the initial consolidation. It is not “protocol v1,” a produ
 | Offline rule could be interpreted to ban internet-connected visitors | Infrastructure remains internet-isolated; visitors' devices may have independent connectivity (U07) |
 | Hosting SysOp could be responsible for private-group moderation | Owner and appointed moderators govern; SysOp controls hosting and contacts them (U07) |
 | Revocation might require stopping disconnected groups until global agreement | Immediate universal exclusion is not promised; owners manage the accepted stale-credential risk (U09) |
-| Reject an entire older Pigeon delivery after a newer stamp | Preserve anti-rollback intent; event-level gap filling is the explicit proposed correction in P06 |
+| Reject an entire older Pigeon delivery after a newer stamp | Later direction preserves valid missing events without rollback (R12); the detailed reconciliation implementation remains P06 |
 | Classic BBS inspiration might imply terminal-era UX | Modern device interaction is foundational; retro aesthetic and customization remain available (U12) |
 | Business rewards might require cross-node coupon redemption or platform paid reach | Issuing BBS redeems; optional bonuses affect the game and support its local host (U13) |
-| Assistant suggestions/roundtable conclusions might become canon automatically | Source and status are explicit; proposals require a product decision (U13–U15) |
+| Assistant suggestions/roundtable conclusions might become canon automatically | Read them as brainstorming, following ideas through later adoption/correction; source and status remain explicit (U13–U16) |
+| Initial spec broadened local file-library scope into an attachment restriction | File libraries remain local; a general message-attachment policy was not settled |
+| Initial spec listed a universal game economy as excluded | Remove the unsupported exclusion; individual game economy/portability design remains open |
 
 ### 17.2 Changelog
 
 | Version | Date | Change |
 | --- | --- | --- |
-| 0.1.0 | 2026-10-25 | Initial Tier 1 consolidation from the original discussion and current request. Established R01–R24, P01–P22, D01–D07, N01–N12, AC01–AC17; preserved user corrections; added a proposed phased plan and versioned change-control process. |
+| 0.1.0 | 2026-10-25 | Initial Tier 1 consolidation from the original discussion and specification request. Established R01–R24, P01–P22, D01–D07, N01–N12, AC01–AC17; preserved user corrections; added a proposed phased plan and versioned change-control process. |
+| 0.2.0 | 2026-10-25 | Audited all 16 source turns against the supplied export. Clarified later delivery/trust conclusions and brainstorm provenance; removed unsupported attachment/game-economy restrictions; restored omitted proposal details; added dated source evidence. No technology, license, optional module, or release schedule was newly selected. |
 
 ### 17.3 Initial scope decision log
 
@@ -519,3 +525,28 @@ Version 0.1.0 is the initial consolidation. It is not “protocol v1,” a produ
 | Select a software license, technology stack, wire protocol, or encryption library | **Not decided** |
 | Approve every proposed community/game feature or the full phase schedule | **Not decided** |
 | Claim implemented behavior or completed acceptance testing | **Not applicable: documentation-only baseline** |
+
+### 17.4 Export audit — 2026-10-25
+
+**Audit source:** `ChatGPT-Build A Local BBS-20261025-0035.md`, exported 2026-10-25 at 00:35:39 as labeled by the exporter. SHA-256: `7df8033d14e6d1073fde1364183b9bbc4b79d77ad4978c2be52a16f8cbfbfd54`.
+
+All 16 user turns and their assistant responses were read directly. The exported timestamps below are reproduced as source labels. Line references identify this exact exported file; it is not copied into the public repository. Visual illustration payloads and website-search results are not evidence of product approval.
+
+| Source point | Export evidence | Result in this specification |
+| --- | --- | --- |
+| Local hardware and permanent communities | 2026-10-23 22:44 and 22:56; lines 9–163 | R01–R05 retain modern local access and permanent-neighborhood priority |
+| Customization, selected federation, local files, encryption | 2026-10-23 23:01; lines 329–333 | R06/R08/R09/R15; no extra general attachment prohibition |
+| Pigeon and internet isolation | 2026-10-23 23:09–23:17; lines 486–779 | R04/R10/R11; individual implementation profiles remain labeled |
+| Simulated discussion | 2026-10-23 23:46; lines 1081–2154 | Brainstorm source for proposal registers; follow ideas into later user conclusions |
+| Clients, trust, moderation, sequence stamps | 2026-10-24 00:28; lines 2156–2164, response through 2540 | R04/R11/R14/R16; infrastructure/client distinction and local hosting/trust authority |
+| Event/identity/reconciliation pitch | 2026-10-24 15:15; lines 2542–3046 | Later delivery principles in R12; exact format, algorithms, libraries, and namespaces remain P06/P07/P09 |
+| Removed-member access limitation | 2026-10-24 15:35; lines 3048–3117 | R17/N07/N08 take precedence over earlier coordinator/posting-halt ideas |
+| Later foundation recap and open choices | 2026-10-24 22:24; lines 3118–3249 | Confirms the later conversational direction; recovery, retention, client details, and extensibility remain design proposals |
+| Naming discussion | 2026-10-24 23:30–23:32; lines 3250–3456 | R24; no renewed naming investigation or adoption of unrelated projects' features |
+| Modern mission, social experience, games | 2026-10-24 23:54; lines 3457–3722 | R01/R03/R18–R23; tentative cross-node/game ideas retain tentative status |
+| Business bonuses and objection to invented caveats | 2026-10-25 00:10; lines 3723–3772 | R22/N11; issuing-node redemption and voluntary bonuses; remove unsupported restrictions |
+| Final specification request | 2026-10-25 00:34; lines 3773–3806 | R24; versioned Tier 1 scope reference |
+
+**Audit conclusion:** the core mission, offline infrastructure, SysOp autonomy, encrypted-forum responsibility, social visibility, and game direction were already represented. This revision corrects overreach and restores missing brainstorm details without promoting them to mandatory features. Pigeon chronology now separates the resulting no-loss/no-rollback direction from the still-proposed exact protocol. Existing R/P/D/N/AC identifiers remain stable.
+
+**Recorded decision:** the product owner's U16 audit request authorizes correcting the specification against the export. This revision does not resolve the open technology, license, optional-feature, or scheduling choices.

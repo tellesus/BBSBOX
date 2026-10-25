@@ -1,6 +1,6 @@
 # M16 — Pigeon installation, lumps and credit
 
-Version 1.0.0 · 2026-10-25 · Locked development baseline · Tier 1 baseline 0.5.0.
+Version 1.0.1 · 2026-10-25 · Locked development baseline · Product baseline 0.5.1.
 
 **State:** Approved for implementation under U19; unstarted. Runtime and hardware evidence remains pending.
 
@@ -9,9 +9,9 @@ Version 1.0.0 · 2026-10-25 · Locked development baseline · Tier 1 baseline 0.
 [START_HERE](../START_HERE.md), this brief, and [C02](../contracts/C02-identity-events.md), [C03](../contracts/C03-exchange-delivery.md).
 Look up only decision rows T04, T11 in [DECISIONS](../DECISIONS.md). Dependency briefs are not required reading if their contract/evidence is current.
 
-**Source scope:** R10, R11, R12, R25, P05, AC06, AC07, AC18. **Target gate:** G3. Scope summaries below preserve these source IDs; refer to the specific Tier 1 section if a conflict appears.
+**Source scope:** R10, R11, R12, R25, P05, AC06, AC07, AC18. **Target gate:** G3. Scope summaries below preserve these source IDs; reconcile conflicts with the current product requirements and user instructions.
 
-**Prerequisites:** [M07](../modules/M07-directory-profiles.md), [M15](../modules/M15-selected-federation.md).
+**Prerequisites:** [M07](M07-directory-profiles.md), [M15](M15-selected-federation.md).
 
 ## Product outcome and boundaries
 
@@ -49,4 +49,4 @@ An opt-in status panel may show aggregate counts of explicitly public mail. Priv
 
 ## Handoff
 
-Record completed slices, approved ADRs, contract/schema revisions, evidence and commit, remaining limitations and next slice in [WORK_LEDGER](../WORK_LEDGER.md). Existing scopes are approved; genuinely new scope still follows change control. See [coverage](../COVERAGE.md) when changing source IDs.
+Record completed slices, approved ADRs, contract/schema revisions, evidence and commit, remaining limitations and next slice in [WORK_LEDGER](../WORK_LEDGER.md). Existing scopes are approved. Every design, goal or feature change updates affected roadmap canon before completion; follow START_HERE. See [coverage](../COVERAGE.md) when changing source IDs.

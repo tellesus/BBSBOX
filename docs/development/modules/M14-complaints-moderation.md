@@ -1,6 +1,6 @@
 # M14 — Targeted complaints and host suppression
 
-Version 1.0.0 · 2026-10-25 · Locked development baseline · Tier 1 baseline 0.5.0.
+Version 1.0.1 · 2026-10-25 · Locked development baseline · Product baseline 0.5.1.
 
 **State:** Approved for implementation under U19; unstarted. Runtime and hardware evidence remains pending.
 
@@ -9,9 +9,9 @@ Version 1.0.0 · 2026-10-25 · Locked development baseline · Tier 1 baseline 0.
 [START_HERE](../START_HERE.md), this brief, and [C02](../contracts/C02-identity-events.md), [C05](../contracts/C05-private-content.md).
 Look up only decision rows T09, T13 in [DECISIONS](../DECISIONS.md). Dependency briefs are not required reading if their contract/evidence is current.
 
-**Source scope:** R13, R16, R17, P03, AC13, AC19. **Target gate:** G2. Scope summaries below preserve these source IDs; refer to the specific Tier 1 section if a conflict appears.
+**Source scope:** R13, R16, R17, P03, AC13, AC19. **Target gate:** G2. Scope summaries below preserve these source IDs; reconcile conflicts with the current product requirements and user instructions.
 
-**Prerequisites:** [M06](../modules/M06-boards-mail.md), [M13](../modules/M13-encrypted-forums.md).
+**Prerequisites:** [M06](M06-boards-mail.md), [M13](M13-encrypted-forums.md).
 
 ## Product outcome and boundaries
 
@@ -45,4 +45,4 @@ Keep complaint targets/revisions for the open case plus 90 days after local clos
 
 ## Handoff
 
-Record completed slices, approved ADRs, contract/schema revisions, evidence and commit, remaining limitations and next slice in [WORK_LEDGER](../WORK_LEDGER.md). Existing scopes are approved; genuinely new scope still follows change control. See [coverage](../COVERAGE.md) when changing source IDs.
+Record completed slices, approved ADRs, contract/schema revisions, evidence and commit, remaining limitations and next slice in [WORK_LEDGER](../WORK_LEDGER.md). Existing scopes are approved. Every design, goal or feature change updates affected roadmap canon before completion; follow START_HERE. See [coverage](../COVERAGE.md) when changing source IDs.

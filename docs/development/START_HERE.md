@@ -1,6 +1,8 @@
 # BBSBOX development — bounded task context
 
-Version 1.0.0 · 2026-10-25 · Locked roadmap · Tier 1 0.5.0 · Authority U19 / ADR-0001.
+Version 1.0.1 · 2026-10-25 · Locked roadmap · Product baseline 0.5.1 · U19 scope / U20 canon.
+
+The [roadmap](README.md#canon-and-document-ownership) and the user’s latest applicable instructions are the two sources of canon; user instructions take precedence. Root specification/proposal redirects, archived reviews and ADR histories are reference only. An exploratory question is not automatically a feature decision.
 
 ## Work one module slice at a time
 
@@ -23,6 +25,6 @@ Before implementation, verify the selected slice's prerequisites and contract ve
 
 Record module/slice, baseline, ADR, contract/schema versions, commit, actual tests/observations, limitations and next slice in [WORK_LEDGER](WORK_LEDGER.md). Current implementation state is Unstarted. This lock records design review, not runtime success.
 
-Use [Tier 1](../../BBSBOX_MASTER_SPEC.md) for targeted scope questions. Material changes get a successor ADR and affected-consumer updates; newly added product scope requires a Tier 1 change. Routine compatible implementation details and dependency pinning are authorized. A selected technology failing its gate calls for an evidence-backed replacement; never silently weaken the privacy/offline requirement.
+For every design refinement, goal change or feature addition/removal, update affected product requirements, module briefs, decisions/contracts, acceptance checks and graph/coverage in the same change. Follow [change control](README.md#change-control); record the authority and version/change entry, retire obsolete instructions, and run the roadmap validator before completion. An ADR or chat summary alone is insufficient. Already authorized changes need no repeated permission. Routine compatible implementation details remain authorized.
 
 Task record: `Module/slice; baseline; source IDs; ADR; included behavior; boundaries; owned files/data; contracts; prerequisite evidence; fixtures; result/commit; next action.`

@@ -2,12 +2,13 @@
 
 An offline neighborhood community platform: independent local BBSes, modern customizable interfaces, selected mesh connections, Pigeon message carriage and games.
 
-The design and roadmap are locked for implementation. The product itself is not yet implemented.
+**Start with the [canonical roadmap](docs/development/README.md). The roadmap and the user’s latest applicable instructions are the two sources of project canon; user instructions take precedence.** The product is not yet implemented.
 
-- [Tier 1 master spec v0.5.0](BBSBOX_MASTER_SPEC.md)
-- [Locked technical plan v1.0.0](BBSBOX_TECHNICAL_PROPOSAL.md)
-- [Modular roadmap](docs/development/README.md) and [bounded task instructions](docs/development/START_HERE.md)
-- [Accepted decisions](docs/development/DECISIONS.md), [ADR-0001](docs/decisions/ADR-0001-roadmap-lock.md), and [senior review](docs/development/REVIEW-2026-10-25.md)
-- [Coverage](docs/development/COVERAGE.md) and [execution ledger](docs/development/WORK_LEDGER.md)
+- [Start one module task](docs/development/START_HERE.md)
+- [Current product requirements](docs/development/PRODUCT_SPEC.md) and [technical decisions](docs/development/DECISIONS.md)
+- [Coverage](docs/development/COVERAGE.md) and [execution evidence](docs/development/WORK_LEDGER.md)
+- [Reference and archive guide](docs/archive/README.md)
 
-Software/tools: AGPL-3.0-or-later. Project design prose: CC-BY-SA-4.0. See [LICENSE.md](LICENSE.md). User and third-party content retains its own terms.
+Design refinements, goal changes and feature additions/removals must update the affected canonical documents in the same change. The roadmap lists exactly which files are current canon. Other plans, reviews, conversations quoted in documents and research sources are reference/history unless the user adopts a change and it is incorporated there.
+
+Software/tools: AGPL-3.0-or-later. Project design prose: CC-BY-SA-4.0. See [LICENSE.md](LICENSE.md). These notices remain applicable legal terms, independent of product-planning authority. User and third-party content retains its own terms.

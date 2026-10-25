@@ -1,6 +1,8 @@
 # Approved scope and acceptance coverage
 
-Version 1.0.0 · Tier 1 0.5.0 · All execution evidence pending. P IDs retain historical names but are accepted under U19. D IDs remain deferred.
+Version 1.0.1 · Product baseline 0.5.1 · All execution evidence pending. P IDs retain historical names but are accepted under U19. D IDs remain deferred.
+
+Derived lookup — not an independent source of canon. Current scope is owned by PRODUCT_SPEC and the relevant module/contract; update this map alongside them.
 
 ## Settled requirements
 
@@ -130,7 +132,7 @@ Version 1.0.0 · Tier 1 0.5.0 · All execution evidence pending. P IDs retain hi
 | N09 | Retro aesthetics must preserve ordinary modern-device usability. | [M05](modules/M05-interface-themes.md), [M19](modules/M19-neighborhood-pilot.md), [O09](modules/O09-guest-kiosk.md) |
 | N10 | Target small real communities; do not steer to massive parasocial group design. | [M07](modules/M07-directory-profiles.md), [M08](modules/M08-friends-events.md), [M09](modules/M09-clans-cohorts.md), [M19](modules/M19-neighborhood-pilot.md) |
 | N11 | Optional purchases only, no paid social advantage, issuing-BBS redemption. | [M11](modules/M11-local-games.md), [M18](modules/M18-game-passports.md), [O11](modules/O11-business-rewards.md) |
-| N12 | Proposal publication selects no license/stack and approves no unlisted brainstorm. | [M00](modules/M00-foundation-spikes.md), [M12](modules/M12-maintenance-recovery.md), [M19](modules/M19-neighborhood-pilot.md) |
+| N12 | Historical brainstorming and unspecified extras have no approval beyond the current roadmap/user decisions; approval is not test evidence. | [M00](modules/M00-foundation-spikes.md), [M12](modules/M12-maintenance-recovery.md), [M19](modules/M19-neighborhood-pilot.md) |
 
 ## Development lesson ownership
 

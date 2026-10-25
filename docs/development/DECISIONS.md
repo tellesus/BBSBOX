@@ -1,6 +1,6 @@
 # Locked technical decisions
 
-Version 1.0.0 · 2026-10-25 · Baseline Tier 1 0.5.0.
+Version 1.0.1 · 2026-10-25 · Baseline Product baseline 0.5.1.
 
 **T01–T14 are Accepted for implementation/testing under U19.** Choices are locked; evidence gates remain pending. T06/T07 are conditional release gates, not undecided choices. Alternatives below are fallback context, not parallel commitments. See [ADR-0001](../decisions/ADR-0001-roadmap-lock.md). Routine work uses these selections without repeated permission.
 
@@ -25,9 +25,9 @@ Version 1.0.0 · 2026-10-25 · Baseline Tier 1 0.5.0.
 
 `ADR ID/version; affected T row; status; owner/date; problem; recommendation; alternatives; prototype evidence; chosen scope; consequences; contracts/modules changed; migration/rollback; unresolved limits; supersedes.`
 
-ADR-0001 records this coordinated test lock. Future material changes get a scoped ADR with evidence and affected consumers; an alternative is not silently selected because it appears in this table. The module defaults resolve product options, while schema byte fixtures and dependency pins remain implementation work.
+ADR-0001 is historical rationale for the initial lock. This table holds current choices. Future material changes update this register and every affected canonical module/contract in the same change; an ADR may preserve rationale but is not a substitute; an alternative is not silently selected because it appears in this table. The module defaults resolve product options, while schema byte fixtures and dependency pins remain implementation work.
 
-## Primary technical references checked for this proposal
+## Reference sources for the selected technologies
 
 - [Axum](https://docs.rs/axum/latest/axum/) describes the HTTP framework and Tokio integration.
 - [SvelteKit static adapter](https://svelte.dev/docs/kit/adapter-static) supports a locally served static build; our authenticated app routing still needs its prototype.

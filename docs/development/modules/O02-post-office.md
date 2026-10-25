@@ -1,6 +1,6 @@
 # O02 — Encrypted cross-node Post Office
 
-Version 1.0.0 · 2026-10-25 · Locked development baseline · Tier 1 baseline 0.5.0.
+Version 1.0.1 · 2026-10-25 · Locked development baseline · Product baseline 0.5.1.
 
 **State:** Approved for implementation under U19; unstarted. Runtime and hardware evidence remains pending.
 
@@ -9,9 +9,9 @@ Version 1.0.0 · 2026-10-25 · Locked development baseline · Tier 1 baseline 0.
 [START_HERE](../START_HERE.md), this brief, and [C03](../contracts/C03-exchange-delivery.md), [C05](../contracts/C05-private-content.md).
 Look up only decision rows T06, T07 in [DECISIONS](../DECISIONS.md). Dependency briefs are not required reading if their contract/evidence is current.
 
-**Source scope:** R28, P11, R10, R12, R13, R15. **Target gate:** G5. **Expansion acceptance:** AC24. Scope summaries below preserve these source IDs; refer to the specific Tier 1 section if a conflict appears.
+**Source scope:** R28, P11, R10, R12, R13, R15. **Target gate:** G5. **Expansion acceptance:** AC24. Scope summaries below preserve these source IDs; reconcile conflicts with the current product requirements and user instructions.
 
-**Prerequisites:** [M13](../modules/M13-encrypted-forums.md), [M15](../modules/M15-selected-federation.md), [M16](../modules/M16-pigeons-lump-drops.md).
+**Prerequisites:** [M13](M13-encrypted-forums.md), [M15](M15-selected-federation.md), [M16](M16-pigeons-lump-drops.md).
 
 ## Product outcome and boundaries
 
@@ -45,4 +45,4 @@ Use M13’s selected engine for addressed encrypted conversations, default two-p
 
 ## Handoff
 
-Record completed slices, approved ADRs, contract/schema revisions, evidence and commit, remaining limitations and next slice in [WORK_LEDGER](../WORK_LEDGER.md). Existing scopes are approved; genuinely new scope still follows change control. See [coverage](../COVERAGE.md) when changing source IDs.
+Record completed slices, approved ADRs, contract/schema revisions, evidence and commit, remaining limitations and next slice in [WORK_LEDGER](../WORK_LEDGER.md). Existing scopes are approved. Every design, goal or feature change updates affected roadmap canon before completion; follow START_HERE. See [coverage](../COVERAGE.md) when changing source IDs.

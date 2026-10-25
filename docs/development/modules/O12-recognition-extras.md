@@ -1,6 +1,6 @@
 # O12 — Optional recognition and profile/group additions
 
-Version 1.0.0 · 2026-10-25 · Locked development baseline · Tier 1 baseline 0.5.0.
+Version 1.0.1 · 2026-10-25 · Locked development baseline · Product baseline 0.5.1.
 
 **State:** Approved for implementation under U19; unstarted. Runtime and hardware evidence remains pending.
 
@@ -9,9 +9,9 @@ Version 1.0.0 · 2026-10-25 · Locked development baseline · Tier 1 baseline 0.
 [START_HERE](../START_HERE.md), this brief, and [C04](../contracts/C04-games.md), [C05](../contracts/C05-private-content.md).
 Look up only decision rows T09, T10, T11 in [DECISIONS](../DECISIONS.md). Dependency briefs are not required reading if their contract/evidence is current.
 
-**Source scope:** R28, P23, P24, R25, R26, R27. **Target gate:** G5. **Expansion acceptance:** AC34. Scope summaries below preserve these source IDs; refer to the specific Tier 1 section if a conflict appears.
+**Source scope:** R28, P23, P24, R25, R26, R27. **Target gate:** G5. **Expansion acceptance:** AC34. Scope summaries below preserve these source IDs; reconcile conflicts with the current product requirements and user instructions.
 
-**Prerequisites:** [M07](../modules/M07-directory-profiles.md), [M08](../modules/M08-friends-events.md), [M09](../modules/M09-clans-cohorts.md), [M11](../modules/M11-local-games.md), [M16](../modules/M16-pigeons-lump-drops.md), [O11](../modules/O11-business-rewards.md).
+**Prerequisites:** [M07](M07-directory-profiles.md), [M08](M08-friends-events.md), [M09](M09-clans-cohorts.md), [M11](M11-local-games.md), [M16](M16-pigeons-lump-drops.md), [O11](O11-business-rewards.md).
 
 ## Product outcome and boundaries
 
@@ -45,4 +45,4 @@ Approve manual discretionary Lump Drop grants, opt-in achievement/progress compo
 
 ## Handoff
 
-Record completed slices, approved ADRs, contract/schema revisions, evidence and commit, remaining limitations and next slice in [WORK_LEDGER](../WORK_LEDGER.md). Existing scopes are approved; genuinely new scope still follows change control. See [coverage](../COVERAGE.md) when changing source IDs.
+Record completed slices, approved ADRs, contract/schema revisions, evidence and commit, remaining limitations and next slice in [WORK_LEDGER](../WORK_LEDGER.md). Existing scopes are approved. Every design, goal or feature change updates affected roadmap canon before completion; follow START_HERE. See [coverage](../COVERAGE.md) when changing source IDs.

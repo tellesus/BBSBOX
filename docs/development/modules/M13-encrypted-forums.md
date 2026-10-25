@@ -1,6 +1,6 @@
 # M13 — Trusted clients and encrypted forums
 
-Version 1.0.0 · 2026-10-25 · Locked development baseline · Tier 1 baseline 0.5.0.
+Version 1.0.1 · 2026-10-25 · Locked development baseline · Product baseline 0.5.1.
 
 **State:** Approved for implementation under U19; unstarted. Runtime and hardware evidence remains pending.
 
@@ -9,9 +9,9 @@ Version 1.0.0 · 2026-10-25 · Locked development baseline · Tier 1 baseline 0.
 [START_HERE](../START_HERE.md), this brief, and [C02](../contracts/C02-identity-events.md), [C05](../contracts/C05-private-content.md).
 Look up only decision rows T06, T07, T08 in [DECISIONS](../DECISIONS.md). Dependency briefs are not required reading if their contract/evidence is current.
 
-**Source scope:** R13, R15, R17, P07, P09, AC11, AC14, AC15. **Target gate:** G2. Scope summaries below preserve these source IDs; refer to the specific Tier 1 section if a conflict appears.
+**Source scope:** R13, R15, R17, P07, P09, AC11, AC14, AC15. **Target gate:** G2. Scope summaries below preserve these source IDs; reconcile conflicts with the current product requirements and user instructions.
 
-**Prerequisites:** [M00](../modules/M00-foundation-spikes.md), [M04](../modules/M04-signed-events.md), [M05](../modules/M05-interface-themes.md), [M06](../modules/M06-boards-mail.md), [M08](../modules/M08-friends-events.md), [M12](../modules/M12-maintenance-recovery.md).
+**Prerequisites:** [M00](M00-foundation-spikes.md), [M04](M04-signed-events.md), [M05](M05-interface-themes.md), [M06](M06-boards-mail.md), [M08](M08-friends-events.md), [M12](M12-maintenance-recovery.md).
 
 ## Product outcome and boundaries
 
@@ -49,4 +49,4 @@ MLS/OpenMLS is selected for test implementation, with Tauri bundled UI/crypto as
 
 ## Handoff
 
-Record completed slices, approved ADRs, contract/schema revisions, evidence and commit, remaining limitations and next slice in [WORK_LEDGER](../WORK_LEDGER.md). Existing scopes are approved; genuinely new scope still follows change control. See [coverage](../COVERAGE.md) when changing source IDs.
+Record completed slices, approved ADRs, contract/schema revisions, evidence and commit, remaining limitations and next slice in [WORK_LEDGER](../WORK_LEDGER.md). Existing scopes are approved. Every design, goal or feature change updates affected roadmap canon before completion; follow START_HERE. See [coverage](../COVERAGE.md) when changing source IDs.

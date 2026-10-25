@@ -1,5 +1,7 @@
 # ADR-0001 — Reviewed test lock and implementation roadmap
 
+Historical decision record — not current canon. This describes the U19 lock. Current selections and change control live in the [roadmap](../development/README.md), subject to the user’s latest applicable instructions.
+
 Status: Accepted for implementation/testing · 2026-10-25 · Authority: Michael U19.
 Tier 1: 0.5.0 · Roadmap/contracts: 1.0.0 · Supersedes proposal baseline 0.1.0.
 
@@ -17,7 +19,7 @@ Use per-device AND per-audience/resource signing chains, so selective federation
 
 This is a reviewed design baseline, not a code/hardware test result. All implementation modules remain Unstarted. G0-local allows independent local work after its required evidence; G2 must wait for private-client/crypto checks. M19/G4 delivers the core pilot; G5 finishes approved expansions and their added acceptance checks. Numeric capacity claims await measurements on named hardware.
 
-The [review record](../development/REVIEW-2026-10-25.md) accounts for every module and correction. The [roadmap index](../development/README.md) and machine-readable graph agree on dependencies. Changing a selected decision requires a reasoned successor ADR and updates to affected contracts; ordinary implementation within these choices is already authorized.
+The [review record](../archive/review-2026-10-25.md) accounts for every module and correction. The [roadmap index](../development/README.md) and machine-readable graph agree on dependencies. Changing a selected decision requires a reasoned successor ADR and updates to affected contracts; ordinary implementation within these choices is already authorized.
 
 ## Licensing
 

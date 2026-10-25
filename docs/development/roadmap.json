@@ -1,7 +1,7 @@
 {
-  "version": "1.0.0",
-  "tier1_version": "0.5.0",
-  "authority": "U19",
+  "version": "1.0.1",
+  "product_spec_version": "0.5.1",
+  "authority": "U19 scope; U20 canon and change control",
   "status": "locked_for_implementation",
   "implementation_status": "unstarted",
   "modules": [
@@ -986,5 +986,68 @@
     "O10",
     "O11",
     "O12"
-  ]
+  ],
+  "documentation": {
+    "user_instructions_take_precedence": true,
+    "canonical": [
+      "docs/development/README.md",
+      "docs/development/START_HERE.md",
+      "docs/development/PRODUCT_SPEC.md",
+      "docs/development/DECISIONS.md",
+      "docs/development/roadmap.json",
+      "docs/development/modules/M00-foundation-spikes.md",
+      "docs/development/modules/M01-offline-appliance.md",
+      "docs/development/modules/M02-storage-jobs.md",
+      "docs/development/modules/M03-identity-access.md",
+      "docs/development/modules/M04-signed-events.md",
+      "docs/development/modules/M05-interface-themes.md",
+      "docs/development/modules/M06-boards-mail.md",
+      "docs/development/modules/M07-directory-profiles.md",
+      "docs/development/modules/M08-friends-events.md",
+      "docs/development/modules/M09-clans-cohorts.md",
+      "docs/development/modules/M10-local-files.md",
+      "docs/development/modules/M11-local-games.md",
+      "docs/development/modules/M12-maintenance-recovery.md",
+      "docs/development/modules/M13-encrypted-forums.md",
+      "docs/development/modules/M14-complaints-moderation.md",
+      "docs/development/modules/M15-selected-federation.md",
+      "docs/development/modules/M16-pigeons-lump-drops.md",
+      "docs/development/modules/M17-peer-trust.md",
+      "docs/development/modules/M18-game-passports.md",
+      "docs/development/modules/M19-neighborhood-pilot.md",
+      "docs/development/modules/O01-community-utilities.md",
+      "docs/development/modules/O02-post-office.md",
+      "docs/development/modules/O03-neighborhood-exchange.md",
+      "docs/development/modules/O04-community-newspaper.md",
+      "docs/development/modules/O05-local-wiki.md",
+      "docs/development/modules/O06-meshcasts.md",
+      "docs/development/modules/O07-mesh-atlas.md",
+      "docs/development/modules/O08-relay-profile.md",
+      "docs/development/modules/O09-guest-kiosk.md",
+      "docs/development/modules/O10-game-experiments.md",
+      "docs/development/modules/O11-business-rewards.md",
+      "docs/development/modules/O12-recognition-extras.md",
+      "docs/development/contracts/C01-storage-runtime.md",
+      "docs/development/contracts/C02-identity-events.md",
+      "docs/development/contracts/C03-exchange-delivery.md",
+      "docs/development/contracts/C04-games.md",
+      "docs/development/contracts/C05-private-content.md"
+    ],
+    "derived": [
+      "docs/development/COVERAGE.md",
+      "docs/development/WORK_LEDGER.md"
+    ],
+    "reference_or_archive": [
+      "README.md",
+      "LICENSE.md",
+      "BBSBOX_MASTER_SPEC.md",
+      "BBSBOX_TECHNICAL_PROPOSAL.md",
+      "docs/development/REVIEW-2026-10-25.md",
+      "docs/decisions/ADR-0001-roadmap-lock.md",
+      "docs/archive/product-history-through-0.5.0.md",
+      "docs/archive/README.md",
+      "docs/archive/review-2026-10-25.md",
+      "docs/archive/technical-plan-1.0.0.md"
+    ]
+  }
 }

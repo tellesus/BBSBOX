@@ -1,6 +1,6 @@
 # M15 — Selected offline peer exchange
 
-Version 1.0.0 · 2026-10-25 · Locked development baseline · Tier 1 baseline 0.5.0.
+Version 1.0.1 · 2026-10-25 · Locked development baseline · Product baseline 0.5.1.
 
 **State:** Approved for implementation under U19; unstarted. Runtime and hardware evidence remains pending.
 
@@ -9,9 +9,9 @@ Version 1.0.0 · 2026-10-25 · Locked development baseline · Tier 1 baseline 0.
 [START_HERE](../START_HERE.md), this brief, and [C02](../contracts/C02-identity-events.md), [C03](../contracts/C03-exchange-delivery.md).
 Look up only decision rows T04, T05, T06 in [DECISIONS](../DECISIONS.md). Dependency briefs are not required reading if their contract/evidence is current.
 
-**Source scope:** R02, R08, R09, R12, R13, R15, P06, P21, P22, AC04, AC05, AC07, AC11, AC13, AC14. **Target gate:** G3. Scope summaries below preserve these source IDs; refer to the specific Tier 1 section if a conflict appears.
+**Source scope:** R02, R08, R09, R12, R13, R15, P06, P21, P22, AC04, AC05, AC07, AC11, AC13, AC14. **Target gate:** G3. Scope summaries below preserve these source IDs; reconcile conflicts with the current product requirements and user instructions.
 
-**Prerequisites:** [M04](../modules/M04-signed-events.md), [M06](../modules/M06-boards-mail.md), [M12](../modules/M12-maintenance-recovery.md), [M13](../modules/M13-encrypted-forums.md), [M14](../modules/M14-complaints-moderation.md).
+**Prerequisites:** [M04](M04-signed-events.md), [M06](M06-boards-mail.md), [M12](M12-maintenance-recovery.md), [M13](M13-encrypted-forums.md), [M14](M14-complaints-moderation.md).
 
 ## Product outcome and boundaries
 
@@ -45,4 +45,4 @@ Use TLS with pinned node identity credentials for peer exchange; local operator 
 
 ## Handoff
 
-Record completed slices, approved ADRs, contract/schema revisions, evidence and commit, remaining limitations and next slice in [WORK_LEDGER](../WORK_LEDGER.md). Existing scopes are approved; genuinely new scope still follows change control. See [coverage](../COVERAGE.md) when changing source IDs.
+Record completed slices, approved ADRs, contract/schema revisions, evidence and commit, remaining limitations and next slice in [WORK_LEDGER](../WORK_LEDGER.md). Existing scopes are approved. Every design, goal or feature change updates affected roadmap canon before completion; follow START_HERE. See [coverage](../COVERAGE.md) when changing source IDs.

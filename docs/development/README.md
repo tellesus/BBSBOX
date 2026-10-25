@@ -1,8 +1,27 @@
 # Locked BBSBOX development roadmap
 
-Version 1.0.0 · 2026-10-25 · Tier 1 0.5.0 · Authority U19 / [ADR-0001](../decisions/ADR-0001-roadmap-lock.md).
+Version 1.0.1 · 2026-10-25 · Product baseline 0.5.1 · Scope approved under U19; canon clarified under U20. [Historical lock record](../decisions/ADR-0001-roadmap-lock.md).
 
-All named module scopes and T decisions are approved. Implementation is unstarted. Read [START_HERE](START_HERE.md), one brief and its contracts. [Technical plan](../../BBSBOX_TECHNICAL_PROPOSAL.md), [decisions](DECISIONS.md), [coverage](COVERAGE.md), [review](REVIEW-2026-10-25.md) and [ledger](WORK_LEDGER.md) are lookup documents.
+All named module scopes and T decisions are approved. Implementation is unstarted. Read [START_HERE](START_HERE.md), one brief and its contracts. Use the live [decisions](DECISIONS.md), derived [coverage](COVERAGE.md) and [ledger](WORK_LEDGER.md) as needed. The [old technical plan](../archive/technical-plan-1.0.0.md) and [earlier review](../archive/review-2026-10-25.md) are historical archives.
+
+## Canon and document ownership
+
+There are two sources of project canon: **the current roadmap and the user’s applicable instructions.** Later explicit user decisions override older roadmap wording and earlier decisions. A request to refine a design, change goals, add a feature or remove one is authority to make that change and synchronize the docs. An exploratory question or a quoted/simulated conversation is not automatically a scope change.
+
+“Roadmap” means this maintained document set, not only the sequence table:
+
+| Canonical component | Owns |
+| --- | --- |
+| This index and [roadmap.json](roadmap.json) | Sequence, prerequisites, gates and the canonical-document registry |
+| [PRODUCT_SPEC](PRODUCT_SPEC.md) | Mission, current R/P/D/N scope, AC acceptance criteria and adopted development lessons |
+| [START_HERE](START_HERE.md) | Bounded task workflow and documentation-update obligations |
+| [DECISIONS](DECISIONS.md) | Current selected technical decisions; alternatives are reference only |
+| The M00–M19/O01–O12 briefs below | Approved behavior, defaults, work slices, owned integrations and completion evidence |
+| C01–C05 contracts below | Current shared interfaces and behavior |
+
+[COVERAGE](COVERAGE.md) is a derived index; [WORK_LEDGER](WORK_LEDGER.md) records execution evidence. Neither independently approves scope. Archived reviews, ADR histories, root compatibility redirects, research and other documents are reference/archive, even when their original text says “master,” “locked,” or “approved.” The [archive guide](../archive/README.md) identifies them. Licensing notices remain applicable legal terms, not a competing product roadmap.
+
+Do not resolve a conflict by choosing whichever file sounds more authoritative. Apply the latest applicable user decision and reconcile every affected canonical component. If the intended change is genuinely unclear, keep the affected decision open and ask; continue unrelated work. A reference link alone never promotes material into canon.
 
 ## Execution order and dependencies
 
@@ -76,3 +95,15 @@ O01 → O02 → O03 → O04 → O05 → O06 → O07 → O08 → O09 → O10 → 
 M07/M09 supply profile/membership interfaces; M08/M11/M16/M18 own live consumers. M12 supplies maintenance/checkpoint APIs; M10/M11/M16 bind their real data and redo restore checks. M13/M14 complete local behavior; M15/M16 own real disconnected private/case integration. This prevents hidden completion cycles.
 
 The [machine-readable graph](roadmap.json) is the source for ordering/ownership validation; brief prerequisites and this index must agree. Contract changes identify consumers, bump the affected version and update compatibility fixtures. Each gate records actual results and pending capabilities. No dates or numeric hardware promises are implied by the lock.
+
+## Change control
+
+Every design refinement, goal change, feature addition/removal, scope/status change or technical replacement includes the corresponding canonical documentation edits in the same work and commit. Do not finish with a chat-only decision, an ADR-only amendment, or obsolete instructions still active.
+
+1. Record the user instruction or existing delegated authority and the affected IDs. Do not request approval again for an already authorized change.
+2. Update the owning product requirements, module briefs, technical decisions and shared contracts as applicable. Remove superseded instructions; retain retired IDs as short tombstones with the change/replacement reference.
+3. Update acceptance checks, dependencies/gates, graph, coverage and affected consumers. If a decision changes while implementation is underway, update canon before continuing dependent work. Adjust the work ledger without turning design approval into test evidence.
+4. Update document versions and the product change record. Archive superseded rationale with a dated non-canonical label; future ADRs may explain a decision but cannot substitute for updating live canon.
+5. Run `python tools/validate_roadmap.py`, check links and review wording for contradictions. Complete the change only when affected canonical documents agree. Publish the documentation with the authorized implementation/planning change.
+
+Routine implementation details that do not change a documented contract or decision need only normal implementation notes. When they refine the design or change expected behavior, the same documentation rule applies. Product and protocol versions remain independent of document versions.

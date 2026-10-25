@@ -1,6 +1,8 @@
 # Development work ledger
 
-Version 1.0.0 · 2026-10-25 · Locked roadmap; all module implementations are Unstarted.
+Version 1.0.1 · 2026-10-25 · Locked roadmap; all module implementations are Unstarted.
+
+Evidence log — not an independent source of scope authority. Current choices live in the canonical roadmap and user instructions.
 
 The current completed work is design selection, senior review, document corrections and static roadmap validation. No prototype, device, crypto or application test is claimed. Approval does not move a module to Complete.
 
@@ -41,7 +43,7 @@ The current completed work is design selection, senior review, document correcti
 
 ## Handoff record
 
-Append date; module/slice; Tier 1/roadmap/ADR; contract/schema revisions; source commit; test commands or observation records; actual results; limitations; migration/rollback impact; next bounded slice.
+Append date; module/slice; roadmap/product baseline; optional rationale ADR; contract/schema revisions; source commit; test commands or observation records; actual results; limitations; migration/rollback impact; next bounded slice.
 
 Investigating → Ready → Implementing → Validating → Complete tracks execution. A failed feasibility check blocks only dependent claims and is recorded with a next action. A passing mock is not real integration.
 

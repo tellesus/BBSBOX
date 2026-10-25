@@ -1,6 +1,6 @@
 # M19 — Real mesh and neighborhood pilot
 
-Version 1.0.0 · 2026-10-25 · Locked development baseline · Tier 1 baseline 0.5.0.
+Version 1.0.1 · 2026-10-25 · Locked development baseline · Product baseline 0.5.1.
 
 **State:** Approved for implementation under U19; unstarted. Runtime and hardware evidence remains pending.
 
@@ -9,9 +9,9 @@ Version 1.0.0 · 2026-10-25 · Locked development baseline · Tier 1 baseline 0.
 [START_HERE](../START_HERE.md), this brief, and [C01](../contracts/C01-storage-runtime.md), [C03](../contracts/C03-exchange-delivery.md).
 Look up only decision rows T01, T07, T08, T12, T14 in [DECISIONS](../DECISIONS.md). Dependency briefs are not required reading if their contract/evidence is current.
 
-**Source scope:** R28, R01, R02, R03, R04, R05, R06, R23, R24, P04, AC01, AC02, AC03, AC04, AC05, AC06, AC07, AC08, AC09, AC10, AC11, AC12, AC13, AC14, AC15, AC17, AC18, AC19, AC20, AC21, AC22. **Target gate:** G4. Scope summaries below preserve these source IDs; refer to the specific Tier 1 section if a conflict appears.
+**Source scope:** R28, R01, R02, R03, R04, R05, R06, R23, R24, P04, AC01, AC02, AC03, AC04, AC05, AC06, AC07, AC08, AC09, AC10, AC11, AC12, AC13, AC14, AC15, AC17, AC18, AC19, AC20, AC21, AC22. **Target gate:** G4. Scope summaries below preserve these source IDs; reconcile conflicts with the current product requirements and user instructions.
 
-**Prerequisites:** [M08](../modules/M08-friends-events.md), [M09](../modules/M09-clans-cohorts.md), [M10](../modules/M10-local-files.md), [M12](../modules/M12-maintenance-recovery.md), [M14](../modules/M14-complaints-moderation.md), [M16](../modules/M16-pigeons-lump-drops.md), [M17](../modules/M17-peer-trust.md), [M18](../modules/M18-game-passports.md).
+**Prerequisites:** [M08](M08-friends-events.md), [M09](M09-clans-cohorts.md), [M10](M10-local-files.md), [M12](M12-maintenance-recovery.md), [M14](M14-complaints-moderation.md), [M16](M16-pigeons-lump-drops.md), [M17](M17-peer-trust.md), [M18](M18-game-passports.md).
 
 ## Product outcome and boundaries
 
@@ -46,4 +46,4 @@ Use two nodes/one courier for initial integration, then three nodes/two couriers
 
 ## Handoff
 
-Record completed slices, approved ADRs, contract/schema revisions, evidence and commit, remaining limitations and next slice in [WORK_LEDGER](../WORK_LEDGER.md). Existing scopes are approved; genuinely new scope still follows change control. See [coverage](../COVERAGE.md) when changing source IDs.
+Record completed slices, approved ADRs, contract/schema revisions, evidence and commit, remaining limitations and next slice in [WORK_LEDGER](../WORK_LEDGER.md). Existing scopes are approved. Every design, goal or feature change updates affected roadmap canon before completion; follow START_HERE. See [coverage](../COVERAGE.md) when changing source IDs.

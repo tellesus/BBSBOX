@@ -3,9 +3,9 @@
 | Document control | Value |
 | --- | --- |
 | Document ID | BBSBOX-T1-001 |
-| Version | **0.2.0** |
+| Version | **0.3.0** |
 | Date | **2026-10-25** |
-| Status | Source-audited scope baseline; proposals remain unapproved |
+| Status | Source-audited baseline with approved community additions; remaining proposals unapproved |
 | Product owner | Michael |
 | Canonical location | `BBSBOX_MASTER_SPEC.md` in [tellesus/BBSBOX](https://github.com/tellesus/BBSBOX) |
 | Authority | Tier 1: product purpose, requirements, boundaries, and scope control |
@@ -35,11 +35,11 @@ Fun and creative expression are valid answers. Time spent looking at the screen 
 
 Status and scheduling are separate. A settled capability can ship later. An optional feature can still be a settled requirement to support; opting in is an operator/user choice, not uncertainty about its status. A proposal is not approved merely because it appears in a phase or acceptance scenario.
 
-For this initial edition, the phase plan, acceptance scenarios, and editorial deferral of unapproved ideas are planning recommendations prepared to make the scope actionable. They do not imply that the user previously selected a delivery schedule or every detailed implementation rule.
+The phase plan, acceptance scenarios, and editorial deferral of unapproved ideas are planning recommendations prepared to make the scope actionable. They do not imply that the user previously selected a delivery schedule or every detailed implementation rule.
 
 ### 1.2 Evidence and precedence
 
-The source is [Build A Local BBS](https://chatgpt.com/c/6adc295f-a36c-83e9-a133-64b770da8a2a), supplemented by the requests to create this specification and audit it against the exported conversation. Version 0.2.0 was checked directly against all 16 user turns and their assistant responses in `ChatGPT-Build A Local BBS-20261025-0035.md`, not just the cached preview or conversation summaries. Export timestamps and line references are recorded in §17.4.
+The source is [Build A Local BBS](https://chatgpt.com/c/6adc295f-a36c-83e9-a133-64b770da8a2a), supplemented by the requests to create this specification, audit it against the exported conversation, and integrate subsequent explicit product additions. Version 0.2.0 was checked directly against all 16 user turns and their assistant responses in `ChatGPT-Build A Local BBS-20261025-0035.md`, not just the cached preview or conversation summaries. Export timestamps and line references are recorded in §17.4.
 
 Read the conversation as a developing brainstorm: later user conclusions and corrections take precedence over earlier formulations. Later synthesis helps identify the resulting direction, but an assistant's assertion that something is settled is not sufficient evidence by itself. Broad agreement establishes the direction of a discussion without selecting every named library or implementation detail. The simulated roundtable is part of the brainstorm: retain its useful ideas as proposals, and give them settled status where the user subsequently adopts or clarifies them. Neither the fictional speakers' assertions nor their simulated agreement constitute independent approvals.
 
@@ -63,6 +63,7 @@ The source anchors below use distinctive user wording so they can be found in th
 | U14 | Request for a Tier 1 master design/reference document, updates when scope changes, and storage in new BBSBOX GitHub repository |
 | U15 | Initial specification request in this chat: explicit status separation, versioned scope control, development phases, acceptance criteria, and repository commit if access permits |
 | U16 | Source-audit request in this chat: inspect the export directly, give eventual conclusions more weight than early brainstorming, and treat the simulated discussion as part of that brainstorming |
+| U17 | 2026-10-25 additions in this chat: Lump Drop credit/privacy and possible discretionary rewards; post-linked complaints and optional temporary suppression of posts alleged illegal; account directory and optional profile information/activity; local clans/cohorts with profiles, directories, rosters and Game Passport integration; shipped dark theme with vibrant colors on black |
 
 ## 2. Mission and people
 
@@ -70,7 +71,7 @@ The source anchors below use distinctive user wording so they can be found in th
 
 **R02 — Independent places with individual SysOps.** Every full BBS is useful on its own and has its own character, local content, administration, and chosen relationships. Joining a mesh does not turn nodes into interchangeable fronts for one centrally controlled service. [U03–U04, U12–U13]
 
-**R03 — Modern interaction with room for retro aesthetics.** The primary experience is a modern browser interface on phones, tablets, and computers, using mouse, touch, and keyboard. Classic BBS structure and visual creativity are inspiration. Terminal-era constraints must not dictate ordinary navigation. SysOps can choose restrained, playful, ANSI-inspired, or other styles. [U01, U03–U04, U12]
+**R03 — Modern interaction and a vibrant dark default.** The primary experience is a modern browser interface on phones, tablets, and computers, using mouse, touch, and keyboard. The shipped interface always defaults to dark mode: black backgrounds with bright, vibrant, pleasant colors. It does not automatically switch the shipped default to light mode based on the device theme. SysOps can customize the colors and presentation. Classic BBS structure and visual creativity are inspiration; terminal-era constraints must not dictate ordinary navigation. [U01, U03–U04, U12, U17]
 
 The people and roles are:
 
@@ -128,7 +129,7 @@ Welcome art, themes, custom menus, message-of-the-day content, layouts, and loca
 
 **R07 — Classic community BBS foundation.** Provide local discussion boards, member identity/accounts, private mail, local file areas, games, and administration as the core product direction. These are delivered through the modern interface. Local mail also gives SysOps a way to contact forum owners and other operators. [U01–U04, U07, U12]
 
-Detailed chat, profile, notification, search, online-presence, and caller-history designs remain proposals (P03). “Classic features” is not blanket approval for every feature found in old BBS packages.
+Chat, notifications, search, online presence, and caller-history details remain proposals (P03). The user directory and profile capabilities in R26 are now settled; their exact field schema and layout remain design work. “Classic features” is not blanket approval for every feature found in old BBS packages.
 
 **R08 — File libraries remain local.** Do not automatically synchronize file libraries through mesh federation or Pigeons. Local uploads/downloads are separate from message synchronization. The conversation did not settle a general policy for message attachments or compact art embedded in messages; define any such support and its limits in Tier 2 without turning it into file-library replication. [U03]
 
@@ -196,6 +197,28 @@ Proposed synchronization metadata separates:
 
 Proposed delivery labels are queued, handed to courier, received at destination, integrated, and—only if separately supported—acknowledged/read. Pending and rejected outcomes need understandable explanations. Labels must not conflate those events.
 
+
+### 5.4 Lump Drops
+
+**R25 — Credit useful Pigeon deliveries.** A user who delivers a Pigeon Lump receives one **Lump Drop** when at least one event from that delivery is newly accepted as a relevant change by the receiving BBS. One qualifying event is sufficient, even when every other event in the lump is already known or no longer relevant. If none qualifies, the delivery earns no credit. Record the cumulative count on the delivering user's account and display it on their user info/profile page unless they set that count to private. [U17]
+
+The credit is for the person delivering the lump, rather than automatically for the message authors or the Pigeon device's owner. The delivery workflow must associate the delivery with that user's identity/account; the exact attribution and receipt format remain Tier 2 work.
+
+| Delivery outcome | Lump Drop result |
+| --- | --- |
+| One newly accepted, relevant event | +1 |
+| Several newly accepted, relevant events in the same delivery | +1 total |
+| A mixture of duplicates/stale changes and one qualifying new event | +1 |
+| All events are already known, no longer relevant, invalid, or rejected | 0 |
+| Events only staged pending missing dependencies | No credit yet; award once if the attributed delivery later supplies a qualifying accepted event |
+| Retry/replay of a delivery already credited by that receiving BBS | No additional credit |
+
+Receipt or storage of the package alone is insufficient. An older-sequence event that is newly accepted as relevant still qualifies; age alone does not deny credit. It need not create a newly visible post: any qualifying accepted change counts. Integration and the associated credit must survive retry/restart without double-counting; a delivery that later has more events accepted still earns only one credit at that receiving BBS. Credit does not depend on the carrier being able to decrypt the contents.
+
+Private-count settings control public display, not whether earned drops are recorded. The exact identity mapping across nodes and whether profile totals aggregate credits from several receiving BBSes remain implementation decisions; no network-wide leaderboard is specified.
+
+**Future possibility — P23:** SysOps may eventually reward accumulated Lump Drops with things they choose at their discretion. For now, implement the count and its display/privacy control. No reward schedule or automatic reward mechanism is approved.
+
 ## 6. Identity, security, and trust
 
 ### 6.1 Authority boundaries
@@ -226,17 +249,21 @@ No claim of protection from a malicious hosting SysOp's supplied client code is 
 
 **R15 — Private groups use public/private-key encryption.** Support private discussion within authorized groups, including groups hosted across selected nodes. Members' clients decrypt; relaying or storing ciphertext alone does not confer reading access. The cryptographic construction and library are not yet selected. [U03–U04, U07, U09]
 
-**R16 — Forum owners govern; SysOps choose hosting.** Encrypted forum owners and their appointed moderators control membership, rules, and moderation. A member can raise a concern with a hosting SysOp. The SysOp can contact the forum owner/moderation contact through mail, request an explanation, and independently decide whether to keep hosting that forum. Hosting does not automatically appoint the SysOp as moderator. [U07]
+**R16 — Forum owners govern; SysOps control hosting and local suppression.** Encrypted forum owners and their appointed moderators control membership, rules, and moderation. A member can raise a concern with a hosting SysOp. The complaint is tied to one or more specific posts, even when the SysOp cannot read those posts. The SysOp can contact the forum owner/moderation contact through mail, pass along the complaint reference, request review, and independently decide whether to keep hosting that forum. Hosting does not automatically appoint the SysOp as a forum moderator or confer decryption access. [U07, U17]
 
-Required complaint/hosting flow:
+Required complaint/review flow:
 
-1. Identify the forum and an owner/moderation contact.
-2. Let a member communicate a concern to the host.
-3. Let the SysOp contact the responsible forum party.
-4. Let the forum's authorities manage their community.
-5. Let each host make and enforce its own hosting decision.
+1. Associate the original complaint with the forum, the specific post or posts, and the reporter's explanation. Preserve stable references so the complaint remains tied to its targets.
+2. Let the hosting SysOp inspect the complaint reference and explanation without requiring access to the encrypted post contents.
+3. Include that complaint reference when the SysOp contacts the owner or appointed moderator.
+4. Let an authorized moderator open the reference, retrieve the specific posts through their existing forum access, and see what generated the complaint.
+5. Let the moderator review and respond on the same complaint record. The SysOp can relate that response to the original report and make their local hosting decision.
 
-No compulsory network tribunal, uniform moderation policy, or automatic disclosure of encrypted discussion is implied.
+A reporter can explicitly mark that they **believe the referenced post or posts contain something illegal**. This records the reporter's allegation. The SysOp may choose to temporarily suppress those specific posts on their BBS while the forum moderator reviews them and gets back to the SysOp. Reporting does not automatically suppress a post.
+
+Suppression works by the post references without decrypting the content for the SysOp. It temporarily withholds the posts from ordinary display/access through that hosting node while preserving the complaint association and an authorized moderator's ability to retrieve the targets for review. After the moderator responds, the SysOp can lift suppression or make a further local hosting decision. The status and response stay associated with the complaint.
+
+This is a local host action. It does not appoint the SysOp as a group moderator, change encrypted-group membership, or impose the same decision on other BBSes. Reference schemas, handling of edited/missing posts, and the authorized review path during suppression are Tier 2 details required to implement this workflow.
 
 **R17 — Communities manage membership trust and delayed revocation.** Members can disclose plaintext they have decrypted. Removed members may retain old messages/keys and may read new material encrypted with stale credentials on disconnected nodes. This is an expressly accepted limitation. Owners choose whom to admit and manage that risk. [U07, U09]
 
@@ -264,7 +291,10 @@ These services were discussed; their status is explicit.
 | R09 | Selected shared forums and announcement feeds | Settled; opt-in |
 | R15–R17 | Encrypted private groups and owner moderation | Settled; accepted asynchronous membership limitation |
 | R18–R19 | Friends' posts, event announcements, invitations | Settled direction; detailed interaction design open |
-| P03 | Live local chat, SysOp paging, profiles, presence, search, notifications, welcome/MOTD options | Proposed elaboration of classic BBS experience |
+| R25 | Lump Drop count on user profiles | Settled; qualifying deliveries only; user can make the count private; rewards remain P23 |
+| R26 | Account directory and user profiles with optional personal/game/event information and a feed link | Settled; all local accounts remain listed with their public baseline; optional profile information respects privacy |
+| R27 | Local clans and cohorts, profiles, directories, membership rosters, and Game Passport integration | Settled; groups belong to their local BBS; additional fun features remain P24 |
+| P03 | Live local chat, SysOp paging, presence, search, notifications, welcome/MOTD options | Proposed elaboration of classic BBS experience; approved profile scope is R26 |
 | P11 | Cross-node encrypted “Post Office” mail with delivery status | Proposed extension of settled local mail and message carriage |
 | P12 | Neighborhood Exchange: lending, barter, giveaways, odd jobs, skills, mutual-aid/project listings | Proposed optional service; lifecycle/withdrawal/staleness rules needed |
 | P13 | Community newspaper, printable editions, selected article syndication | Proposed optional publishing feature |
@@ -276,13 +306,42 @@ These services were discussed; their status is explicit.
 
 The simulated roundtable contributes feature ideas to this register. Later user statements settle the direction where they adopt or clarify an idea—for example, owner-led encrypted moderation, local trust decisions, modern usability, events, and games. Classifieds, kiosks, newspapers, and other ideas without that later adoption remain available proposals.
 
+### 8.2 User directory and profiles
+
+**R26 — Find local members and share chosen profile information.** Every BBS has a directory listing everyone who has an account there. Making an account/profile private does not remove it from the directory: its entry still shows its username and the account fields defined as public for all accounts. A public profile can additionally show information the person chooses to share. [U17]
+
+| Profile component | Required behavior |
+| --- | --- |
+| Directory baseline | List every local account by username and the defined common public fields; the complete baseline field list remains to be designed |
+| Private profile | Show the directory baseline; hide optional profile details from other users |
+| Public profile | Show the baseline and the optional details the user has chosen to publish |
+| Optional personal fields | Support real-life contact information, a bio, and a short message; these are supplied/displayed by the user's choice |
+| Games and characters | Let users choose to display the games they are playing and their characters, using participating games' integration |
+| Hosted events | Let users choose to show events they are hosting |
+| Personal feed | Link the profile to the user's feed of updates; the link follows the feed's own visibility rules |
+| Lump Drops | Display the recorded count unless the user sets it private, following R25; directory/profile views respect that setting |
+
+Optional contact details or game activity do not become common public fields merely because an account exists. The profile's private setting hides optional profile content; the separately controlled Lump Drop statistic follows R25. Public profile does not mean that every available field must be filled in or displayed.
+
+Achievements/progress displays are **P24**, reflecting the user's “maybe”; additional logical profile components can be proposed through the same scope process. Exact fields, layouts, feed visibility settings, and game data interfaces remain design work. This user directory is distinct from the proposed Mesh Atlas of BBS nodes (P16).
+
+### 8.3 Local clans and cohorts
+
+**R27 — Local organizations and friend groups.** Users can form **clans**, larger organizations in the style of classic gamer clans, and **cohorts**, smaller friend groups in the style of game squads. Both are local to a BBS. Each has its own profile page, a directory listing, and a membership roster. [U17]
+
+The clan/cohort directory makes these groups discoverable on their home BBS and links to their profile pages and rosters. The distinction describes their intended scale; numeric membership limits, hierarchy between clans and cohorts, membership roles, invitations, and roster visibility rules have not been selected.
+
+Clans and cohorts work with the Game Passport capability so participating games can associate characters/accounts with their local group membership. Their precise game interface is designed alongside R21/P17. Portable characters do not by themselves turn a local clan or cohort into a federated organization or automatically create membership on another BBS.
+
+Other fun group features remain **P24** until specified. The approved foundation is group formation, local profiles/directories, rosters, and Game Passport integration.
+
 ## 9. Games and business-hosted play
 
 **R20 — Games are part of the product.** BBSBOX supports a game system and locally integrated games, including games created specifically for it. Some games will support multiplayer. Fun and social play are legitimate product goals. [U12]
 
 **R21 — Portable characters/accounts where supported.** Support the desired ability to move a character or game account between nodes when the game supports it, subject to game-master approval if that game is configured for approval. Receiving games retain authority over acceptance and rules. This is a capability target, not a promise that every game shares one character format. [U12]
 
-A signed “Game Passport” with game ID/version, state, origin, and import validation is **P17**, an assistant proposal. Transfer versus copy, concurrent play, re-export, incompatible versions, reward recognition, and the exact approval workflow need game-specific design. No universal item economy or cross-game compatibility has been selected.
+The **Game Passport capability and its integration with local clans/cohorts are now part of the required direction** under U17, alongside portable characters/accounts. Participating games must be able to associate their account/character information with the relevant local group membership and the user's chosen profile display (R26–R27). **P17** remains the proposed signed record/interface design: game ID/version, state, origin, import validation, and group-association representation. Transfer versus copy, concurrent play, re-export, incompatible versions, reward recognition, and the exact approval workflow need game-specific design. No universal item economy or cross-game compatibility has been selected.
 
 | Game idea | Status |
 | --- | --- |
@@ -318,7 +377,7 @@ This register retains useful choices without confusing them with requirements.
 | --- | --- | --- |
 | P01 | Dedicated relay profile | Is a separate install/profile useful for the first federation release? |
 | P02 | Guest reading, kiosk mode, session reset | Which public actions require accounts; kiosk scope and supported devices |
-| P03 | Detailed classic BBS feature set; local blocks, leaving groups, invitation permissions, voluntary report disclosure | Which chat/profile/search/notification/presence and personal-control features belong in the first local release; group moderators and hosts retain their distinct roles |
+| P03 | Remaining classic BBS details; local blocks, leaving groups, invitation permissions, voluntary report disclosure | Chat/search/notification/presence and personal-control scope; profiles are settled in R26 and post-linked host complaints in R16 |
 | P04 | Offline backup/recovery/export, retention quotas, node succession, simple installer and restart behavior | Recovery ownership, retained-history behavior, installation/update/recovery workflow |
 | P05 | Active and USB Pigeons, multi-hop/Pigeon exchanges, route/status UI, storage and transparent queue controls; optional aggregate public-mail counters | First supported device/transport; routing, capacity, retention, acknowledgment behavior; useful status without unnecessary courier movement or private-group activity disclosure |
 | P06 | Immutable signed events; per-key hash-linked feeds; event reconciliation; durable integration; compatible mesh/Pigeon sync | Exact format, authorization model, dependency rules, fork handling, and conformance examples |
@@ -327,11 +386,13 @@ This register retains useful choices without confusing them with requirements.
 | P09 | Offline secure browser delivery, independently verifiable client, established encryption library, hardened deployment | Client trust model, group-key scheme, supported secure contexts, release packaging |
 | P10 | Friend/follow semantics, feed chronology details, event calendars/RSVPs/reminders | Minimum social/event workflow and treatment of delayed updates |
 | P11–P16 | Community services in §8.1 | Approve each independently; optional service boundaries and phase |
-| P17 | Signed Game Passport | Game interface, import approval, version/state transfer semantics |
+| P17 | Signed Game Passport record/interface design; capability adopted in R21/R27 | Game interface, import approval, version/state transfer semantics, local group association, and chosen profile display |
 | P18–P19 | Cross-node competition; signature dungeons/rewards | Select a game prototype and its rules; do not make every node a game world |
 | P20 | Receipt-code game rewards and game-earned business coupons | Optional game integration and issuing-node redemption workflow |
 | P21 | Small versioned protocol core, extension negotiation, independent implementations | Required interoperability surface and upgrade compatibility policy |
 | P22 | Physical key introductions through QR codes/fingerprints/signed invitations; public Node Passport/identity cards | Operator/user introduction UX without a central authority; public identity details separate from recovery secrets |
+| P23 | Discretionary SysOp rewards for accumulated Lump Drops | Whether/how to provide reward tools; currently track the number only (R25) |
+| P24 | Optional game achievements/progress on profiles; further profile components and clan/cohort fun features | Choose specific additions without changing the approved R26/R27 foundation |
 
 Additional brainstorm detail remains attached to these proposals rather than becoming new requirements: P02 includes readable public announcements, screen-reader/semantic navigation and descriptions for art, and simple walk-up use; P04 includes headless operation, measured power needs, graceful shutdown, and ordinary power-failure recovery; P13 includes printable editions and a possible paper-flyer-to-local-post workflow; P16 includes operator-chosen public directory details and location disclosure; P21 includes offline interoperability checks and clear core/optional/extension boundaries. D02 also retains ANSI-art galleries/competitions, custom welcome-screen challenges, and collaborative local-history projects. These details are candidates to assess when their parent feature is designed.
 
@@ -368,7 +429,7 @@ These entries are parked in this edition to protect the foundation. “Deferred�
 | N03 | A centrally controlled, uniform network or compulsory global peer bans | R02/R06/R09/R14 |
 | N04 | Automatic mesh/Pigeon file-library replication | R08 |
 | N05 | Requiring all visitors' phones/laptops to be internet-isolated | R04 and explicit U07 correction |
-| N06 | Hosting SysOps automatically reading or governing encrypted groups | R13/R16 |
+| N06 | Hosting SysOps automatically reading encrypted groups or acquiring forum-wide moderation authority | R13/R16; post-reference-based local suppression remains available under R16 |
 | N07 | Preventing authorized recipients from sharing plaintext or guaranteeing immediate revocation across disconnected nodes | R17 |
 | N08 | Mandatory global membership coordination/posting shutdown solely to deliver instant universal exclusion | R17 |
 | N09 | Nostalgia fidelity that compromises ordinary modern-device usability | R03 |
@@ -383,11 +444,11 @@ These entries are parked in this edition to protect the foundation. “Deferred�
 | Phase | Deliverable | Exit evidence |
 | --- | --- | --- |
 | 0 — Scope and design foundations | This baseline; proposed Tier 2 decisions for local architecture, offline deployment, identity boundaries, event model, and client trust | Requirement/proposal mapping; chosen prototype scope; unresolved choices named |
-| 1 — A useful standalone BBS | One modest computer/router; modern responsive UI; local accounts, boards, mail, file area, SysOp customization; simple local game; basic friends/events workflows | AC01–AC04, AC08–AC09, local part of AC10; usable with WAN absent |
-| 2 — Two communities exchanging public messages | Selected public forums/feeds, peer trust, signed-event prototype, offline LAN exchange, Pigeon transport, inspectable queues/outcomes | AC05–AC07, AC12; interruption/out-of-order test results |
-| 3 — Encrypted groups and practical operation | Approved client/key design, invitations/membership controls, encrypted local/federated forums, owner moderation and host contact workflow; backup/recovery/update procedures | AC11, AC13–AC15; demonstrates accepted revocation limits |
+| 1 — A useful standalone BBS | One modest computer/router; modern UI with vibrant-on-black default; local accounts/directory/profiles, clan/cohort formation/pages/rosters, boards, mail, files, SysOp customization; simple local game and friends/events workflows | AC01–AC04, AC08–AC09, AC20, local portions of AC10/AC21/AC22; usable with WAN absent |
+| 2 — Two communities exchanging public messages | Selected public forums/feeds, peer trust, signed-event prototype, offline LAN exchange, Pigeon transport, inspectable queues/outcomes, attributed Lump Drop counts/privacy | AC05–AC07, AC12, AC18; interruption/out-of-order test results |
+| 3 — Encrypted groups and practical operation | Approved client/key design, invitations/membership controls, encrypted local/federated forums, post-linked complaints and optional local suppression pending moderator review; backup/recovery/update procedures | AC11, AC13–AC15, AC19; demonstrates accepted revocation limits |
 | 4 — Neighborhood mesh pilot | Real offline mesh transport plus Pigeons; several independently operated nodes; nontechnical host/resident trials | Repeat applicable checks under actual disconnection; measured device/link limits |
-| 5 — Optional community and game expansion | Individually approved community modules; portable characters; possible business reward/game prototypes | AC10 and conditional AC16; update scope and acceptance for each added feature |
+| 5 — Game integration and optional community expansion | Game Passport/portable characters with local clan/cohort and profile integration; individually approved community modules; possible business reward/game prototypes | AC10, AC21–AC22 and conditional AC16; update scope and acceptance for each added feature |
 
 Prototype sequencing may change through a recorded planning revision. In particular, real mesh transport experiments or encryption research may run earlier without making their unapproved implementation choices canonical. Encrypted forums must not be labeled available until the relevant privacy/authority checks pass.
 
@@ -401,7 +462,7 @@ These are proposed verification scenarios derived from the settled requirements 
 | --- | --- | --- |
 | AC01 | Install from prepared local media with WAN absent. Start/restart the node; load UI/assets, authenticate, post/read, use mail/files/game, and administer it. Capture network behavior showing no attempted internet service dependency. Test configured IPv4/IPv6/forwarding boundaries. | R04–R07 |
 | AC02 | Operate a single node with no peers. Local services and existing content remain useful throughout disconnection. | R02/R09 |
-| AC03 | Perform ordinary navigation and posting on a phone and desktop with touch, mouse, and keyboard; customize theme/welcome/navigation without breaking those tasks. Include semantic/text navigation alongside art. | R03/R06 |
+| AC03 | A fresh installation uses dark mode, black backgrounds, and bright/vibrant/pleasant colors even when the device prefers light mode. A SysOp can customize the theme. Perform ordinary navigation/posting on phone and desktop using touch, mouse, and keyboard, with semantic/text navigation alongside art. | R03/R06 |
 | AC04 | Keep a file in node A's local library. Synchronize subscribed forums with B by mesh and Pigeon. The file library is not replicated; local download still works. | R08 |
 | AC05 | A and B opt into one shared forum while A has a local-only board and another unselected forum. Only selected, permitted records synchronize. Stopping participation changes future exchange according to the documented local policy. | R09 |
 | AC06 | A Pigeon collects at A, travels with no network path, delivers at B, and returns permitted reply data. Tampering is detected; carrier has no private-group decryption privilege. | R10/R11/R15 |
@@ -411,11 +472,16 @@ These are proposed verification scenarios derived from the settled requirements 
 | AC10 | Play an integrated local game, including a multiplayer example when that phase is delivered. Export/import a supported character/account; a configured GM approval gate is respected, and an unsupported game is not presented as portable. | R20/R21 |
 | AC11 | Authorized members on A and B read an encrypted group while hosts/courier store or relay ciphertext. Nonmembers and a hosting-only SysOp cannot gain access merely through their role. Test the actual approved client trust model. | R13/R15 |
 | AC12 | Submit/exchange an exposure report. Receiving SysOps can independently contact, restrict, or retain the peer. A report does not cause compulsory global banishment; a cellular-connected visitor alone is not treated as a node violation. | R04/R14 |
-| AC13 | A group member raises a concern; the host contacts the owner; appointed moderators act within their authority; the SysOp can stop hosting without becoming a group moderator. | R16 |
+| AC13 | A member reports one post and then a set of posts. Each original complaint retains the target references and explanation; the SysOp forwards the complaint reference without decrypting the posts. An authorized moderator follows it to the exact targets, reviews the reason, and responds on the same complaint. The SysOp retains hosting authority without gaining group membership. | R16 |
 | AC14 | Remove a member while another node/client is disconnected. Explain its locally known key state and the accepted possibility of stale-key access; reconcile authenticated updates on contact without claiming immediate universal revocation or imposing a blanket global posting halt. | R17 |
 | AC15 | Exercise the selected offline backup/restore and verified update workflow. Show what identity/history/key material is preserved, what recovery requires, and how failures are reported. No online recovery service is required. | R04; proposed P04/P09 |
 | AC16 | If P20 is approved: redeem an optional purchase-related game code at its issuing BBS; reject duplicate redemption under the game's rules; another BBS is not a redemption authority. Participation/social reach does not depend on buying the bonus. | R22/P20 |
 | AC17 | Review a release's source, build/install materials, protocol documentation, license decision, and Tier 1 change history. No claim of a selected license precedes that decision. | R23/R24 |
+| AC18 | Deliver a lump with many qualifying events: award one Lump Drop to the delivering user. Deliver one containing duplicates plus one newly accepted relevant change: award one. Deliver an older lump with a newly accepted relevant event: award one. Deliver only duplicates/no-longer-relevant/rejected changes: award zero. Stage unresolved events without premature credit; if a qualifying event is later accepted, credit once. Retry/restart/replay never adds a second credit for that receiving delivery. Verify default profile display, private-count hiding, and continued recording while private. | R25 |
+| AC19 | Mark a post-linked complaint as believed illegal. The report alone does not suppress posts. The SysOp can temporarily suppress exactly the referenced posts on their BBS without seeing plaintext; authorized moderators can still retrieve them through the complaint reference and reply. The SysOp can lift suppression or make a further hosting decision. Other BBSes do not inherit a compulsory action. | R16 |
+| AC20 | Create private and public accounts. Both appear in the local directory with username/common public fields. Private optional details stay hidden; a public profile displays only chosen optional contact information, bio, short message, and hosted events. Verify the profile's feed link follows feed visibility and the Lump Drop privacy choice is respected. | R25/R26 |
+| AC21 | A user chooses whether to display a supported game's name and character information on their profile; changes to that choice are reflected in the display. Game Passport integration supplies the agreed account/character associations. Achievement/progress display is not required unless P24 is adopted. | R21/R26/P17 |
+| AC22 | Form a local clan and cohort; find both in the home BBS's directory, open their profiles, and inspect their membership rosters under the chosen visibility rules. A participating game associates relevant local memberships through the Game Passport interface. Ordinary forum synchronization or character transfer does not automatically federate the groups or enroll members at another BBS. | R21/R27/P17 |
 
 For the federation prototype, the proposed test setup is three nodes and two couriers on an isolated network, with missing/duplicate/reordered messages, independent trust choices, and interruption. Equivalent smaller fixtures can establish early behavior; the multi-node test is a phase exit recommendation from the protocol pitch.
 
@@ -426,12 +492,12 @@ Tier 2 documents should answer bounded questions and cite the relevant R/P/AC ID
 | Document area | Questions to resolve |
 | --- | --- |
 | Local application/deployment | New implementation versus reuse; first hardware/OS profile; offline address/access setup; installation and service management |
-| UI and community interaction | Minimum accounts/profiles/mail/chat; friend/follow model; chronological order under delayed delivery; event invitations and lifecycle |
+| UI and community interaction | R26 directory/public-field schema and privacy controls; profile/feed and game/event displays; local clan/cohort membership and roster rules; friend/follow model; chronology; event lifecycle; exact vibrant-on-black palette |
 | Identity and authorization | User/device/node/forum/courier credentials, authority delegation, introductions, ownership continuity, recovery |
-| Event and Pigeon protocol | Canonical encoding, signed bytes/IDs, stream scoping, missing dependencies, forks, receipts, retention, crash recovery, versioning |
+| Event and Pigeon protocol | Canonical encoding, signed bytes/IDs, dependencies, forks, receipts, retention, crash recovery, versioning; Lump Drop attribution, qualifying integration linkage, duplicate-safe accounting, and multi-node total aggregation |
 | Encrypted client/groups | Offline secure delivery of client code, browser/native approach, keys/invitations, cryptographic state transitions, practical membership UX |
-| Trust and operations | Local diagnostics/reports, operator contact, suspension/reinstatement, quotas, backup/restore, verified offline updates |
-| Game interface | Game lifecycle, local multiplayer, supported account transfer, GM acceptance, optional issuing-node business rewards |
+| Trust and operations | Local diagnostics/reports, operator contact; complaint-to-post references, edited/missing targets, temporary local suppression and authorized moderator retrieval; peer reinstatement, quotas, backup/restore, verified offline updates |
+| Game interface | Game lifecycle, local multiplayer, Game Passport format/account transfer, GM acceptance, local clan/cohort association, chosen profile game/character display, optional issuing-node business rewards |
 | Licensing | Explicit reciprocal open-source license choice and treatment of project components |
 
 No decision in this list is reopened by default if it is already settled in §§2–10. In particular, offline-only infrastructure, owner-led encrypted moderation, the accepted revocation limitation, and the absence of engagement ranking remain constraints on every solution.
@@ -481,7 +547,7 @@ Use only relevant impact fields; this process is for concrete decisions, not man
 5. Link implementation work to the requirement/proposal decision and acceptance evidence.
 6. For a release, state which phase/capabilities are actually delivered and which remain pending.
 
-Committing this initial document is authorized by the current request; it does not approve every proposal recorded inside it. Future approval authority may be delegated explicitly by the product owner.
+Repository updates authorized by U15–U17 record the specified scope decisions; committing the document does not approve every remaining proposal inside it. Future approval authority may be delegated explicitly by the product owner.
 
 ### 16.5 Version policy
 
@@ -491,7 +557,7 @@ Document versions are independent of software and protocol versions.
 - **Minor** (0.1.0 → 0.2.0): approved additions, removals, status transitions, or material phase/acceptance changes within the mission.
 - **Major** (1.x → 2.0, or explicit pre-1.0 rebaseline): changes to foundational product boundaries or the document's authority model.
 
-Version 0.1.0 was the initial consolidation; version 0.2.0 is the source-audited revision. Neither is “protocol v1,” a product release, a completion claim, or a declaration that all open decisions are resolved. Git history preserves earlier versions; use tags for deliberate baselines when needed.
+Version 0.1.0 was the initial consolidation; version 0.2.0 was the source-audited revision; version 0.3.0 adds the explicitly requested community, delivery-credit, moderation, and theme capabilities. These are document versions, not protocol or product releases, completion claims, or declarations that all open decisions are resolved. Git history preserves earlier versions; use tags for deliberate baselines when needed.
 
 ## 17. Decision corrections and change history
 
@@ -515,8 +581,9 @@ Version 0.1.0 was the initial consolidation; version 0.2.0 is the source-audited
 | --- | --- | --- |
 | 0.1.0 | 2026-10-25 | Initial Tier 1 consolidation from the original discussion and specification request. Established R01–R24, P01–P22, D01–D07, N01–N12, AC01–AC17; preserved user corrections; added a proposed phased plan and versioned change-control process. |
 | 0.2.0 | 2026-10-25 | Audited all 16 source turns against the supplied export. Clarified later delivery/trust conclusions and brainstorm provenance; removed unsupported attachment/game-economy restrictions; restored omitted proposal details; added dated source evidence. No technology, license, optional module, or release schedule was newly selected. |
+| 0.3.0 | 2026-10-25 | Integrated U17: added R25 Lump Drops, R26 account directory/profiles, R27 local clans/cohorts; amended R03 dark default, R16 post-linked review/suppression, and R21 Game Passport integration. Updated phase mapping, AC03/AC13, added AC18–AC22, and recorded P23/P24 future possibilities. |
 
-### 17.3 Initial scope decision log
+### 17.3 Scope decision log
 
 | Decision | State |
 | --- | --- |
@@ -525,6 +592,8 @@ Version 0.1.0 was the initial consolidation; version 0.2.0 is the source-audited
 | Select a software license, technology stack, wire protocol, or encryption library | **Not decided** |
 | Approve every proposed community/game feature or the full phase schedule | **Not decided** |
 | Claim implemented behavior or completed acceptance testing | **Not applicable: documentation-only baseline** |
+| U17 additions: Lump Drop accounting/privacy, targeted complaints and local suppression, profiles/directories, local clans/cohorts, Game Passport integration, vibrant dark default | Approved by Michael on 2026-10-25; R03/R16/R21 amended and R25–R27 added |
+| Lump Drop reward tools; achievement/progress display and unspecified additional profile/group features | P23/P24 remain proposed; count-only Lump Drop scope is current |
 
 ### 17.4 Export audit — 2026-10-25
 
@@ -550,3 +619,15 @@ All 16 user turns and their assistant responses were read directly. The exported
 **Audit conclusion:** the core mission, offline infrastructure, SysOp autonomy, encrypted-forum responsibility, social visibility, and game direction were already represented. This revision corrects overreach and restores missing brainstorm details without promoting them to mandatory features. Pigeon chronology now separates the resulting no-loss/no-rollback direction from the still-proposed exact protocol. Existing R/P/D/N/AC identifiers remain stable.
 
 **Recorded decision:** the product owner's U16 audit request authorizes correcting the specification against the export. This revision does not resolve the open technology, license, optional-feature, or scheduling choices.
+
+### 17.5 CR-001 — Community participation and delivery credit
+
+| Field | Record |
+| --- | --- |
+| Decision | Approved by Michael's explicit U17 request, 2026-10-25; incorporated in version 0.3.0 |
+| Purpose | Recognize useful physical deliveries, make complaints actionable without host decryption, help local members find each other and organize/play, and establish the shipped visual style |
+| Scope changes | R03/R16/R21 amended; R25–R27 added; profile/directory capability promoted out of P03 and Game Passport capability adopted while P17 retains format/interface choices |
+| Future ideas | P23: discretionary SysOp rewards; P24: game achievements/progress and unspecified additional profile/group features |
+| Impacts | Receiver integration/receipt accounting, user attribution and profile privacy, post-reference-based host controls with authorized moderator review, local group/game associations, and default theme |
+| Acceptance and phases | AC03/AC13 updated; AC18–AC22 added; proposed phase mapping updated in §13 |
+| Repository record | The Git commit introducing version 0.3.0 of this file records this decision and its exact changes |

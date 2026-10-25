@@ -1,8 +1,8 @@
 # M18 — Portable characters and Game Passports
 
-Version 0.1.0 · 2026-10-25 · Tier 2 proposal · Tier 1 baseline 0.4.0.
+Version 1.0.0 · 2026-10-25 · Locked development baseline · Tier 1 baseline 0.5.0.
 
-**State:** Planned capability; implementation choices proposed. No implementation or passed checks claimed.
+**State:** Approved for implementation under U19; unstarted. Runtime and hardware evidence remains pending.
 
 ## Read only this packet
 
@@ -17,20 +17,20 @@ Look up only decision rows T10 in [DECISIONS](../DECISIONS.md). Dependency brief
 
 Move supported character/account state between nodes with destination game validation and configurable GM approval. Preserve local-only clan/cohort semantics.
 
-## Recommended implementation
+## Locked implementation
 
-Implement C04 signed snapshot exports, adapter-owned schema validation, staged import, GM decision and idempotent acceptance. Prefer explicit copy/import branches first; the UI must describe that both origin and destination may retain playable branches. Destination rules can accept/reject rewards. Existing BBS transport carries only selected game records; large assets remain installed locally. A saved export can be inspected without the source node, but fresh ownership/revocation knowledge remains bounded by available evidence.
+Implement C04 signed snapshot exports, adapter-owned schema validation, staged import, GM decision and idempotent acceptance. Use explicit copy/import branches first; the UI must describe that both origin and destination may retain playable branches. Destination rules can accept/reject rewards. Existing BBS transport carries only selected game records; large assets remain installed locally. A saved export can be inspected without the source node, but fresh ownership/revocation knowledge remains bounded by available evidence.
 
 ## Ownership and interfaces
 
-Proposed crates/passport/ and game-specific adapters; export/import receipts, origin/branch provenance and GM decisions. Each game owns state conversion; core owns identity verification and routing.
+Planned crates/passport/ and game-specific adapters; export/import receipts, origin/branch provenance and GM decisions. Each game owns state conversion; core owns identity verification and routing.
 
-Paths above are proposed implementation locations, not existing code. Consume the contracts in the reading packet; changes to them need affected-consumer updates. A disabled optional module retains its data and does not break unrelated local services.
+Paths above are planned implementation locations, not existing code. Consume the contracts in the reading packet; changes to them need affected-consumer updates. A disabled optional module retains its data and does not break unrelated local services.
 
 ## Sequential work slices
 
 1. A: same-version export/import for the demo game and opt-in profile summary.
-2. B: GM approval, duplicate import and unsupported schema.
+2. B: owner-authorized destination-bound import, GM approval, duplicate import and unsupported schema.
 3. C: source-offline/source-lost import of a saved snapshot and divergent re-export.
 4. D: verify local group association at destination.
 
@@ -40,10 +40,10 @@ Paths above are proposed implementation locations, not existing code. Consume th
 - No portable claim for an adapter without passing fixtures.
 - Neither old group membership nor game purchase grants destination enrollment/social reach.
 
-## Decisions before completion
+## Locked defaults and verification
 
-Approve transfer-versus-copy semantics per game, state size limits, stale credential policy and what happens to an origin character. Exclusive transfer is not inferred from this proposal.
+First Passport adapters use copy/import branches with explicit origin/destination lineage, not exclusive transfer. GM approval defaults on for imported characters and may be configured per game. Imports carry a game-issued export plus owner authorization bound to destination, game, export and a fresh challenge; a stolen snapshot cannot claim someone else’s character. Duplicate import ID returns the original result. Large local game assets stay separately installed; set snapshot cap in the adapter schema.
 
 ## Handoff
 
-Record completed slices, approved ADRs, contract/schema revisions, evidence and commit, remaining limitations and next slice in [WORK_LEDGER](../WORK_LEDGER.md). A passing fixture is evidence for this module, not approval of new product scope. See [coverage](../COVERAGE.md) when changing source IDs.
+Record completed slices, approved ADRs, contract/schema revisions, evidence and commit, remaining limitations and next slice in [WORK_LEDGER](../WORK_LEDGER.md). Existing scopes are approved; genuinely new scope still follows change control. See [coverage](../COVERAGE.md) when changing source IDs.

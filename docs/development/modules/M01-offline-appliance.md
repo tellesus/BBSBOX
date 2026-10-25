@@ -1,8 +1,8 @@
 # M01 — Offline appliance and local access
 
-Version 0.1.0 · 2026-10-25 · Tier 2 proposal · Tier 1 baseline 0.4.0.
+Version 1.0.0 · 2026-10-25 · Locked development baseline · Tier 1 baseline 0.5.0.
 
-**State:** Planned capability; implementation choices proposed. No implementation or passed checks claimed.
+**State:** Approved for implementation under U19; unstarted. Runtime and hardware evidence remains pending.
 
 ## Read only this packet
 
@@ -17,15 +17,15 @@ Look up only decision rows T01, T07, T14 in [DECISIONS](../DECISIONS.md). Depend
 
 Run on a repurposed computer and isolated Wi-Fi. Infrastructure must never seek the internet; visitor cellular connectivity is allowed.
 
-## Recommended implementation
+## Locked implementation
 
-Propose a Debian stable base, systemd service, Rust binary/static assets, local DNS/address card, and nftables rules that restrict routes to configured local client/peer networks and prevent WAN forwarding in IPv4 and IPv6. Use the M00-tested local HTTPS/trust path. No online DNS, NTP, ACME, telemetry or package manager activity in the deployed profile. Build releases on a separate developer machine and transfer artifacts locally.
+Use a Debian stable base, systemd service, Rust binary/static assets, local DNS/address card, and nftables rules that restrict routes to configured local client/peer networks and prevent WAN forwarding in IPv4 and IPv6. Use the M00-tested local HTTPS/trust path. No online DNS, NTP, ACME, telemetry or package manager activity in the deployed profile. Build releases on a separate developer machine and transfer artifacts locally.
 
 ## Ownership and interfaces
 
-Proposed deploy/ and crates/node-runtime/; installation config, local address/certificate state, service manifests, local-only diagnostics. Does not own user keys.
+Planned deploy/ and crates/node-runtime/; installation config, local address/certificate state, service manifests, local-only diagnostics. Does not own user keys.
 
-Paths above are proposed implementation locations, not existing code. Consume the contracts in the reading packet; changes to them need affected-consumer updates. A disabled optional module retains its data and does not break unrelated local services.
+Paths above are planned implementation locations, not existing code. Consume the contracts in the reading packet; changes to them need affected-consumer updates. A disabled optional module retains its data and does not break unrelated local services.
 
 ## Sequential work slices
 
@@ -39,10 +39,10 @@ Paths above are proposed implementation locations, not existing code. Consume th
 - Local UI remains reachable with no peers and no WAN.
 - A host follows the documented installation path on the reference machine.
 
-## Decisions before completion
+## Locked defaults and verification
 
-Record the first OS/CPU/router profile, local address convention and certificate renewal workflow; do not advertise arbitrary-router support.
+Debian stable x86-64 is the first full-node/courier target; systemd, nftables, local DNS and a per-node local CA are selected. Enrollment records the CA fingerprint out of band; use locally resolved names containing a node-ID suffix and local IP fallback. Never install a peer CA automatically. Manual/local certificate renewal and local clock setup are documented. Browser trust enrollment must pass M00; no public ACME/NTP/DoH fallback. Router configuration is tested for default routes and IPv6 as well as IPv4.
 
 ## Handoff
 
-Record completed slices, approved ADRs, contract/schema revisions, evidence and commit, remaining limitations and next slice in [WORK_LEDGER](../WORK_LEDGER.md). A passing fixture is evidence for this module, not approval of new product scope. See [coverage](../COVERAGE.md) when changing source IDs.
+Record completed slices, approved ADRs, contract/schema revisions, evidence and commit, remaining limitations and next slice in [WORK_LEDGER](../WORK_LEDGER.md). Existing scopes are approved; genuinely new scope still follows change control. See [coverage](../COVERAGE.md) when changing source IDs.

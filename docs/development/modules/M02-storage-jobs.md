@@ -1,8 +1,8 @@
 # M02 — Durable storage and bounded jobs
 
-Version 0.1.0 · 2026-10-25 · Tier 2 proposal · Tier 1 baseline 0.4.0.
+Version 1.0.0 · 2026-10-25 · Locked development baseline · Tier 1 baseline 0.5.0.
 
-**State:** Planned capability; implementation choices proposed. No implementation or passed checks claimed.
+**State:** Approved for implementation under U19; unstarted. Runtime and hardware evidence remains pending.
 
 ## Read only this packet
 
@@ -17,15 +17,15 @@ Look up only decision rows T02, T14 in [DECISIONS](../DECISIONS.md). Dependency 
 
 Provide crash-safe storage, deduplicated commands and background work shared by feature modules. Imports must leave ordinary local interaction usable.
 
-## Recommended implementation
+## Locked implementation
 
 Use SQLite WAL through rusqlite with a dedicated bounded writer and read connections. Explicit SQL migrations and transactional outbox/jobs are preferable to a second queue service. Module-owned tables share one transaction boundary when receipt/credit or command/state changes must commit together. Files use content-addressed local storage.
 
 ## Ownership and interfaces
 
-Proposed crates/storage/; migrations registry, jobs, command receipts, blob metadata and consistent snapshot hooks. Feature rows remain owned by their feature module.
+Planned crates/storage/; migrations registry, jobs, command receipts, blob metadata and consistent snapshot hooks. Feature rows remain owned by their feature module.
 
-Paths above are proposed implementation locations, not existing code. Consume the contracts in the reading packet; changes to them need affected-consumer updates. A disabled optional module retains its data and does not break unrelated local services.
+Paths above are planned implementation locations, not existing code. Consume the contracts in the reading packet; changes to them need affected-consumer updates. A disabled optional module retains its data and does not break unrelated local services.
 
 ## Sequential work slices
 
@@ -39,10 +39,10 @@ Paths above are proposed implementation locations, not existing code. Consume th
 - Measure local requests during a sustained import, and verify background work still makes progress.
 - Disk-full and interrupted migration leave a recoverable, intelligible state.
 
-## Decisions before completion
+## Locked defaults and verification
 
-Select initial queue budgets and storage limits from M00 measurements; specify their tuning and persistence.
+SQLite WAL with synchronous=FULL, one bounded writer, transactional outbox and explicit migrations are selected. Start imports at 100 events per transaction and yield between batches; make budgets configurable and measure fairness. Reject writes cleanly at a configurable reserved free-space threshold; do not delete canonical history to manufacture space. M00 measures defaults before a capacity promise. Snapshot/worker participation follows C01.
 
 ## Handoff
 
-Record completed slices, approved ADRs, contract/schema revisions, evidence and commit, remaining limitations and next slice in [WORK_LEDGER](../WORK_LEDGER.md). A passing fixture is evidence for this module, not approval of new product scope. See [coverage](../COVERAGE.md) when changing source IDs.
+Record completed slices, approved ADRs, contract/schema revisions, evidence and commit, remaining limitations and next slice in [WORK_LEDGER](../WORK_LEDGER.md). Existing scopes are approved; genuinely new scope still follows change control. See [coverage](../COVERAGE.md) when changing source IDs.

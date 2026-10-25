@@ -1,8 +1,8 @@
 # M14 — Targeted complaints and host suppression
 
-Version 0.1.0 · 2026-10-25 · Tier 2 proposal · Tier 1 baseline 0.4.0.
+Version 1.0.0 · 2026-10-25 · Locked development baseline · Tier 1 baseline 0.5.0.
 
-**State:** Planned capability; implementation choices proposed. No implementation or passed checks claimed.
+**State:** Approved for implementation under U19; unstarted. Runtime and hardware evidence remains pending.
 
 ## Read only this packet
 
@@ -17,15 +17,15 @@ Look up only decision rows T09, T13 in [DECISIONS](../DECISIONS.md). Dependency 
 
 Preserve the original complaint, exact posts/revisions and explanation through SysOp contact and moderator response. A user may allege illegality; only a SysOp chooses local temporary suppression.
 
-## Recommended implementation
+## Locked implementation
 
 Implement the C05 case state machine with stable case/target IDs and role-filtered views. Route contact through local mail; use permitted signed exchange for remote cases once M15/M16 exist. A review endpoint serves suppressed ciphertext only after forum-role proof; group keys remain client-side. Host suppression applies to ordinary delivery/read routes at that node and does not grant membership or compel other nodes.
 
 ## Ownership and interfaces
 
-Proposed crates/complaints/; case records, target/revision links, forward/response events, local suppression flags and local-resolution actions. Forum content stays owned by M06/M13.
+Planned crates/complaints/; case records, target/revision links, forward/response events, local suppression flags and local-resolution actions. Forum content stays owned by M06/M13.
 
-Paths above are proposed implementation locations, not existing code. Consume the contracts in the reading packet; changes to them need affected-consumer updates. A disabled optional module retains its data and does not break unrelated local services.
+Paths above are planned implementation locations, not existing code. Consume the contracts in the reading packet; changes to them need affected-consumer updates. A disabled optional module retains its data and does not break unrelated local services.
 
 ## Sequential work slices
 
@@ -39,10 +39,10 @@ Paths above are proposed implementation locations, not existing code. Consume th
 - An allegation alone changes no visibility; removing suppression restores permitted ordinary access.
 - Wrong-role access cannot reveal ciphertext via the review bypass; missing target is shown as pending rather than silently substituted.
 
-## Decisions before completion
+## Locked defaults and verification
 
-Decide case/revision retention and reporter-visible response fields; voluntary plaintext disclosure remains a separate P03 choice.
+Keep complaint targets/revisions for the open case plus 90 days after local closure, configurable with visible missing-target state. Reporter sees status and response intended for them; SysOp sees explanation/case state; authorized mod sees target plaintext on their client. Voluntary plaintext disclosure is approved as an explicit opt-in attachment owned here. Suppression covers ordinary node reads, searches, exports and sync responses; the scoped moderator-review path remains usable.
 
 ## Handoff
 
-Record completed slices, approved ADRs, contract/schema revisions, evidence and commit, remaining limitations and next slice in [WORK_LEDGER](../WORK_LEDGER.md). A passing fixture is evidence for this module, not approval of new product scope. See [coverage](../COVERAGE.md) when changing source IDs.
+Record completed slices, approved ADRs, contract/schema revisions, evidence and commit, remaining limitations and next slice in [WORK_LEDGER](../WORK_LEDGER.md). Existing scopes are approved; genuinely new scope still follows change control. See [coverage](../COVERAGE.md) when changing source IDs.

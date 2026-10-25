@@ -1,8 +1,8 @@
 # M15 — Selected offline peer exchange
 
-Version 0.1.0 · 2026-10-25 · Tier 2 proposal · Tier 1 baseline 0.4.0.
+Version 1.0.0 · 2026-10-25 · Locked development baseline · Tier 1 baseline 0.5.0.
 
-**State:** Planned capability; implementation choices proposed. No implementation or passed checks claimed.
+**State:** Approved for implementation under U19; unstarted. Runtime and hardware evidence remains pending.
 
 ## Read only this packet
 
@@ -17,15 +17,15 @@ Look up only decision rows T04, T05, T06 in [DECISIONS](../DECISIONS.md). Depend
 
 Exchange only selected forums/feeds between independently operated nodes. Local-only content and file libraries remain local. Pigeons will reuse the same importer.
 
-## Recommended implementation
+## Locked implementation
 
-Use a transport adapter over explicit offline IP peer links, authenticated by pinned node credentials introduced with fingerprints/QR. HTTPS/mTLS or an equivalent authenticated local channel is proposed; message signatures remain authoritative across carriage. Exchange versioned inventory/gap requests and bounded chunks. Both sender and receiver enforce subscription policy. A peer can decline a module/version while other compatible streams continue.
+Use a transport adapter over explicit offline IP peer links, authenticated by pinned node credentials introduced with fingerprints/QR. Use HTTPS with mutually authenticated pinned node credentials; message signatures remain authoritative across carriage. Exchange versioned inventory/gap requests and bounded chunks. Both sender and receiver enforce subscription policy. A peer can decline a module/version while other compatible streams continue.
 
 ## Ownership and interfaces
 
-Proposed crates/sync/; peer sessions, subscriptions, inventories, persistent inbox/outbox and gap requests. Does not own radio routing, event reducers or group keys.
+Planned crates/sync/; peer sessions, subscriptions, inventories, persistent inbox/outbox and gap requests. Does not own radio routing, event reducers or group keys.
 
-Paths above are proposed implementation locations, not existing code. Consume the contracts in the reading packet; changes to them need affected-consumer updates. A disabled optional module retains its data and does not break unrelated local services.
+Paths above are planned implementation locations, not existing code. Consume the contracts in the reading packet; changes to them need affected-consumer updates. A disabled optional module retains its data and does not break unrelated local services.
 
 ## Sequential work slices
 
@@ -39,10 +39,10 @@ Paths above are proposed implementation locations, not existing code. Consume th
 - AC07 and private-group fixtures converge after reconnection without requiring internet or synchronized clocks.
 - Disabling a peer stops future exchange per documented retention policy while local content stays usable.
 
-## Decisions before completion
+## Locked defaults and verification
 
-Choose exact authenticated link setup and subscription withdrawal retention. Initial single-link IP adapter must work before adding radio-specific integrations.
+Use TLS with pinned node identity credentials for peer exchange; local operator introductions bind fingerprints, with separate event signatures. No public CA/registry requirement. Unsubscribe stops future offers but retains already accepted local history until explicit local removal. Handshake advertises core/module versions and subscription scopes. Public exchange slices can be tested before M13/M14; complete M15 still requires private/case integration evidence.
 
 ## Handoff
 
-Record completed slices, approved ADRs, contract/schema revisions, evidence and commit, remaining limitations and next slice in [WORK_LEDGER](../WORK_LEDGER.md). A passing fixture is evidence for this module, not approval of new product scope. See [coverage](../COVERAGE.md) when changing source IDs.
+Record completed slices, approved ADRs, contract/schema revisions, evidence and commit, remaining limitations and next slice in [WORK_LEDGER](../WORK_LEDGER.md). Existing scopes are approved; genuinely new scope still follows change control. See [coverage](../COVERAGE.md) when changing source IDs.

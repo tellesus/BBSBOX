@@ -1,28 +1,28 @@
 # BBSBOX development — bounded task context
 
-Version 0.1.0 · 2026-10-25 · Tier 2 planning proposal · Tier 1 baseline 0.4.0.
+Version 1.0.0 · 2026-10-25 · Locked roadmap · Tier 1 0.5.0 · Authority U19 / ADR-0001.
 
-## Use one module at a time
+## Work one module slice at a time
 
-1. Choose a module in [the index](README.md). Read its brief and only the contracts listed in its context packet. Normally this file + one brief + one or two contracts is enough; aim for under 2,500 words of mandatory design context. The index/coverage map are lookup tools, not mandatory reading for every change.
-2. Check the referenced decision rows in [DECISIONS](DECISIONS.md), the module's prerequisite completion records, and the current code. A proposal authorizes investigation, not an assertion that its unresolved choice has already been made.
-3. Create one bounded task with module ID, baseline, approved decision references, exact included slice, touched interfaces, fixtures, and exit evidence. Module briefs list sequential slices; completing one slice does not complete the module.
-4. Implement inside the proposed ownership boundary. Use mocks/fixtures for dependencies while prototyping; record that integration remains outstanding. No production completion claim based only on mocks.
-5. Record result, commit, tests/observations, schema/contract versions, remaining work, and updated module state in the [work ledger](WORK_LEDGER.md). Update affected contract consumers and the coverage map if an interface changes.
+Read this file, one module brief and its listed contracts. Look up only its T decision rows. The index/coverage/review documents are lookup tools, not required context on every task. A normal reading packet targets 2,500 words; exact byte schemas and code are additional task-specific implementation context.
 
-## Always-applicable constraints
+P01–P24, T01–T14 and M00–M19/O01–O12 are approved within the recorded scopes. Use their locked defaults without asking for permission again. Optional activation is an operator/user choice. D01–D07 and unnamed additions remain outside this baseline. Hardware compatibility, supported versions and capacity are evidence to collect, not facts established by approval.
 
-- R01–R06: neighborhood purpose; each node useful alone; modern browser UI; vibrant colors on black by default; SysOp customization; modest hardware; infrastructure never seeks the internet. Client devices may independently have internet.
-- R08–R17: file libraries stay local; federation is selected; signatures and permissions are distinct; older delivery can supply missing relevant events; node, user, forum and courier authority differ. Hosts/carriers do not acquire private forum keys. Owner-led moderation and reference-based local suppression coexist. Delayed revocation is accepted; no global posting halt to simulate instant revocation.
-- R18–R27: chosen chronological posts/events; game portability only where supported, with configured GM approval; optional business rewards redeem only at issuer; license TBD with reciprocal intent; Lump Drops count qualifying receiving deliveries once and can be hidden; every local account is in the directory; clans/cohorts remain local.
-- Product scope is [Tier 1](../../BBSBOX_MASTER_SPEC.md). All decisions and schedules in this package are **Proposed**, unless a later recorded approval changes that status. P and D features remain optional/deferred. No implementation exists in this documentation baseline.
+Before implementation, verify the selected slice's prerequisites and contract versions, then record source IDs, included behavior, owned data, fixtures and exit evidence. M00 establishes G0-local access/storage/event evidence; unfinished private-client/MLS evidence blocks G2 only. Earlier modules complete their interfaces with fixtures; later consumers own actual integration and regression checks. A task cannot claim integration from mocks.
 
-## Scope and contract escalation
+## Always-applicable boundaries
 
-The brief restates its relevant product constraints. Consult the specific Tier 1 section when a question exceeds that summary; load the whole master only for a scope audit. A newly discovered product change gets an explicit Tier 1 change record. A compatible implementation detail stays in its module/ADR. Changes to a shared contract identify affected consumers and version/upgrade behavior in the same proposal.
+- Neighborhood use; useful standalone nodes; modern browser UI; vibrant colors on black by default and SysOp customization. Infrastructure never seeks internet; visitors may have independent connectivity.
+- Local file libraries stay local; selected federation only. Signatures and action authority differ. Streams are scoped by device AND resource/audience. Old packages can contain new valid events.
+- Person, node, forum and courier powers are distinct. Owners moderate encrypted forums. Hosts may suppress exact referenced posts locally without plaintext. Delayed revocation is accepted; no global posting halt.
+- Chosen chronological posts/events; local clans/cohorts. Passport copy/import needs owner proof and configured GM acceptance. Business codes redeem only at issuer; purchases never alter social reach.
+- Lump Drops count qualifying receiving deliveries once, attributed to the delivering person; private display remains separate from recording. O12 adds approved manual rewards later.
+- All local accounts remain in the directory; optional profile/game fields obey privacy. AGPL-3.0-or-later covers project software/tools, CC-BY-SA-4.0 design prose; third-party and user content retain their own terms.
 
-## Work item template
+## Handoff and changes
 
-`Module/slice; baseline; source IDs; accepted ADRs; included behavior; exclusions; owned files/data; consumed contract revisions; prerequisite evidence; fixtures; acceptance; result/commit; next slice.`
+Record module/slice, baseline, ADR, contract/schema versions, commit, actual tests/observations, limitations and next slice in [WORK_LEDGER](WORK_LEDGER.md). Current implementation state is Unstarted. This lock records design review, not runtime success.
 
-Review recommendations on their merits. Do not copy Mastodon features, protocols, staffing scale, or internet services merely because they appear in research.
+Use [Tier 1](../../BBSBOX_MASTER_SPEC.md) for targeted scope questions. Material changes get a successor ADR and affected-consumer updates; newly added product scope requires a Tier 1 change. Routine compatible implementation details and dependency pinning are authorized. A selected technology failing its gate calls for an evidence-backed replacement; never silently weaken the privacy/offline requirement.
+
+Task record: `Module/slice; baseline; source IDs; ADR; included behavior; boundaries; owned files/data; contracts; prerequisite evidence; fixtures; result/commit; next action.`

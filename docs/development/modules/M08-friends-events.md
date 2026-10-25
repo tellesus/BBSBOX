@@ -1,8 +1,8 @@
 # M08 — Chosen feeds, gatherings and invitations
 
-Version 0.1.0 · 2026-10-25 · Tier 2 proposal · Tier 1 baseline 0.4.0.
+Version 1.0.0 · 2026-10-25 · Locked development baseline · Tier 1 baseline 0.5.0.
 
-**State:** Planned capability; implementation choices proposed. No implementation or passed checks claimed.
+**State:** Approved for implementation under U19; unstarted. Runtime and hardware evidence remains pending.
 
 ## Read only this packet
 
@@ -17,21 +17,21 @@ Look up only decision rows T09 in [DECISIONS](../DECISIONS.md). Dependency brief
 
 Provide chronological chosen posts and event announcements/invitations without ranking or paid reach. Event dates are meaningful human dates but never protocol authority.
 
-## Recommended implementation
+## Locked implementation
 
-Propose explicit following for public posts, with mutual confirmed friendship as a distinct optional audience relationship to decide before private sharing. First slice supports public local updates, selected recipients for invitations, event title/place/date/timezone/description and authored revisions. Sort by claimed authored time plus stable ID, flag late arrival/clock uncertainty, and never let clock order resolve edits. A calendar/RSVP slice proposes going/maybe/not-going and last-known counts; reminders are local due work only, no cloud push.
+Use explicit following for public posts, with mutual confirmed friendship as a distinct selected audience relationship; M13 implements its encrypted sharing adapter. First slice supports public local updates, selected recipients for invitations, event title/place/date/timezone/description and authored revisions. Sort by claimed authored time plus stable ID, flag late arrival/clock uncertainty, and never let clock order resolve edits. The calendar/RSVP slice implements going/maybe/not-going and last-known counts; reminders are local due work only, no cloud push.
 
 ## Ownership and interfaces
 
-Proposed crates/social/ and crates/gatherings/; relationship choices, feed projection, event revisions, invitations and optional RSVP state. M13 is required for any promise of host-blind audience-restricted sharing.
+Planned crates/social/ and crates/gatherings/; relationship choices, feed projection, event revisions, invitations and optional RSVP state. M13 is required for any promise of host-blind audience-restricted sharing.
 
-Paths above are proposed implementation locations, not existing code. Consume the contracts in the reading packet; changes to them need affected-consumer updates. A disabled optional module retains its data and does not break unrelated local services.
+Paths above are planned implementation locations, not existing code. Consume the contracts in the reading packet; changes to them need affected-consumer updates. A disabled optional module retains its data and does not break unrelated local services.
 
 ## Sequential work slices
 
 1. A: chosen public feed and follow/unfollow, with chronological fixtures.
 2. B: create/update/cancel an event and address invitations; expose profile links.
-3. C: if P10 details are approved, add calendar/RSVP/local reminders and stale-state labels.
+3. C: add calendar/RSVP/local reminders and stale-state labels.
 
 ## Completion evidence
 
@@ -39,10 +39,10 @@ Paths above are proposed implementation locations, not existing code. Consume th
 - An arriving original event cannot undo a known cancellation.
 - A resident finds a game night through a profile or event list.
 
-## Decisions before completion
+## Locked defaults and verification
 
-Record friend/follow and private-audience semantics, display-time correction policy and RSVP scope in T09; private sharing cannot quietly become plaintext server storage.
+Directional public following is selected. Use descending claimed authored-time with event-ID tie-break and explicit late-arrival/clock-uncertainty labels; edits use causal revision rules. Calendar, going/maybe/not-going RSVPs, cancellation and local reminders are approved. Mutual confirmed friendships are a relationship separate from follows. G1 implements public feeds/events and recipient-addressed host-visible invitations; M13 owns the G2 encrypted friend-audience adapter, so no private-content promise leaks into G1.
 
 ## Handoff
 
-Record completed slices, approved ADRs, contract/schema revisions, evidence and commit, remaining limitations and next slice in [WORK_LEDGER](../WORK_LEDGER.md). A passing fixture is evidence for this module, not approval of new product scope. See [coverage](../COVERAGE.md) when changing source IDs.
+Record completed slices, approved ADRs, contract/schema revisions, evidence and commit, remaining limitations and next slice in [WORK_LEDGER](../WORK_LEDGER.md). Existing scopes are approved; genuinely new scope still follows change control. See [coverage](../COVERAGE.md) when changing source IDs.

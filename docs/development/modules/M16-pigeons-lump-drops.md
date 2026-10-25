@@ -1,8 +1,8 @@
 # M16 — Pigeon installation, lumps and credit
 
-Version 0.1.0 · 2026-10-25 · Tier 2 proposal · Tier 1 baseline 0.4.0.
+Version 1.0.0 · 2026-10-25 · Locked development baseline · Tier 1 baseline 0.5.0.
 
-**State:** Planned capability; implementation choices proposed. No implementation or passed checks claimed.
+**State:** Approved for implementation under U19; unstarted. Runtime and hardware evidence remains pending.
 
 ## Read only this packet
 
@@ -17,15 +17,15 @@ Look up only decision rows T04, T11 in [DECISIONS](../DECISIONS.md). Dependency 
 
 Ship a lightweight courier installation for physical message carriage and the exact R25 count/privacy behavior. Rewards are excluded from this module.
 
-## Recommended implementation
+## Locked implementation
 
-Reuse Rust event/chunk codecs in a small courier executable with local queue/status UI. Propose a laptop/Linux portable device as first active courier and a file-based lump importer/exporter as a conformance fixture; passive USB as a product workflow requires the P05 decision. C03 supplies signed sequence manifests, durable attribution and first-source provenance. Store event admission and unique receiving-delivery credit in one transactional flow. Count local receiver awards first; no network-wide totals claim.
+Reuse Rust event/chunk codecs in a small courier executable with local queue/status UI. Use a laptop/Linux portable device as first active courier and a file-based lump importer/exporter as both a conformance fixture and the approved passive USB product workflow. C03 supplies signed sequence manifests, durable attribution and first-source provenance. Store event admission and unique receiving-delivery credit in one transactional flow. Count local receiver awards first; no network-wide totals claim.
 
 ## Ownership and interfaces
 
-Proposed crates/pigeon/, crates/delivery-credit/; courier queue/stamps, package manifests, receiving-delivery attribution, event provenance, signed receipts and private/public count projection.
+Planned crates/pigeon/, crates/delivery-credit/; courier queue/stamps, package manifests, receiving-delivery attribution, event provenance, signed receipts and private/public count projection.
 
-Paths above are proposed implementation locations, not existing code. Consume the contracts in the reading packet; changes to them need affected-consumer updates. A disabled optional module retains its data and does not break unrelated local services.
+Paths above are planned implementation locations, not existing code. Consume the contracts in the reading packet; changes to them need affected-consumer updates. A disabled optional module retains its data and does not break unrelated local services.
 
 ## Sequential work slices
 
@@ -33,6 +33,7 @@ Paths above are proposed implementation locations, not existing code. Consume th
 2. B: signature/version/chunk checks and interrupted transfer.
 3. C: authenticated delivering-user attribution, qualifying acceptance and retry-safe count.
 4. D: integrate profile count privacy and pending-outcome UI.
+5. E: passive USB workflow, configured multi-hop and Pigeon-to-Pigeon handoff, encrypted spool/media, route/status and capacity controls; no automatic opportunistic discovery.
 
 ## Completion evidence
 
@@ -40,10 +41,12 @@ Paths above are proposed implementation locations, not existing code. Consume th
 - Host accepts relevant encrypted envelope without carrier plaintext access.
 - Private count is hidden from public profile/API but continues recording.
 
-## Decisions before completion
+## Locked defaults and verification
 
-Confirm first hardware/workflow, attribution of nonresident carriers, retention limits and local-count label. Aggregated totals and discretionary rewards need their own later decisions.
+Ship both a Linux active courier and passive signed-lump USB import/export workflow, then explicit configured multi-hop and Pigeon-to-Pigeon handoff. No automatic route discovery. Receiver-local count is labeled “Lump Drops at this BBS”; no aggregation. Visitors link/create a local account before credited import. Encrypted-at-rest courier spool/media is supported using OS encryption; payload signature checks remain mandatory. Pin provenance only after C03 admission checks; quarantine cannot reserve credit. Rewards belong to O12.
+
+An opt-in status panel may show aggregate counts of explicitly public mail. Private-stream activity is excluded; this is a visibility control on the accepted queue/status feature, not a claim to expose encrypted contents.
 
 ## Handoff
 
-Record completed slices, approved ADRs, contract/schema revisions, evidence and commit, remaining limitations and next slice in [WORK_LEDGER](../WORK_LEDGER.md). A passing fixture is evidence for this module, not approval of new product scope. See [coverage](../COVERAGE.md) when changing source IDs.
+Record completed slices, approved ADRs, contract/schema revisions, evidence and commit, remaining limitations and next slice in [WORK_LEDGER](../WORK_LEDGER.md). Existing scopes are approved; genuinely new scope still follows change control. See [coverage](../COVERAGE.md) when changing source IDs.

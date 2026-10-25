@@ -1,8 +1,8 @@
 # M11 — Game host and local multiplayer example
 
-Version 0.1.0 · 2026-10-25 · Tier 2 proposal · Tier 1 baseline 0.4.0.
+Version 1.0.0 · 2026-10-25 · Locked development baseline · Tier 1 baseline 0.5.0.
 
-**State:** Planned capability; implementation choices proposed. No implementation or passed checks claimed.
+**State:** Approved for implementation under U19; unstarted. Runtime and hardware evidence remains pending.
 
 ## Read only this packet
 
@@ -11,21 +11,21 @@ Look up only decision rows T10 in [DECISIONS](../DECISIONS.md). Dependency brief
 
 **Source scope:** R07, R20, R21, R26, R27, P17, AC01, AC10, AC21, AC22. **Target gate:** G1. Scope summaries below preserve these source IDs; refer to the specific Tier 1 section if a conflict appears.
 
-**Prerequisites:** [M02](../modules/M02-storage-jobs.md), [M03](../modules/M03-identity-access.md), [M05](../modules/M05-interface-themes.md), [M07](../modules/M07-directory-profiles.md), [M09](../modules/M09-clans-cohorts.md).
+**Prerequisites:** [M02](../modules/M02-storage-jobs.md), [M03](../modules/M03-identity-access.md), [M05](../modules/M05-interface-themes.md), [M07](../modules/M07-directory-profiles.md), [M09](../modules/M09-clans-cohorts.md), [M12](../modules/M12-maintenance-recovery.md).
 
 ## Product outcome and boundaries
 
 Make games part of the first useful node with one small local game and multiplayer example. Define passport/profile/group hooks now; actual cross-node portability arrives in M18.
 
-## Recommended implementation
+## Locked implementation
 
 Use locally installed HTML/TypeScript game assets and an isolated worker with JSON HTTP/WebSocket messages. Start with a simple turn-based two-player demonstration; no particular fictional dungeon or game title is committed. The game owns rules/state and publishes optional character summaries. Core authenticates players and supplies scoped sessions plus local memberships. Avoid a general plugin marketplace or arbitrary code-loader in the core.
 
 ## Ownership and interfaces
 
-Proposed crates/game-host/, games/demo/; game manifests, launch/session registry and demo game state. Each game owns schema migrations and idempotent command handling.
+Planned crates/game-host/, games/demo/; game manifests, launch/session registry and demo game state. Each game owns schema migrations and idempotent command handling.
 
-Paths above are proposed implementation locations, not existing code. Consume the contracts in the reading packet; changes to them need affected-consumer updates. A disabled optional module retains its data and does not break unrelated local services.
+Paths above are planned implementation locations, not existing code. Consume the contracts in the reading packet; changes to them need affected-consumer updates. A disabled optional module retains its data and does not break unrelated local services.
 
 ## Sequential work slices
 
@@ -39,10 +39,10 @@ Paths above are proposed implementation locations, not existing code. Consume th
 - A command retry changes game state once.
 - Profile settings hide game/character summaries; local groups remain local.
 
-## Decisions before completion
+## Locked defaults and verification
 
-Approve initial demo scope and game-worker packaging in T10. Unsupported games must not display a portability claim.
+Build a small turn-based cooperative dungeon demo with persistent characters and two local players as a test fixture, not a promised game brand. Game workers run separately with per-game state and scoped command IDs. A sandboxed game origin never receives core cookies or client keys; bootstrap game-scoped tokens through the host. Supply profile/group hooks now; M18 adds snapshot portability. C01 defines game checkpoint participation.
 
 ## Handoff
 
-Record completed slices, approved ADRs, contract/schema revisions, evidence and commit, remaining limitations and next slice in [WORK_LEDGER](../WORK_LEDGER.md). A passing fixture is evidence for this module, not approval of new product scope. See [coverage](../COVERAGE.md) when changing source IDs.
+Record completed slices, approved ADRs, contract/schema revisions, evidence and commit, remaining limitations and next slice in [WORK_LEDGER](../WORK_LEDGER.md). Existing scopes are approved; genuinely new scope still follows change control. See [coverage](../COVERAGE.md) when changing source IDs.

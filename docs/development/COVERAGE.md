@@ -1,94 +1,107 @@
-# Scope and acceptance coverage
+# Approved scope and acceptance coverage
 
-Version 0.1.0 · Tier 1 0.4.0 · Planning ownership only, not evidence of completion.
-
-Every R01–R27, P01–P24, D01–D07, N01–N12 and AC01–AC22 has a disposition below. The first listed module is a starting point, not exclusive ownership. Refer to its brief for the bounded context packet. Exact Tier 1 text wins over this map.
+Version 1.0.0 · Tier 1 0.5.0 · All execution evidence pending. P IDs retain historical names but are accepted under U19. D IDs remain deferred.
 
 ## Settled requirements
 
-| Source ID | Implementing / evaluating modules | Status boundary |
+| Source ID | Owners / evaluating modules | State |
 | --- | --- | --- |
-| R01 | [M05](modules/M05-interface-themes.md), [M19](modules/M19-neighborhood-pilot.md), [O03](modules/O03-neighborhood-exchange.md), [O04](modules/O04-community-newspaper.md), [O05](modules/O05-local-wiki.md) | Settled product outcome; implementation pending |
-| R02 | [M01](modules/M01-offline-appliance.md), [M05](modules/M05-interface-themes.md), [M15](modules/M15-selected-federation.md), [M19](modules/M19-neighborhood-pilot.md), [O07](modules/O07-mesh-atlas.md) | Settled product outcome; implementation pending |
-| R03 | [M00](modules/M00-foundation-spikes.md), [M05](modules/M05-interface-themes.md), [M19](modules/M19-neighborhood-pilot.md), [O01](modules/O01-community-utilities.md), [O09](modules/O09-guest-kiosk.md) | Settled product outcome; implementation pending |
-| R04 | [M00](modules/M00-foundation-spikes.md), [M01](modules/M01-offline-appliance.md), [M12](modules/M12-maintenance-recovery.md), [M17](modules/M17-peer-trust.md), [M19](modules/M19-neighborhood-pilot.md), [O08](modules/O08-relay-profile.md) | Settled product outcome; implementation pending |
-| R05 | [M00](modules/M00-foundation-spikes.md), [M01](modules/M01-offline-appliance.md), [M02](modules/M02-storage-jobs.md), [M19](modules/M19-neighborhood-pilot.md) | Settled product outcome; implementation pending |
-| R06 | [M05](modules/M05-interface-themes.md), [M19](modules/M19-neighborhood-pilot.md) | Settled product outcome; implementation pending |
-| R07 | [M02](modules/M02-storage-jobs.md), [M03](modules/M03-identity-access.md), [M06](modules/M06-boards-mail.md), [M10](modules/M10-local-files.md), [M11](modules/M11-local-games.md) | Settled product outcome; implementation pending |
-| R08 | [M10](modules/M10-local-files.md), [M15](modules/M15-selected-federation.md), [O03](modules/O03-neighborhood-exchange.md), [O04](modules/O04-community-newspaper.md), [O05](modules/O05-local-wiki.md) | Settled product outcome; implementation pending |
-| R09 | [M15](modules/M15-selected-federation.md), [O03](modules/O03-neighborhood-exchange.md), [O04](modules/O04-community-newspaper.md), [O05](modules/O05-local-wiki.md), [O06](modules/O06-meshcasts.md), [O07](modules/O07-mesh-atlas.md), [O08](modules/O08-relay-profile.md) | Settled product outcome; implementation pending |
-| R10 | [M16](modules/M16-pigeons-lump-drops.md), [O02](modules/O02-post-office.md) | Settled product outcome; implementation pending |
-| R11 | [M04](modules/M04-signed-events.md), [M16](modules/M16-pigeons-lump-drops.md) | Settled product outcome; implementation pending |
-| R12 | [M02](modules/M02-storage-jobs.md), [M04](modules/M04-signed-events.md), [M06](modules/M06-boards-mail.md), [M15](modules/M15-selected-federation.md), [M16](modules/M16-pigeons-lump-drops.md), [O02](modules/O02-post-office.md) | Settled product outcome; implementation pending |
-| R13 | [M00](modules/M00-foundation-spikes.md), [M03](modules/M03-identity-access.md), [M04](modules/M04-signed-events.md), [M06](modules/M06-boards-mail.md), [M12](modules/M12-maintenance-recovery.md), [M13](modules/M13-encrypted-forums.md), [M14](modules/M14-complaints-moderation.md), [M15](modules/M15-selected-federation.md), [O01](modules/O01-community-utilities.md), [O02](modules/O02-post-office.md), [O08](modules/O08-relay-profile.md), [O09](modules/O09-guest-kiosk.md) | Settled product outcome; implementation pending |
-| R14 | [M03](modules/M03-identity-access.md), [M17](modules/M17-peer-trust.md), [O07](modules/O07-mesh-atlas.md) | Settled product outcome; implementation pending |
-| R15 | [M00](modules/M00-foundation-spikes.md), [M13](modules/M13-encrypted-forums.md), [M15](modules/M15-selected-federation.md), [O02](modules/O02-post-office.md) | Settled product outcome; implementation pending |
-| R16 | [M14](modules/M14-complaints-moderation.md) | Settled product outcome; implementation pending |
-| R17 | [M00](modules/M00-foundation-spikes.md), [M03](modules/M03-identity-access.md), [M13](modules/M13-encrypted-forums.md), [M14](modules/M14-complaints-moderation.md), [O01](modules/O01-community-utilities.md) | Settled product outcome; implementation pending |
-| R18 | [M08](modules/M08-friends-events.md), [O01](modules/O01-community-utilities.md), [O06](modules/O06-meshcasts.md) | Settled product outcome; implementation pending |
-| R19 | [M08](modules/M08-friends-events.md), [O06](modules/O06-meshcasts.md) | Settled product outcome; implementation pending |
-| R20 | [M11](modules/M11-local-games.md), [M18](modules/M18-game-passports.md), [O10](modules/O10-game-experiments.md) | Settled product outcome; implementation pending |
-| R21 | [M09](modules/M09-clans-cohorts.md), [M11](modules/M11-local-games.md), [M18](modules/M18-game-passports.md), [O10](modules/O10-game-experiments.md) | Settled product outcome; implementation pending |
-| R22 | [O11](modules/O11-business-rewards.md) | Settled product outcome; implementation pending |
-| R23 | [M12](modules/M12-maintenance-recovery.md), [M19](modules/M19-neighborhood-pilot.md) | Settled product outcome; implementation pending |
-| R24 | [M12](modules/M12-maintenance-recovery.md), [M19](modules/M19-neighborhood-pilot.md) | Settled product outcome; implementation pending |
-| R25 | [M07](modules/M07-directory-profiles.md), [M16](modules/M16-pigeons-lump-drops.md), [O12](modules/O12-recognition-extras.md) | Settled product outcome; implementation pending |
-| R26 | [M07](modules/M07-directory-profiles.md), [M08](modules/M08-friends-events.md), [M11](modules/M11-local-games.md), [M18](modules/M18-game-passports.md), [O09](modules/O09-guest-kiosk.md), [O12](modules/O12-recognition-extras.md) | Settled product outcome; implementation pending |
-| R27 | [M09](modules/M09-clans-cohorts.md), [M11](modules/M11-local-games.md), [M18](modules/M18-game-passports.md), [O12](modules/O12-recognition-extras.md) | Settled product outcome; implementation pending |
-## Proposals — still unapproved
+| R01 | [M05](modules/M05-interface-themes.md), [M19](modules/M19-neighborhood-pilot.md), [O03](modules/O03-neighborhood-exchange.md), [O04](modules/O04-community-newspaper.md), [O05](modules/O05-local-wiki.md) | Approved; implementation pending |
+| R02 | [M01](modules/M01-offline-appliance.md), [M05](modules/M05-interface-themes.md), [M15](modules/M15-selected-federation.md), [M19](modules/M19-neighborhood-pilot.md), [O07](modules/O07-mesh-atlas.md) | Approved; implementation pending |
+| R03 | [M00](modules/M00-foundation-spikes.md), [M05](modules/M05-interface-themes.md), [M19](modules/M19-neighborhood-pilot.md), [O01](modules/O01-community-utilities.md), [O09](modules/O09-guest-kiosk.md) | Approved; implementation pending |
+| R04 | [M00](modules/M00-foundation-spikes.md), [M01](modules/M01-offline-appliance.md), [M12](modules/M12-maintenance-recovery.md), [M17](modules/M17-peer-trust.md), [M19](modules/M19-neighborhood-pilot.md), [O08](modules/O08-relay-profile.md) | Approved; implementation pending |
+| R05 | [M00](modules/M00-foundation-spikes.md), [M01](modules/M01-offline-appliance.md), [M02](modules/M02-storage-jobs.md), [M19](modules/M19-neighborhood-pilot.md) | Approved; implementation pending |
+| R06 | [M05](modules/M05-interface-themes.md), [M19](modules/M19-neighborhood-pilot.md) | Approved; implementation pending |
+| R07 | [M02](modules/M02-storage-jobs.md), [M03](modules/M03-identity-access.md), [M06](modules/M06-boards-mail.md), [M10](modules/M10-local-files.md), [M11](modules/M11-local-games.md) | Approved; implementation pending |
+| R08 | [M10](modules/M10-local-files.md), [M15](modules/M15-selected-federation.md), [O03](modules/O03-neighborhood-exchange.md), [O04](modules/O04-community-newspaper.md), [O05](modules/O05-local-wiki.md) | Approved; implementation pending |
+| R09 | [M15](modules/M15-selected-federation.md), [O03](modules/O03-neighborhood-exchange.md), [O04](modules/O04-community-newspaper.md), [O05](modules/O05-local-wiki.md), [O06](modules/O06-meshcasts.md), [O07](modules/O07-mesh-atlas.md), [O08](modules/O08-relay-profile.md) | Approved; implementation pending |
+| R10 | [M16](modules/M16-pigeons-lump-drops.md), [O02](modules/O02-post-office.md) | Approved; implementation pending |
+| R11 | [M04](modules/M04-signed-events.md), [M16](modules/M16-pigeons-lump-drops.md) | Approved; implementation pending |
+| R12 | [M02](modules/M02-storage-jobs.md), [M04](modules/M04-signed-events.md), [M06](modules/M06-boards-mail.md), [M15](modules/M15-selected-federation.md), [M16](modules/M16-pigeons-lump-drops.md), [O02](modules/O02-post-office.md) | Approved; implementation pending |
+| R13 | [M00](modules/M00-foundation-spikes.md), [M03](modules/M03-identity-access.md), [M04](modules/M04-signed-events.md), [M06](modules/M06-boards-mail.md), [M12](modules/M12-maintenance-recovery.md), [M13](modules/M13-encrypted-forums.md), [M14](modules/M14-complaints-moderation.md), [M15](modules/M15-selected-federation.md), [O01](modules/O01-community-utilities.md), [O02](modules/O02-post-office.md), [O08](modules/O08-relay-profile.md), [O09](modules/O09-guest-kiosk.md) | Approved; implementation pending |
+| R14 | [M03](modules/M03-identity-access.md), [M17](modules/M17-peer-trust.md), [O07](modules/O07-mesh-atlas.md) | Approved; implementation pending |
+| R15 | [M00](modules/M00-foundation-spikes.md), [M13](modules/M13-encrypted-forums.md), [M15](modules/M15-selected-federation.md), [O02](modules/O02-post-office.md) | Approved; implementation pending |
+| R16 | [M14](modules/M14-complaints-moderation.md) | Approved; implementation pending |
+| R17 | [M00](modules/M00-foundation-spikes.md), [M03](modules/M03-identity-access.md), [M13](modules/M13-encrypted-forums.md), [M14](modules/M14-complaints-moderation.md), [O01](modules/O01-community-utilities.md) | Approved; implementation pending |
+| R18 | [M08](modules/M08-friends-events.md), [O01](modules/O01-community-utilities.md), [O06](modules/O06-meshcasts.md) | Approved; implementation pending |
+| R19 | [M08](modules/M08-friends-events.md), [O06](modules/O06-meshcasts.md) | Approved; implementation pending |
+| R20 | [M11](modules/M11-local-games.md), [M18](modules/M18-game-passports.md), [O10](modules/O10-game-experiments.md) | Approved; implementation pending |
+| R21 | [M09](modules/M09-clans-cohorts.md), [M11](modules/M11-local-games.md), [M18](modules/M18-game-passports.md), [O10](modules/O10-game-experiments.md) | Approved; implementation pending |
+| R22 | [O11](modules/O11-business-rewards.md) | Approved; implementation pending |
+| R23 | [M12](modules/M12-maintenance-recovery.md), [M19](modules/M19-neighborhood-pilot.md) | Approved; implementation pending |
+| R24 | [M12](modules/M12-maintenance-recovery.md), [M19](modules/M19-neighborhood-pilot.md) | Approved; implementation pending |
+| R25 | [M07](modules/M07-directory-profiles.md), [M16](modules/M16-pigeons-lump-drops.md), [O12](modules/O12-recognition-extras.md) | Approved; implementation pending |
+| R26 | [M07](modules/M07-directory-profiles.md), [M08](modules/M08-friends-events.md), [M11](modules/M11-local-games.md), [M18](modules/M18-game-passports.md), [O09](modules/O09-guest-kiosk.md), [O12](modules/O12-recognition-extras.md) | Approved; implementation pending |
+| R27 | [M09](modules/M09-clans-cohorts.md), [M11](modules/M11-local-games.md), [M18](modules/M18-game-passports.md), [O12](modules/O12-recognition-extras.md) | Approved; implementation pending |
+| R28 | [M00](modules/M00-foundation-spikes.md), [M19](modules/M19-neighborhood-pilot.md), [O01](modules/O01-community-utilities.md), [O02](modules/O02-post-office.md), [O03](modules/O03-neighborhood-exchange.md), [O04](modules/O04-community-newspaper.md), [O05](modules/O05-local-wiki.md), [O06](modules/O06-meshcasts.md), [O07](modules/O07-mesh-atlas.md), [O08](modules/O08-relay-profile.md), [O09](modules/O09-guest-kiosk.md), [O10](modules/O10-game-experiments.md), [O11](modules/O11-business-rewards.md), [O12](modules/O12-recognition-extras.md) | Approved; implementation pending |
 
-| Source ID | Implementing / evaluating modules | Status boundary |
-| --- | --- | --- |
-| P01 | [O08](modules/O08-relay-profile.md) | Proposed; evaluate/select explicitly |
-| P02 | [O09](modules/O09-guest-kiosk.md) | Proposed; evaluate/select explicitly |
-| P03 | [M05](modules/M05-interface-themes.md), [M06](modules/M06-boards-mail.md), [M07](modules/M07-directory-profiles.md), [M14](modules/M14-complaints-moderation.md), [O01](modules/O01-community-utilities.md) | Proposed; evaluate/select explicitly |
-| P04 | [M00](modules/M00-foundation-spikes.md), [M01](modules/M01-offline-appliance.md), [M02](modules/M02-storage-jobs.md), [M12](modules/M12-maintenance-recovery.md), [M19](modules/M19-neighborhood-pilot.md) | Proposed; evaluate/select explicitly |
-| P05 | [M16](modules/M16-pigeons-lump-drops.md), [O08](modules/O08-relay-profile.md) | Proposed; evaluate/select explicitly |
-| P06 | [M00](modules/M00-foundation-spikes.md), [M02](modules/M02-storage-jobs.md), [M04](modules/M04-signed-events.md), [M15](modules/M15-selected-federation.md) | Proposed; evaluate/select explicitly |
-| P07 | [M00](modules/M00-foundation-spikes.md), [M03](modules/M03-identity-access.md), [M12](modules/M12-maintenance-recovery.md), [M13](modules/M13-encrypted-forums.md) | Proposed; evaluate/select explicitly |
-| P08 | [M17](modules/M17-peer-trust.md) | Proposed; evaluate/select explicitly |
-| P09 | [M00](modules/M00-foundation-spikes.md), [M01](modules/M01-offline-appliance.md), [M12](modules/M12-maintenance-recovery.md), [M13](modules/M13-encrypted-forums.md) | Proposed; evaluate/select explicitly |
-| P10 | [M08](modules/M08-friends-events.md) | Proposed; evaluate/select explicitly |
-| P11 | [O02](modules/O02-post-office.md) | Proposed; evaluate/select explicitly |
-| P12 | [O03](modules/O03-neighborhood-exchange.md) | Proposed; evaluate/select explicitly |
-| P13 | [O04](modules/O04-community-newspaper.md) | Proposed; evaluate/select explicitly |
-| P14 | [O05](modules/O05-local-wiki.md) | Proposed; evaluate/select explicitly |
-| P15 | [O06](modules/O06-meshcasts.md) | Proposed; evaluate/select explicitly |
-| P16 | [O07](modules/O07-mesh-atlas.md) | Proposed; evaluate/select explicitly |
-| P17 | [M09](modules/M09-clans-cohorts.md), [M11](modules/M11-local-games.md), [M18](modules/M18-game-passports.md) | Proposed; evaluate/select explicitly |
-| P18 | [O10](modules/O10-game-experiments.md) | Proposed; evaluate/select explicitly |
-| P19 | [O10](modules/O10-game-experiments.md) | Proposed; evaluate/select explicitly |
-| P20 | [O11](modules/O11-business-rewards.md) | Proposed; evaluate/select explicitly |
-| P21 | [M00](modules/M00-foundation-spikes.md), [M04](modules/M04-signed-events.md), [M15](modules/M15-selected-federation.md) | Proposed; evaluate/select explicitly |
-| P22 | [M03](modules/M03-identity-access.md), [M15](modules/M15-selected-federation.md), [M17](modules/M17-peer-trust.md), [O07](modules/O07-mesh-atlas.md) | Proposed; evaluate/select explicitly |
-| P23 | [O12](modules/O12-recognition-extras.md) | Proposed; evaluate/select explicitly |
-| P24 | [M07](modules/M07-directory-profiles.md), [M09](modules/M09-clans-cohorts.md), [O12](modules/O12-recognition-extras.md) | Proposed; evaluate/select explicitly |
-## Acceptance checks — not yet executed
+## Accepted design records
 
-| Source ID | Implementing / evaluating modules | Status boundary |
+| Source ID | Owners / evaluating modules | State |
 | --- | --- | --- |
-| AC01 | [M00](modules/M00-foundation-spikes.md), [M01](modules/M01-offline-appliance.md), [M02](modules/M02-storage-jobs.md), [M03](modules/M03-identity-access.md), [M06](modules/M06-boards-mail.md), [M10](modules/M10-local-files.md), [M11](modules/M11-local-games.md), [M12](modules/M12-maintenance-recovery.md), [M19](modules/M19-neighborhood-pilot.md) | Pending actual evidence |
-| AC02 | [M01](modules/M01-offline-appliance.md), [M06](modules/M06-boards-mail.md), [M19](modules/M19-neighborhood-pilot.md) | Pending actual evidence |
-| AC03 | [M00](modules/M00-foundation-spikes.md), [M05](modules/M05-interface-themes.md), [M19](modules/M19-neighborhood-pilot.md) | Pending actual evidence |
-| AC04 | [M10](modules/M10-local-files.md), [M15](modules/M15-selected-federation.md), [M19](modules/M19-neighborhood-pilot.md) | Pending actual evidence |
-| AC05 | [M15](modules/M15-selected-federation.md), [M19](modules/M19-neighborhood-pilot.md) | Pending actual evidence |
-| AC06 | [M16](modules/M16-pigeons-lump-drops.md), [M19](modules/M19-neighborhood-pilot.md) | Pending actual evidence |
-| AC07 | [M02](modules/M02-storage-jobs.md), [M04](modules/M04-signed-events.md), [M06](modules/M06-boards-mail.md), [M15](modules/M15-selected-federation.md), [M16](modules/M16-pigeons-lump-drops.md), [M19](modules/M19-neighborhood-pilot.md) | Pending actual evidence |
-| AC08 | [M08](modules/M08-friends-events.md), [M19](modules/M19-neighborhood-pilot.md) | Pending actual evidence |
-| AC09 | [M08](modules/M08-friends-events.md), [M19](modules/M19-neighborhood-pilot.md) | Pending actual evidence |
-| AC10 | [M11](modules/M11-local-games.md), [M18](modules/M18-game-passports.md), [M19](modules/M19-neighborhood-pilot.md) | Pending actual evidence |
-| AC11 | [M00](modules/M00-foundation-spikes.md), [M03](modules/M03-identity-access.md), [M13](modules/M13-encrypted-forums.md), [M15](modules/M15-selected-federation.md), [M19](modules/M19-neighborhood-pilot.md) | Pending actual evidence |
-| AC12 | [M03](modules/M03-identity-access.md), [M17](modules/M17-peer-trust.md), [M19](modules/M19-neighborhood-pilot.md) | Pending actual evidence |
-| AC13 | [M14](modules/M14-complaints-moderation.md), [M15](modules/M15-selected-federation.md), [M19](modules/M19-neighborhood-pilot.md) | Pending actual evidence |
-| AC14 | [M00](modules/M00-foundation-spikes.md), [M03](modules/M03-identity-access.md), [M13](modules/M13-encrypted-forums.md), [M15](modules/M15-selected-federation.md), [M19](modules/M19-neighborhood-pilot.md) | Pending actual evidence |
-| AC15 | [M00](modules/M00-foundation-spikes.md), [M02](modules/M02-storage-jobs.md), [M03](modules/M03-identity-access.md), [M12](modules/M12-maintenance-recovery.md), [M13](modules/M13-encrypted-forums.md), [M19](modules/M19-neighborhood-pilot.md) | Pending actual evidence |
-| AC16 | [O11](modules/O11-business-rewards.md) | Conditional on P20/O11 approval |
-| AC17 | [M12](modules/M12-maintenance-recovery.md), [M19](modules/M19-neighborhood-pilot.md) | Pending actual evidence |
-| AC18 | [M07](modules/M07-directory-profiles.md), [M16](modules/M16-pigeons-lump-drops.md), [M19](modules/M19-neighborhood-pilot.md) | Pending actual evidence |
-| AC19 | [M14](modules/M14-complaints-moderation.md), [M19](modules/M19-neighborhood-pilot.md) | Pending actual evidence |
-| AC20 | [M07](modules/M07-directory-profiles.md), [M08](modules/M08-friends-events.md), [M19](modules/M19-neighborhood-pilot.md) | Pending actual evidence |
-| AC21 | [M07](modules/M07-directory-profiles.md), [M11](modules/M11-local-games.md), [M18](modules/M18-game-passports.md), [M19](modules/M19-neighborhood-pilot.md) | Pending actual evidence |
-| AC22 | [M09](modules/M09-clans-cohorts.md), [M11](modules/M11-local-games.md), [M18](modules/M18-game-passports.md), [M19](modules/M19-neighborhood-pilot.md) | Pending actual evidence |
+| P01 | [O08](modules/O08-relay-profile.md) | Approved; implementation pending |
+| P02 | [O09](modules/O09-guest-kiosk.md) | Approved; implementation pending |
+| P03 | [M05](modules/M05-interface-themes.md), [M06](modules/M06-boards-mail.md), [M07](modules/M07-directory-profiles.md), [M14](modules/M14-complaints-moderation.md), [O01](modules/O01-community-utilities.md) | Approved; implementation pending |
+| P04 | [M00](modules/M00-foundation-spikes.md), [M01](modules/M01-offline-appliance.md), [M02](modules/M02-storage-jobs.md), [M12](modules/M12-maintenance-recovery.md), [M19](modules/M19-neighborhood-pilot.md) | Approved; implementation pending |
+| P05 | [M16](modules/M16-pigeons-lump-drops.md), [O08](modules/O08-relay-profile.md) | Approved; implementation pending |
+| P06 | [M00](modules/M00-foundation-spikes.md), [M02](modules/M02-storage-jobs.md), [M04](modules/M04-signed-events.md), [M15](modules/M15-selected-federation.md) | Approved; implementation pending |
+| P07 | [M00](modules/M00-foundation-spikes.md), [M03](modules/M03-identity-access.md), [M12](modules/M12-maintenance-recovery.md), [M13](modules/M13-encrypted-forums.md) | Approved; implementation pending |
+| P08 | [M17](modules/M17-peer-trust.md) | Approved; implementation pending |
+| P09 | [M00](modules/M00-foundation-spikes.md), [M01](modules/M01-offline-appliance.md), [M12](modules/M12-maintenance-recovery.md), [M13](modules/M13-encrypted-forums.md) | Approved; implementation pending |
+| P10 | [M08](modules/M08-friends-events.md) | Approved; implementation pending |
+| P11 | [O02](modules/O02-post-office.md) | Approved; implementation pending |
+| P12 | [O03](modules/O03-neighborhood-exchange.md) | Approved; implementation pending |
+| P13 | [O04](modules/O04-community-newspaper.md) | Approved; implementation pending |
+| P14 | [O05](modules/O05-local-wiki.md) | Approved; implementation pending |
+| P15 | [O06](modules/O06-meshcasts.md) | Approved; implementation pending |
+| P16 | [O07](modules/O07-mesh-atlas.md) | Approved; implementation pending |
+| P17 | [M09](modules/M09-clans-cohorts.md), [M11](modules/M11-local-games.md), [M18](modules/M18-game-passports.md) | Approved; implementation pending |
+| P18 | [O10](modules/O10-game-experiments.md) | Approved; implementation pending |
+| P19 | [O10](modules/O10-game-experiments.md) | Approved; implementation pending |
+| P20 | [O11](modules/O11-business-rewards.md) | Approved; implementation pending |
+| P21 | [M00](modules/M00-foundation-spikes.md), [M04](modules/M04-signed-events.md), [M15](modules/M15-selected-federation.md) | Approved; implementation pending |
+| P22 | [M03](modules/M03-identity-access.md), [M15](modules/M15-selected-federation.md), [M17](modules/M17-peer-trust.md), [O07](modules/O07-mesh-atlas.md) | Approved; implementation pending |
+| P23 | [O12](modules/O12-recognition-extras.md) | Approved; implementation pending |
+| P24 | [M07](modules/M07-directory-profiles.md), [M09](modules/M09-clans-cohorts.md), [O12](modules/O12-recognition-extras.md) | Approved; implementation pending |
+
+## Acceptance checks
+
+| Source ID | Owners / evaluating modules | State |
+| --- | --- | --- |
+| AC01 | [M00](modules/M00-foundation-spikes.md), [M01](modules/M01-offline-appliance.md), [M02](modules/M02-storage-jobs.md), [M03](modules/M03-identity-access.md), [M06](modules/M06-boards-mail.md), [M10](modules/M10-local-files.md), [M11](modules/M11-local-games.md), [M12](modules/M12-maintenance-recovery.md), [M19](modules/M19-neighborhood-pilot.md) | Required at owning module/gate; pending |
+| AC02 | [M01](modules/M01-offline-appliance.md), [M06](modules/M06-boards-mail.md), [M19](modules/M19-neighborhood-pilot.md) | Required at owning module/gate; pending |
+| AC03 | [M00](modules/M00-foundation-spikes.md), [M05](modules/M05-interface-themes.md), [M19](modules/M19-neighborhood-pilot.md) | Required at owning module/gate; pending |
+| AC04 | [M10](modules/M10-local-files.md), [M15](modules/M15-selected-federation.md), [M19](modules/M19-neighborhood-pilot.md) | Required at owning module/gate; pending |
+| AC05 | [M15](modules/M15-selected-federation.md), [M19](modules/M19-neighborhood-pilot.md) | Required at owning module/gate; pending |
+| AC06 | [M16](modules/M16-pigeons-lump-drops.md), [M19](modules/M19-neighborhood-pilot.md) | Required at owning module/gate; pending |
+| AC07 | [M02](modules/M02-storage-jobs.md), [M04](modules/M04-signed-events.md), [M06](modules/M06-boards-mail.md), [M15](modules/M15-selected-federation.md), [M16](modules/M16-pigeons-lump-drops.md), [M19](modules/M19-neighborhood-pilot.md) | Required at owning module/gate; pending |
+| AC08 | [M08](modules/M08-friends-events.md), [M19](modules/M19-neighborhood-pilot.md) | Required at owning module/gate; pending |
+| AC09 | [M08](modules/M08-friends-events.md), [M19](modules/M19-neighborhood-pilot.md) | Required at owning module/gate; pending |
+| AC10 | [M11](modules/M11-local-games.md), [M18](modules/M18-game-passports.md), [M19](modules/M19-neighborhood-pilot.md) | Required at owning module/gate; pending |
+| AC11 | [M00](modules/M00-foundation-spikes.md), [M03](modules/M03-identity-access.md), [M13](modules/M13-encrypted-forums.md), [M15](modules/M15-selected-federation.md), [M19](modules/M19-neighborhood-pilot.md) | Required at owning module/gate; pending |
+| AC12 | [M03](modules/M03-identity-access.md), [M17](modules/M17-peer-trust.md), [M19](modules/M19-neighborhood-pilot.md) | Required at owning module/gate; pending |
+| AC13 | [M14](modules/M14-complaints-moderation.md), [M15](modules/M15-selected-federation.md), [M19](modules/M19-neighborhood-pilot.md) | Required at owning module/gate; pending |
+| AC14 | [M00](modules/M00-foundation-spikes.md), [M03](modules/M03-identity-access.md), [M13](modules/M13-encrypted-forums.md), [M15](modules/M15-selected-federation.md), [M19](modules/M19-neighborhood-pilot.md) | Required at owning module/gate; pending |
+| AC15 | [M00](modules/M00-foundation-spikes.md), [M02](modules/M02-storage-jobs.md), [M03](modules/M03-identity-access.md), [M12](modules/M12-maintenance-recovery.md), [M13](modules/M13-encrypted-forums.md), [M19](modules/M19-neighborhood-pilot.md) | Required at owning module/gate; pending |
+| AC16 | [O11](modules/O11-business-rewards.md) | Required at O11/G5; pending |
+| AC17 | [M12](modules/M12-maintenance-recovery.md), [M19](modules/M19-neighborhood-pilot.md) | Required at owning module/gate; pending |
+| AC18 | [M07](modules/M07-directory-profiles.md), [M16](modules/M16-pigeons-lump-drops.md), [M19](modules/M19-neighborhood-pilot.md) | Required at owning module/gate; pending |
+| AC19 | [M14](modules/M14-complaints-moderation.md), [M19](modules/M19-neighborhood-pilot.md) | Required at owning module/gate; pending |
+| AC20 | [M07](modules/M07-directory-profiles.md), [M08](modules/M08-friends-events.md), [M19](modules/M19-neighborhood-pilot.md) | Required at owning module/gate; pending |
+| AC21 | [M07](modules/M07-directory-profiles.md), [M11](modules/M11-local-games.md), [M18](modules/M18-game-passports.md), [M19](modules/M19-neighborhood-pilot.md) | Required at owning module/gate; pending |
+| AC22 | [M09](modules/M09-clans-cohorts.md), [M11](modules/M11-local-games.md), [M18](modules/M18-game-passports.md), [M19](modules/M19-neighborhood-pilot.md) | Required at owning module/gate; pending |
+| AC23 | [O01](modules/O01-community-utilities.md) | Required at owning module/gate; pending |
+| AC24 | [O02](modules/O02-post-office.md) | Required at owning module/gate; pending |
+| AC25 | [O03](modules/O03-neighborhood-exchange.md) | Required at owning module/gate; pending |
+| AC26 | [O04](modules/O04-community-newspaper.md) | Required at owning module/gate; pending |
+| AC27 | [O05](modules/O05-local-wiki.md) | Required at owning module/gate; pending |
+| AC28 | [O06](modules/O06-meshcasts.md) | Required at owning module/gate; pending |
+| AC29 | [O07](modules/O07-mesh-atlas.md) | Required at owning module/gate; pending |
+| AC30 | [O08](modules/O08-relay-profile.md) | Required at owning module/gate; pending |
+| AC31 | [O09](modules/O09-guest-kiosk.md) | Required at owning module/gate; pending |
+| AC32 | [O10](modules/O10-game-experiments.md) | Required at owning module/gate; pending |
+| AC33 | [O11](modules/O11-business-rewards.md) | Required at owning module/gate; pending |
+| AC34 | [O12](modules/O12-recognition-extras.md) | Required at owning module/gate; pending |
 
 ## Deferred register
 
@@ -117,7 +130,7 @@ Every R01–R27, P01–P24, D01–D07, N01–N12 and AC01–AC22 has a dispositi
 | N09 | Retro aesthetics must preserve ordinary modern-device usability. | [M05](modules/M05-interface-themes.md), [M19](modules/M19-neighborhood-pilot.md), [O09](modules/O09-guest-kiosk.md) |
 | N10 | Target small real communities; do not steer to massive parasocial group design. | [M07](modules/M07-directory-profiles.md), [M08](modules/M08-friends-events.md), [M09](modules/M09-clans-cohorts.md), [M19](modules/M19-neighborhood-pilot.md) |
 | N11 | Optional purchases only, no paid social advantage, issuing-BBS redemption. | [M11](modules/M11-local-games.md), [M18](modules/M18-game-passports.md), [O11](modules/O11-business-rewards.md) |
-| N12 | Proposal publication selects no license/stack and approves no entire brainstorm. | [M00](modules/M00-foundation-spikes.md), [M12](modules/M12-maintenance-recovery.md), [M19](modules/M19-neighborhood-pilot.md) |
+| N12 | Proposal publication selects no license/stack and approves no unlisted brainstorm. | [M00](modules/M00-foundation-spikes.md), [M12](modules/M12-maintenance-recovery.md), [M19](modules/M19-neighborhood-pilot.md) |
 
 ## Development lesson ownership
 

@@ -1,8 +1,8 @@
 # M07 — Member directory and chosen profile displays
 
-Version 0.1.0 · 2026-10-25 · Tier 2 proposal · Tier 1 baseline 0.4.0.
+Version 1.0.0 · 2026-10-25 · Locked development baseline · Tier 1 baseline 0.5.0.
 
-**State:** Planned capability; implementation choices proposed. No implementation or passed checks claimed.
+**State:** Approved for implementation under U19; unstarted. Runtime and hardware evidence remains pending.
 
 ## Read only this packet
 
@@ -17,15 +17,15 @@ Look up only decision rows T09, T11, T12 in [DECISIONS](../DECISIONS.md). Depend
 
 List every local account, including private profiles, with its common public baseline. Optional contact/bio/message, games/characters, hosted events and feed links honor user choices. Lump Drop visibility is independent.
 
-## Recommended implementation
+## Locked implementation
 
-Propose username plus stable profile link as the minimal common baseline. Typed field definitions distinguish optional contact details from baseline fields. Use server-side field filtering and a profile-component provider interface for games, events and drop counts. Providers may be absent until their module ships; do not display fabricated zeroes or capabilities. Profile privacy hides optional details; count privacy follows R25.
+Use username plus stable profile link as the minimal common baseline. Typed field definitions distinguish optional contact details from baseline fields. Use server-side field filtering and a profile-component provider interface for games, events and drop counts. Providers may be absent until their module ships; do not display fabricated zeroes or capabilities. Profile privacy hides optional details; count privacy follows R25.
 
 ## Ownership and interfaces
 
-Proposed crates/profiles/; local directory projection, field visibility, profile-component settings. Owns presentation preferences, not game state, events or delivery credits.
+Planned crates/profiles/; local directory projection, field visibility, profile-component settings. Owns presentation preferences, not game state, events or delivery credits.
 
-Paths above are proposed implementation locations, not existing code. Consume the contracts in the reading packet; changes to them need affected-consumer updates. A disabled optional module retains its data and does not break unrelated local services.
+Paths above are planned implementation locations, not existing code. Consume the contracts in the reading packet; changes to them need affected-consumer updates. A disabled optional module retains its data and does not break unrelated local services.
 
 ## Sequential work slices
 
@@ -39,10 +39,10 @@ Paths above are proposed implementation locations, not existing code. Consume th
 - Every private/public local account is findable by username.
 - AC21/AC18 provider checks rerun when the corresponding module is delivered.
 
-## Decisions before completion
+## Locked defaults and verification
 
-Approve exact baseline and optional contact field types. Achievements/progress are O12/P24, not assumed part of this module.
+Directory baseline is username plus stable local profile link. Optional public fields: bio, short message, email, phone and contact/address text, each explicitly published by the user. Optional fields default hidden; no automatic contact lookup. Profiles default private; the separate Lump Drop counter remains public by default under R25. Feed/event/game providers enforce their own audience on the server, and later consumer modules own live bindings.
 
 ## Handoff
 
-Record completed slices, approved ADRs, contract/schema revisions, evidence and commit, remaining limitations and next slice in [WORK_LEDGER](../WORK_LEDGER.md). A passing fixture is evidence for this module, not approval of new product scope. See [coverage](../COVERAGE.md) when changing source IDs.
+Record completed slices, approved ADRs, contract/schema revisions, evidence and commit, remaining limitations and next slice in [WORK_LEDGER](../WORK_LEDGER.md). Existing scopes are approved; genuinely new scope still follows change control. See [coverage](../COVERAGE.md) when changing source IDs.

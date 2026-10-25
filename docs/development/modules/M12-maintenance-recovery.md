@@ -1,8 +1,8 @@
 # M12 — Offline updates, backup and continuity
 
-Version 0.1.0 · 2026-10-25 · Tier 2 proposal · Tier 1 baseline 0.4.0.
+Version 1.0.0 · 2026-10-25 · Locked development baseline · Tier 1 baseline 0.5.0.
 
-**State:** Planned capability; implementation choices proposed. No implementation or passed checks claimed.
+**State:** Approved for implementation under U19; unstarted. Runtime and hardware evidence remains pending.
 
 ## Read only this packet
 
@@ -17,15 +17,15 @@ Look up only decision rows T08, T12, T14 in [DECISIONS](../DECISIONS.md). Depend
 
 Ship a real restore/update path with the first local alpha. Identity/key recovery and server restoration are separate tasks.
 
-## Recommended implementation
+## Locked implementation
 
 Produce signed local release manifests, application/static assets and prepared dependency packages. The appliance never downloads an update. Snapshot database/blobs/configuration/node secrets consistently; keep client-key export separate. Validate signatures against an installed release trust root; distinguish release, node and person keys. Rotate restored writer incarnations before resuming when prior activity may exist. An update either migrates completely or restores a compatible snapshot without silently reusing counters.
 
 ## Ownership and interfaces
 
-Proposed crates/maintenance/, deploy/releases/ and operator guides; release verification state, backup manifests, migration evidence and recovery/handover procedures.
+Planned crates/maintenance/, deploy/releases/ and operator guides; release verification state, backup manifests, migration evidence and recovery/handover procedures.
 
-Paths above are proposed implementation locations, not existing code. Consume the contracts in the reading packet; changes to them need affected-consumer updates. A disabled optional module retains its data and does not break unrelated local services.
+Paths above are planned implementation locations, not existing code. Consume the contracts in the reading packet; changes to them need affected-consumer updates. A disabled optional module retains its data and does not break unrelated local services.
 
 ## Sequential work slices
 
@@ -35,14 +35,14 @@ Paths above are proposed implementation locations, not existing code. Consume th
 
 ## Completion evidence
 
-- AC15 restores accounts, content, files, pending jobs and credit receipts without duplicate effects.
+- AC15 restores all installed core/game data and jobs consistently. Use receipt fixtures now; M16 owns real credit-ledger restore/replay checks later. Lost post-snapshot writes follow C01 recovery limits.
 - A server backup cannot be represented as recovery of absent client keys.
 - AC17 records source/build materials and the still-explicit license decision.
 
-## Decisions before completion
+## Locked defaults and verification
 
-Define retention defaults, backup-secret protection, release-key rotation and recovery limitations. A previously lost root without recovery authorization cannot be reconstructed.
+Use signed offline release bundles and snapshot manifests, encrypted removable backup media, and explicit operator restore/handover instructions. Default schedule: daily snapshot when configured backup media is available; keep seven daily and four weekly snapshots subject to capacity warnings. Do not erase the only good snapshot. Separate consistent checkpoints include game-worker databases. Lost post-snapshot writes remain explicitly unrecovered until reconciled; no universal zero-loss/exactly-once-after-data-loss promise.
 
 ## Handoff
 
-Record completed slices, approved ADRs, contract/schema revisions, evidence and commit, remaining limitations and next slice in [WORK_LEDGER](../WORK_LEDGER.md). A passing fixture is evidence for this module, not approval of new product scope. See [coverage](../COVERAGE.md) when changing source IDs.
+Record completed slices, approved ADRs, contract/schema revisions, evidence and commit, remaining limitations and next slice in [WORK_LEDGER](../WORK_LEDGER.md). Existing scopes are approved; genuinely new scope still follows change control. See [coverage](../COVERAGE.md) when changing source IDs.

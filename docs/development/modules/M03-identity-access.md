@@ -1,8 +1,8 @@
 # M03 — Identity, local accounts and permissions
 
-Version 0.1.0 · 2026-10-25 · Tier 2 proposal · Tier 1 baseline 0.4.0.
+Version 1.0.0 · 2026-10-25 · Locked development baseline · Tier 1 baseline 0.5.0.
 
-**State:** Planned capability; implementation choices proposed. No implementation or passed checks claimed.
+**State:** Approved for implementation under U19; unstarted. Runtime and hardware evidence remains pending.
 
 ## Read only this packet
 
@@ -17,15 +17,15 @@ Look up only decision rows T04, T08, T09 in [DECISIONS](../DECISIONS.md). Depend
 
 Separate local usernames/sessions from portable people and node/forum/courier authority. A SysOp can administer accounts without acquiring private group credentials.
 
-## Recommended implementation
+## Locked implementation
 
-Propose local username/password sessions with Argon2id password hashes, secure same-origin cookies and CSRF protection for ordinary browser login. User root/device credentials are separate client-held keys; use a maintained crypto implementation. Root-authorized device records support introductions, rotation and prepared recovery. QR/fingerprint cards convey public identity, not recovery secrets. Device roots and node signing incarnations prevent replay after restore.
+Use local username/password sessions with Argon2id password hashes, secure same-origin cookies and CSRF protection for ordinary browser login. User root/device credentials are separate client-held keys; use a maintained crypto implementation. Root-authorized device records support introductions, rotation and prepared recovery. QR/fingerprint cards convey public identity, not recovery secrets. Device roots and node signing incarnations prevent replay after restore.
 
 ## Ownership and interfaces
 
-Proposed crates/identity/ and client/identity/; accounts, sessions, roles, public certificates, device delegations, contact cards and encrypted client recovery exports. Core owns the public resolver/authorize API.
+Planned crates/identity/ and client/identity/; accounts, sessions, roles, public certificates, device delegations, contact cards and encrypted client recovery exports. Core owns the public resolver/authorize API.
 
-Paths above are proposed implementation locations, not existing code. Consume the contracts in the reading packet; changes to them need affected-consumer updates. A disabled optional module retains its data and does not break unrelated local services.
+Paths above are planned implementation locations, not existing code. Consume the contracts in the reading packet; changes to them need affected-consumer updates. A disabled optional module retains its data and does not break unrelated local services.
 
 ## Sequential work slices
 
@@ -39,10 +39,10 @@ Paths above are proposed implementation locations, not existing code. Consume th
 - Login recovery does not claim to recover lost E2E keys; verify both paths separately.
 - A restored signer cannot accidentally append to a counter position already used by its live predecessor.
 
-## Decisions before completion
+## Locked defaults and verification
 
-Finalize recovery-kit format and root-loss policy; propose root-signed device rotation, not social/quorum recovery in this release. Freeze device admission and account-linking UX before federation.
+Local account/password sessions and separate root-authorized device credentials are selected. Recovery is an encrypted user-held kit containing the root and necessary client state; passwords alone recover no E2E keys. Use established authenticated encryption and password derivation libraries. Public QR/fingerprint introductions contain no secret. Every restore creates a new authorized writer incarnation; root loss with no kit creates a new identity. Device addition requires existing root authorization.
 
 ## Handoff
 
-Record completed slices, approved ADRs, contract/schema revisions, evidence and commit, remaining limitations and next slice in [WORK_LEDGER](../WORK_LEDGER.md). A passing fixture is evidence for this module, not approval of new product scope. See [coverage](../COVERAGE.md) when changing source IDs.
+Record completed slices, approved ADRs, contract/schema revisions, evidence and commit, remaining limitations and next slice in [WORK_LEDGER](../WORK_LEDGER.md). Existing scopes are approved; genuinely new scope still follows change control. See [coverage](../COVERAGE.md) when changing source IDs.

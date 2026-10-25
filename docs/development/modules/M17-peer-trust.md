@@ -1,8 +1,8 @@
 # M17 — Local peer trust and exposure reporting
 
-Version 0.1.0 · 2026-10-25 · Tier 2 proposal · Tier 1 baseline 0.4.0.
+Version 1.0.0 · 2026-10-25 · Locked development baseline · Tier 1 baseline 0.5.0.
 
-**State:** Planned capability; implementation choices proposed. No implementation or passed checks claimed.
+**State:** Approved for implementation under U19; unstarted. Runtime and hardware evidence remains pending.
 
 ## Read only this packet
 
@@ -17,15 +17,15 @@ Look up only decision rows T13 in [DECISIONS](../DECISIONS.md). Dependency brief
 
 Let each SysOp independently assess signed evidence, contact a peer, restrict, banish or reinstate it. A client with cellular internet alone is not a violating node.
 
-## Recommended implementation
+## Locked implementation
 
 Use signed exposure-report records with subject node, reporter, observation type, evidence references and uncertainty. Local diagnostics inspect interfaces/routes/configuration only; they do not probe internet sites. Store local association policy separately from shared reports. Offer operator contact and explicit actions; no global vote threshold or automatic universal ban. Basic peer admission in M15 works before this richer report UI.
 
 ## Ownership and interfaces
 
-Proposed crates/trust/; evidence reports, operator contacts and local peer decisions. Raw private logs are not automatically exported as report evidence.
+Planned crates/trust/; evidence reports, operator contacts and local peer decisions. Raw private logs are not automatically exported as report evidence.
 
-Paths above are proposed implementation locations, not existing code. Consume the contracts in the reading packet; changes to them need affected-consumer updates. A disabled optional module retains its data and does not break unrelated local services.
+Paths above are planned implementation locations, not existing code. Consume the contracts in the reading packet; changes to them need affected-consumer updates. A disabled optional module retains its data and does not break unrelated local services.
 
 ## Sequential work slices
 
@@ -39,10 +39,10 @@ Paths above are proposed implementation locations, not existing code. Consume th
 - No infrastructure public connectivity probe occurs.
 - A forged signer or client-only observation cannot masquerade as verified node exposure.
 
-## Decisions before completion
+## Locked defaults and verification
 
-Choose supported observation types and manual default policy; severity/aggregation automation and public identity-card fields remain bounded P08/P22 design choices.
+Trust Ledger is a local case list, not a global reputation score. Observations are configuration/route evidence or signed human reports with confidence and references. Advisory/review-needed severity and a bounded priority control queue are selected; no automatic ban threshold. Operators explicitly restrict or reinstate peers. Public node cards show chosen name, key fingerprint, contact and advertised capabilities; private logs are not auto-shared.
 
 ## Handoff
 
-Record completed slices, approved ADRs, contract/schema revisions, evidence and commit, remaining limitations and next slice in [WORK_LEDGER](../WORK_LEDGER.md). A passing fixture is evidence for this module, not approval of new product scope. See [coverage](../COVERAGE.md) when changing source IDs.
+Record completed slices, approved ADRs, contract/schema revisions, evidence and commit, remaining limitations and next slice in [WORK_LEDGER](../WORK_LEDGER.md). Existing scopes are approved; genuinely new scope still follows change control. See [coverage](../COVERAGE.md) when changing source IDs.

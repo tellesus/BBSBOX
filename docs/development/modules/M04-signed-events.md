@@ -1,8 +1,8 @@
 # M04 — Signed event kernel and convergence
 
-Version 0.1.0 · 2026-10-25 · Tier 2 proposal · Tier 1 baseline 0.4.0.
+Version 1.0.0 · 2026-10-25 · Locked development baseline · Tier 1 baseline 0.5.0.
 
-**State:** Planned capability; implementation choices proposed. No implementation or passed checks claimed.
+**State:** Approved for implementation under U19; unstarted. Runtime and hardware evidence remains pending.
 
 ## Read only this packet
 
@@ -17,15 +17,15 @@ Look up only decision rows T04, T05 in [DECISIONS](../DECISIONS.md). Dependency 
 
 Persist authored actions in a transport-neutral form before feature modules acquire incompatible local-only schemas. Signature validity and action authority remain separate.
 
-## Recommended implementation
+## Locked implementation
 
 Implement C02 with deterministic CBOR/COSE/Ed25519 candidate libraries, fixed signed-byte vectors and SHA-256 IDs. Use per-device hash-linked streams, explicit dependencies, immutable edits/tombstones and feature-specific reducers. No generic last-write-wins timestamp policy for governance. Initial gap detection is a range inventory, not Merkle machinery.
 
 ## Ownership and interfaces
 
-Proposed crates/event-core/ and protocol/fixtures/; raw events, stream heads, dependency staging, fork evidence and integration outcomes. Feature owners register kinds/reducers and relevance predicates.
+Planned crates/event-core/ and protocol/fixtures/; raw events, stream heads, dependency staging, fork evidence and integration outcomes. Feature owners register kinds/reducers and relevance predicates.
 
-Paths above are proposed implementation locations, not existing code. Consume the contracts in the reading packet; changes to them need affected-consumer updates. A disabled optional module retains its data and does not break unrelated local services.
+Paths above are planned implementation locations, not existing code. Consume the contracts in the reading packet; changes to them need affected-consumer updates. A disabled optional module retains its data and does not break unrelated local services.
 
 ## Sequential work slices
 
@@ -39,10 +39,10 @@ Paths above are proposed implementation locations, not existing code. Consume th
 - A newer edit followed by its older original never rolls back state.
 - Unknown required kinds are unsupported rather than applied, and stream forks do not stop unrelated activity.
 
-## Decisions before completion
+## Locked defaults and verification
 
-Finalize exact signed fields, schema IDs and algorithm identifiers; measure encoding versus canonical JSON as the fallback before freezing protocol v1.
+Deterministic CBOR, COSE_Sign1, Ed25519 and SHA-256 are selected; JSON remains debug rendering only. Streams are scoped by device, audience/resource and writer incarnation (C02), preventing private-predecessor dependencies. Set explicit maximum event/chunk sizes in the schema and fixtures before public format v1; a canonical encoder library must pass independent vectors. Unknown critical fields/versions cannot be applied or credited.
 
 ## Handoff
 
-Record completed slices, approved ADRs, contract/schema revisions, evidence and commit, remaining limitations and next slice in [WORK_LEDGER](../WORK_LEDGER.md). A passing fixture is evidence for this module, not approval of new product scope. See [coverage](../COVERAGE.md) when changing source IDs.
+Record completed slices, approved ADRs, contract/schema revisions, evidence and commit, remaining limitations and next slice in [WORK_LEDGER](../WORK_LEDGER.md). Existing scopes are approved; genuinely new scope still follows change control. See [coverage](../COVERAGE.md) when changing source IDs.

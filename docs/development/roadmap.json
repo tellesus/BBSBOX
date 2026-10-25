@@ -1,0 +1,990 @@
+{
+  "version": "1.0.0",
+  "tier1_version": "0.5.0",
+  "authority": "U19",
+  "status": "locked_for_implementation",
+  "implementation_status": "unstarted",
+  "modules": [
+    {
+      "id": "M00",
+      "path": "docs/development/modules/M00-foundation-spikes.md",
+      "title": "Foundational feasibility and decisions",
+      "deps": [],
+      "refs": [
+        "R03",
+        "R04",
+        "R05",
+        "R13",
+        "R15",
+        "R17",
+        "P04",
+        "P06",
+        "P07",
+        "P09",
+        "P21",
+        "AC01",
+        "AC03",
+        "AC11",
+        "AC14",
+        "AC15",
+        "R28"
+      ],
+      "contracts": [
+        "C02",
+        "C05"
+      ],
+      "decisions": [
+        "T01",
+        "T02",
+        "T03",
+        "T04",
+        "T05",
+        "T06",
+        "T07",
+        "T08",
+        "T14"
+      ],
+      "gate": "G0"
+    },
+    {
+      "id": "M01",
+      "path": "docs/development/modules/M01-offline-appliance.md",
+      "title": "Offline appliance and local access",
+      "deps": [
+        "M00"
+      ],
+      "refs": [
+        "R02",
+        "R04",
+        "R05",
+        "P04",
+        "P09",
+        "AC01",
+        "AC02"
+      ],
+      "contracts": [
+        "C01"
+      ],
+      "decisions": [
+        "T01",
+        "T07",
+        "T14"
+      ],
+      "gate": "G1",
+      "prerequisite_evidence": {
+        "M00": "G0-local"
+      }
+    },
+    {
+      "id": "M02",
+      "path": "docs/development/modules/M02-storage-jobs.md",
+      "title": "Durable storage and bounded jobs",
+      "deps": [
+        "M00"
+      ],
+      "refs": [
+        "R05",
+        "R07",
+        "R12",
+        "P04",
+        "P06",
+        "AC01",
+        "AC07",
+        "AC15"
+      ],
+      "contracts": [
+        "C01"
+      ],
+      "decisions": [
+        "T02",
+        "T14"
+      ],
+      "gate": "G1",
+      "prerequisite_evidence": {
+        "M00": "G0-local"
+      }
+    },
+    {
+      "id": "M03",
+      "path": "docs/development/modules/M03-identity-access.md",
+      "title": "Identity, local accounts and permissions",
+      "deps": [
+        "M00",
+        "M02"
+      ],
+      "refs": [
+        "R07",
+        "R13",
+        "R14",
+        "R17",
+        "P07",
+        "P22",
+        "AC01",
+        "AC11",
+        "AC12",
+        "AC14",
+        "AC15"
+      ],
+      "contracts": [
+        "C01",
+        "C02"
+      ],
+      "decisions": [
+        "T04",
+        "T08",
+        "T09"
+      ],
+      "gate": "G1"
+    },
+    {
+      "id": "M04",
+      "path": "docs/development/modules/M04-signed-events.md",
+      "title": "Signed event kernel and convergence",
+      "deps": [
+        "M02",
+        "M03"
+      ],
+      "refs": [
+        "R11",
+        "R12",
+        "R13",
+        "P06",
+        "P21",
+        "AC07"
+      ],
+      "contracts": [
+        "C01",
+        "C02"
+      ],
+      "decisions": [
+        "T04",
+        "T05"
+      ],
+      "gate": "G1"
+    },
+    {
+      "id": "M05",
+      "path": "docs/development/modules/M05-interface-themes.md",
+      "title": "Browser shell, navigation and SysOp themes",
+      "deps": [
+        "M01",
+        "M03"
+      ],
+      "refs": [
+        "R01",
+        "R02",
+        "R03",
+        "R06",
+        "P03",
+        "AC03"
+      ],
+      "contracts": [
+        "C01",
+        "C05"
+      ],
+      "decisions": [
+        "T03",
+        "T07"
+      ],
+      "gate": "G1"
+    },
+    {
+      "id": "M06",
+      "path": "docs/development/modules/M06-boards-mail.md",
+      "title": "Local boards and private mail",
+      "deps": [
+        "M04",
+        "M05"
+      ],
+      "refs": [
+        "R07",
+        "R12",
+        "R13",
+        "P03",
+        "AC01",
+        "AC02",
+        "AC07"
+      ],
+      "contracts": [
+        "C02",
+        "C05"
+      ],
+      "decisions": [
+        "T05",
+        "T09"
+      ],
+      "gate": "G1"
+    },
+    {
+      "id": "M07",
+      "path": "docs/development/modules/M07-directory-profiles.md",
+      "title": "Member directory and chosen profile displays",
+      "deps": [
+        "M03",
+        "M05"
+      ],
+      "refs": [
+        "R25",
+        "R26",
+        "P03",
+        "P24",
+        "AC18",
+        "AC20",
+        "AC21"
+      ],
+      "contracts": [
+        "C01",
+        "C05"
+      ],
+      "decisions": [
+        "T09",
+        "T11",
+        "T12"
+      ],
+      "gate": "G1"
+    },
+    {
+      "id": "M08",
+      "path": "docs/development/modules/M08-friends-events.md",
+      "title": "Chosen feeds, gatherings and invitations",
+      "deps": [
+        "M04",
+        "M05",
+        "M07"
+      ],
+      "refs": [
+        "R18",
+        "R19",
+        "R26",
+        "P10",
+        "AC08",
+        "AC09",
+        "AC20"
+      ],
+      "contracts": [
+        "C02",
+        "C05"
+      ],
+      "decisions": [
+        "T09"
+      ],
+      "gate": "G1"
+    },
+    {
+      "id": "M09",
+      "path": "docs/development/modules/M09-clans-cohorts.md",
+      "title": "Local clans and cohorts",
+      "deps": [
+        "M03",
+        "M05",
+        "M07"
+      ],
+      "refs": [
+        "R21",
+        "R27",
+        "P17",
+        "P24",
+        "AC22"
+      ],
+      "contracts": [
+        "C04",
+        "C05"
+      ],
+      "decisions": [
+        "T09",
+        "T10"
+      ],
+      "gate": "G1"
+    },
+    {
+      "id": "M10",
+      "path": "docs/development/modules/M10-local-files.md",
+      "title": "Local file library",
+      "deps": [
+        "M02",
+        "M03",
+        "M05",
+        "M12"
+      ],
+      "refs": [
+        "R07",
+        "R08",
+        "AC01",
+        "AC04"
+      ],
+      "contracts": [
+        "C01"
+      ],
+      "decisions": [
+        "T02",
+        "T09"
+      ],
+      "gate": "G1"
+    },
+    {
+      "id": "M11",
+      "path": "docs/development/modules/M11-local-games.md",
+      "title": "Game host and local multiplayer example",
+      "deps": [
+        "M02",
+        "M03",
+        "M05",
+        "M07",
+        "M09",
+        "M12"
+      ],
+      "refs": [
+        "R07",
+        "R20",
+        "R21",
+        "R26",
+        "R27",
+        "P17",
+        "AC01",
+        "AC10",
+        "AC21",
+        "AC22"
+      ],
+      "contracts": [
+        "C01",
+        "C04"
+      ],
+      "decisions": [
+        "T10"
+      ],
+      "gate": "G1"
+    },
+    {
+      "id": "M12",
+      "path": "docs/development/modules/M12-maintenance-recovery.md",
+      "title": "Offline updates, backup and continuity",
+      "deps": [
+        "M01",
+        "M02",
+        "M03",
+        "M04"
+      ],
+      "refs": [
+        "R04",
+        "R13",
+        "R23",
+        "R24",
+        "P04",
+        "P07",
+        "P09",
+        "AC01",
+        "AC15",
+        "AC17"
+      ],
+      "contracts": [
+        "C01",
+        "C02"
+      ],
+      "decisions": [
+        "T08",
+        "T12",
+        "T14"
+      ],
+      "gate": "G1"
+    },
+    {
+      "id": "M13",
+      "path": "docs/development/modules/M13-encrypted-forums.md",
+      "title": "Trusted clients and encrypted forums",
+      "deps": [
+        "M00",
+        "M04",
+        "M05",
+        "M06",
+        "M08",
+        "M12"
+      ],
+      "refs": [
+        "R13",
+        "R15",
+        "R17",
+        "P07",
+        "P09",
+        "AC11",
+        "AC14",
+        "AC15"
+      ],
+      "contracts": [
+        "C02",
+        "C05"
+      ],
+      "decisions": [
+        "T06",
+        "T07",
+        "T08"
+      ],
+      "gate": "G2",
+      "prerequisite_evidence": {
+        "M00": "G0-local plus private-client/MLS evidence for G2"
+      }
+    },
+    {
+      "id": "M14",
+      "path": "docs/development/modules/M14-complaints-moderation.md",
+      "title": "Targeted complaints and host suppression",
+      "deps": [
+        "M06",
+        "M13"
+      ],
+      "refs": [
+        "R13",
+        "R16",
+        "R17",
+        "P03",
+        "AC13",
+        "AC19"
+      ],
+      "contracts": [
+        "C02",
+        "C05"
+      ],
+      "decisions": [
+        "T09",
+        "T13"
+      ],
+      "gate": "G2"
+    },
+    {
+      "id": "M15",
+      "path": "docs/development/modules/M15-selected-federation.md",
+      "title": "Selected offline peer exchange",
+      "deps": [
+        "M04",
+        "M06",
+        "M12",
+        "M13",
+        "M14"
+      ],
+      "refs": [
+        "R02",
+        "R08",
+        "R09",
+        "R12",
+        "R13",
+        "R15",
+        "P06",
+        "P21",
+        "P22",
+        "AC04",
+        "AC05",
+        "AC07",
+        "AC11",
+        "AC13",
+        "AC14"
+      ],
+      "contracts": [
+        "C02",
+        "C03"
+      ],
+      "decisions": [
+        "T04",
+        "T05",
+        "T06"
+      ],
+      "gate": "G3"
+    },
+    {
+      "id": "M16",
+      "path": "docs/development/modules/M16-pigeons-lump-drops.md",
+      "title": "Pigeon installation, lumps and credit",
+      "deps": [
+        "M07",
+        "M15"
+      ],
+      "refs": [
+        "R10",
+        "R11",
+        "R12",
+        "R25",
+        "P05",
+        "AC06",
+        "AC07",
+        "AC18"
+      ],
+      "contracts": [
+        "C02",
+        "C03"
+      ],
+      "decisions": [
+        "T04",
+        "T11"
+      ],
+      "gate": "G3"
+    },
+    {
+      "id": "M17",
+      "path": "docs/development/modules/M17-peer-trust.md",
+      "title": "Local peer trust and exposure reporting",
+      "deps": [
+        "M14",
+        "M15"
+      ],
+      "refs": [
+        "R04",
+        "R14",
+        "P08",
+        "P22",
+        "AC12"
+      ],
+      "contracts": [
+        "C02",
+        "C03"
+      ],
+      "decisions": [
+        "T13"
+      ],
+      "gate": "G3"
+    },
+    {
+      "id": "M18",
+      "path": "docs/development/modules/M18-game-passports.md",
+      "title": "Portable characters and Game Passports",
+      "deps": [
+        "M11",
+        "M15",
+        "M16"
+      ],
+      "refs": [
+        "R20",
+        "R21",
+        "R26",
+        "R27",
+        "P17",
+        "AC10",
+        "AC21",
+        "AC22"
+      ],
+      "contracts": [
+        "C02",
+        "C04"
+      ],
+      "decisions": [
+        "T10"
+      ],
+      "gate": "G4"
+    },
+    {
+      "id": "M19",
+      "path": "docs/development/modules/M19-neighborhood-pilot.md",
+      "title": "Real mesh and neighborhood pilot",
+      "deps": [
+        "M08",
+        "M09",
+        "M10",
+        "M12",
+        "M14",
+        "M16",
+        "M17",
+        "M18"
+      ],
+      "refs": [
+        "R01",
+        "R02",
+        "R03",
+        "R04",
+        "R05",
+        "R06",
+        "R23",
+        "R24",
+        "P04",
+        "AC01",
+        "AC02",
+        "AC03",
+        "AC04",
+        "AC05",
+        "AC06",
+        "AC07",
+        "AC08",
+        "AC09",
+        "AC10",
+        "AC11",
+        "AC12",
+        "AC13",
+        "AC14",
+        "AC15",
+        "AC17",
+        "AC18",
+        "AC19",
+        "AC20",
+        "AC21",
+        "AC22",
+        "R28"
+      ],
+      "contracts": [
+        "C01",
+        "C03"
+      ],
+      "decisions": [
+        "T01",
+        "T07",
+        "T08",
+        "T12",
+        "T14"
+      ],
+      "gate": "G4"
+    },
+    {
+      "id": "O01",
+      "path": "docs/development/modules/O01-community-utilities.md",
+      "title": "Search, chat and personal controls",
+      "deps": [
+        "M06",
+        "M08",
+        "M13",
+        "M14"
+      ],
+      "refs": [
+        "P03",
+        "R03",
+        "R13",
+        "R17",
+        "R18",
+        "AC23",
+        "R28"
+      ],
+      "contracts": [
+        "C01",
+        "C05"
+      ],
+      "decisions": [
+        "T09"
+      ],
+      "gate": "G5"
+    },
+    {
+      "id": "O02",
+      "path": "docs/development/modules/O02-post-office.md",
+      "title": "Encrypted cross-node Post Office",
+      "deps": [
+        "M13",
+        "M15",
+        "M16"
+      ],
+      "refs": [
+        "P11",
+        "R10",
+        "R12",
+        "R13",
+        "R15",
+        "AC24",
+        "R28"
+      ],
+      "contracts": [
+        "C03",
+        "C05"
+      ],
+      "decisions": [
+        "T06",
+        "T07"
+      ],
+      "gate": "G5"
+    },
+    {
+      "id": "O03",
+      "path": "docs/development/modules/O03-neighborhood-exchange.md",
+      "title": "Neighborhood Exchange",
+      "deps": [
+        "M06",
+        "M07",
+        "M08",
+        "M15"
+      ],
+      "refs": [
+        "P12",
+        "R01",
+        "R08",
+        "R09",
+        "AC25",
+        "R28"
+      ],
+      "contracts": [
+        "C02",
+        "C05"
+      ],
+      "decisions": [
+        "T09"
+      ],
+      "gate": "G5"
+    },
+    {
+      "id": "O04",
+      "path": "docs/development/modules/O04-community-newspaper.md",
+      "title": "Community newspaper and print editions",
+      "deps": [
+        "M06",
+        "M07",
+        "M15"
+      ],
+      "refs": [
+        "P13",
+        "R01",
+        "R08",
+        "R09",
+        "AC26",
+        "R28"
+      ],
+      "contracts": [
+        "C02",
+        "C05"
+      ],
+      "decisions": [
+        "T09"
+      ],
+      "gate": "G5"
+    },
+    {
+      "id": "O05",
+      "path": "docs/development/modules/O05-local-wiki.md",
+      "title": "Local knowledge and history wiki",
+      "deps": [
+        "M06",
+        "M07",
+        "M15"
+      ],
+      "refs": [
+        "P14",
+        "R01",
+        "R08",
+        "R09",
+        "AC27",
+        "R28"
+      ],
+      "contracts": [
+        "C02",
+        "C05"
+      ],
+      "decisions": [
+        "T05",
+        "T09"
+      ],
+      "gate": "G5"
+    },
+    {
+      "id": "O06",
+      "path": "docs/development/modules/O06-meshcasts.md",
+      "title": "Publisher-controlled Meshcasts",
+      "deps": [
+        "M08",
+        "M15"
+      ],
+      "refs": [
+        "P15",
+        "R09",
+        "R18",
+        "R19",
+        "AC28",
+        "R28"
+      ],
+      "contracts": [
+        "C02",
+        "C03"
+      ],
+      "decisions": [
+        "T05",
+        "T09"
+      ],
+      "gate": "G5"
+    },
+    {
+      "id": "O07",
+      "path": "docs/development/modules/O07-mesh-atlas.md",
+      "title": "Optional node and forum Atlas",
+      "deps": [
+        "M15",
+        "M17"
+      ],
+      "refs": [
+        "P16",
+        "P22",
+        "R02",
+        "R09",
+        "R14",
+        "AC29",
+        "R28"
+      ],
+      "contracts": [
+        "C02",
+        "C03"
+      ],
+      "decisions": [
+        "T09",
+        "T13"
+      ],
+      "gate": "G5"
+    },
+    {
+      "id": "O08",
+      "path": "docs/development/modules/O08-relay-profile.md",
+      "title": "Dedicated relay installation",
+      "deps": [
+        "M15",
+        "M17"
+      ],
+      "refs": [
+        "P01",
+        "P05",
+        "R04",
+        "R09",
+        "R13",
+        "AC30",
+        "R28"
+      ],
+      "contracts": [
+        "C01",
+        "C03"
+      ],
+      "decisions": [
+        "T01",
+        "T04"
+      ],
+      "gate": "G5"
+    },
+    {
+      "id": "O09",
+      "path": "docs/development/modules/O09-guest-kiosk.md",
+      "title": "Guest access and kiosk mode",
+      "deps": [
+        "M05",
+        "M07",
+        "M08",
+        "M12"
+      ],
+      "refs": [
+        "P02",
+        "R03",
+        "R13",
+        "R26",
+        "AC31",
+        "R28"
+      ],
+      "contracts": [
+        "C01",
+        "C05"
+      ],
+      "decisions": [
+        "T07",
+        "T09"
+      ],
+      "gate": "G5"
+    },
+    {
+      "id": "O10",
+      "path": "docs/development/modules/O10-game-experiments.md",
+      "title": "Cross-node play and signature dungeons",
+      "deps": [
+        "M18"
+      ],
+      "refs": [
+        "P18",
+        "P19",
+        "R20",
+        "R21",
+        "AC32",
+        "R28"
+      ],
+      "contracts": [
+        "C02",
+        "C04"
+      ],
+      "decisions": [
+        "T10"
+      ],
+      "gate": "G5"
+    },
+    {
+      "id": "O11",
+      "path": "docs/development/modules/O11-business-rewards.md",
+      "title": "Issuing-node business game bonuses",
+      "deps": [
+        "M11",
+        "M12"
+      ],
+      "refs": [
+        "P20",
+        "R22",
+        "AC16",
+        "AC33",
+        "R28"
+      ],
+      "contracts": [
+        "C01",
+        "C04"
+      ],
+      "decisions": [
+        "T10"
+      ],
+      "gate": "G5"
+    },
+    {
+      "id": "O12",
+      "path": "docs/development/modules/O12-recognition-extras.md",
+      "title": "Optional recognition and profile/group additions",
+      "deps": [
+        "M07",
+        "M08",
+        "M09",
+        "M11",
+        "M16",
+        "O11"
+      ],
+      "refs": [
+        "P23",
+        "P24",
+        "R25",
+        "R26",
+        "R27",
+        "AC34",
+        "R28"
+      ],
+      "contracts": [
+        "C04",
+        "C05"
+      ],
+      "decisions": [
+        "T09",
+        "T10",
+        "T11"
+      ],
+      "gate": "G5"
+    }
+  ],
+  "execution_order": [
+    "M00",
+    "M01",
+    "M02",
+    "M03",
+    "M04",
+    "M12",
+    "M05",
+    "M06",
+    "M07",
+    "M08",
+    "M09",
+    "M10",
+    "M11",
+    "M13",
+    "M14",
+    "M15",
+    "M16",
+    "M17",
+    "M18",
+    "M19",
+    "O01",
+    "O02",
+    "O03",
+    "O04",
+    "O05",
+    "O06",
+    "O07",
+    "O08",
+    "O09",
+    "O10",
+    "O11",
+    "O12"
+  ]
+}

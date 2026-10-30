@@ -1,0 +1,33 @@
+name: Foundation experiment
+on:
+  push:
+    paths: ['spikes/m00/**', '.github/workflows/foundation.yml', 'tools/validate_roadmap.py', 'docs/**']
+  pull_request:
+    paths: ['spikes/m00/**', '.github/workflows/foundation.yml', 'tools/validate_roadmap.py', 'docs/**']
+permissions:
+  contents: read
+jobs:
+  local-foundation:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: spikes/m00
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: spikes/m00/web/.node-version
+          cache: npm
+          cache-dependency-path: spikes/m00/web/package-lock.json
+      - run: rustup toolchain install 1.99.1 --profile minimal --component rustfmt --component clippy
+      - run: cargo fmt --check --manifest-path node/Cargo.toml
+      - run: cargo test --locked --manifest-path node/Cargo.toml
+      - run: cargo clippy --locked --offline --manifest-path node/Cargo.toml --all-targets -- -D warnings
+      - run: cargo build --locked --offline --manifest-path node/Cargo.toml
+      - run: npm ci && npm run check && npm run build
+        working-directory: spikes/m00/web
+      - run: python3 tools/init_tls.py
+      - run: npx playwright install --with-deps chromium && npm test
+        working-directory: spikes/m00/web
+      - run: python3 tools/validate_roadmap.py
+        working-directory: .

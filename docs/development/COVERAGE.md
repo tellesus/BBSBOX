@@ -1,6 +1,6 @@
 # Approved scope and acceptance coverage
 
-Version 1.0.1 · Product baseline 0.5.1 · All execution evidence pending. P IDs retain historical names but are accepted under U19. D IDs remain deferred.
+Version 1.0.1 · Product baseline 0.5.1 · Execution evidence is recorded in WORK_LEDGER; capability acceptance gates remain pending. P IDs retain historical names but are accepted under U19. D IDs remain deferred.
 
 Derived lookup — not an independent source of canon. Current scope is owned by PRODUCT_SPEC and the relevant module/contract; update this map alongside them.
 

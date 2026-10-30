@@ -2,7 +2,7 @@
 
 An offline neighborhood community platform: independent local BBSes, modern customizable interfaces, selected mesh connections, Pigeon message carriage and games.
 
-**Start with the [canonical roadmap](docs/development/README.md). The roadmap and the user’s latest applicable instructions are the two sources of project canon; user instructions take precedence.** The product is not yet implemented.
+**Start with the [canonical roadmap](docs/development/README.md). The roadmap and the user’s latest applicable instructions are the two sources of project canon; user instructions take precedence.** The first [M00 foundation prototype](spikes/m00/README.md) is available; the remaining community-platform work follows the roadmap.
 
 - [Start one module task](docs/development/START_HERE.md)
 - [Current product requirements](docs/development/PRODUCT_SPEC.md) and [technical decisions](docs/development/DECISIONS.md)

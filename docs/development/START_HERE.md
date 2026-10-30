@@ -23,7 +23,7 @@ Before implementation, verify the selected slice's prerequisites and contract ve
 
 ## Handoff and changes
 
-Record module/slice, baseline, ADR, contract/schema versions, commit, actual tests/observations, limitations and next slice in [WORK_LEDGER](WORK_LEDGER.md). Current implementation state is Unstarted. This lock records design review, not runtime success.
+Record module/slice, baseline, ADR, contract/schema versions, commit, actual tests/observations, limitations and next slice in [WORK_LEDGER](WORK_LEDGER.md). M00 implementation is in progress; see the ledger for actual evidence and pending gates. Design approval alone is never runtime evidence.
 
 For every design refinement, goal change or feature addition/removal, update affected product requirements, module briefs, decisions/contracts, acceptance checks and graph/coverage in the same change. Follow [change control](README.md#change-control); record the authority and version/change entry, retire obsolete instructions, and run the roadmap validator before completion. An ADR or chat summary alone is insufficient. Already authorized changes need no repeated permission. Routine compatible implementation details remain authorized.
 

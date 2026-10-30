@@ -1,3 +1,11 @@
 /work/
 __pycache__/
 *.pyc
+/.tooling/
+**/target/
+**/node_modules/
+**/.svelte-kit/
+**/build/
+**/.state/
+**/test-results/
+**/playwright-report/

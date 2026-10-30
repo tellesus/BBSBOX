@@ -2,7 +2,7 @@
 
 Version 1.0.1 · 2026-10-25 · Locked development baseline · Product baseline 0.5.1.
 
-**State:** Approved for implementation under U19; unstarted. Runtime and hardware evidence remains pending.
+**State:** Approved under U19; In progress under the user’s 2026-10-30 build instruction. Local prototype evidence is recorded in WORK_LEDGER; G0-local/G2 remain open.
 
 ## Read only this packet
 
@@ -23,9 +23,9 @@ Use disposable Rust/Axum + SQLite and static SvelteKit experiments. Exercise HTT
 
 ## Ownership and interfaces
 
-Experiments under planned spikes/; fixture traces and decision evidence, no production schema. Publish supported device/access paths and measured idle/import/game resource use.
+Current code is under spikes/m00/: a Rust/Axum/SQLite node and static SvelteKit page, plus TLS and browser checks. Its disposable schema/wire profile is not production protocol v1. See the [runbook](../../../spikes/m00/README.md). Publish supported device/access paths and measured idle/import/game resource use.
 
-Paths above are planned implementation locations, not existing code. Consume the contracts in the reading packet; changes to them need affected-consumer updates. A disabled optional module retains its data and does not break unrelated local services.
+Only spikes/m00/ is implemented so far; later module locations remain planned. Consume the contracts in the reading packet; changes to them need affected-consumer updates. A disabled optional module retains its data and does not break unrelated local services.
 
 ## Sequential work slices
 
@@ -43,6 +43,12 @@ Paths above are planned implementation locations, not existing code. Consume the
 ## Locked defaults and verification
 
 Use the selected stack. Test Debian x86-64, desktop browsers, Android Chrome and iOS Safari; test the Tauri private-client path separately on each OS. Exact supported versions and capacity numbers come from results. G0-local needs A/B access and storage/signature evidence; failed private-client/MLS experiments are recorded blockers for G2, not blockers for independent local development. Pin dependency versions/lockfiles in the implementation commit, using maintained compatible releases.
+
+## Current slice evidence — 2026-10-30
+
+A and desktop portions of B run on Windows x64. Local HTTPS serves the page and public test messagebook; a persistent node fixture key signs detached-body CBOR/COSE events. A name is only a label. The node verifies stored history, rejects altered data and foreign/missing origins, deduplicates retries and survives a cold process restart. Native HTTP/2 authority handling is covered after a real browser-found bug. This is a development fixture, not M03 personal identity or M13 encryption. No wire/contract v1 is frozen.
+
+Eight automated tests pass; browser checks use Edge with one pinned leaf key in a temporary profile and separate CA-verification checks. No application request left the node during the recorded journey. Actual WAN isolation, Debian, phones, Tauri/OpenMLS and recovery experiments remain pending. See the ledger for versions, results and limitations.
 
 ## Handoff
 

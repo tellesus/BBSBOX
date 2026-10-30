@@ -110,7 +110,7 @@ def validate():
     coverage_ids = {ref for ref in coverage_rows if re.fullmatch(r'(?:R|P|AC|D|N)\d{2}', ref)}
     require(coverage_ids == source_ids, 'Coverage must match current and explicitly retired product IDs')
     # Validate document links, including local fragments, without fetching external sites.
-    documents = sorted(ROOT.glob('*.md')) + sorted((ROOT / 'docs').rglob('*.md'))
+    documents = sorted(set(ROOT.glob('*.md')) | set((ROOT / 'docs').rglob('*.md')) | {ROOT / name for name in registered if name.endswith('.md')})
     links = 0
     for path in documents:
         text = read(path)

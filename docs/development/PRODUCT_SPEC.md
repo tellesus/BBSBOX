@@ -9,7 +9,7 @@
 | Product owner | Michael |
 | Canonical location | `docs/development/PRODUCT_SPEC.md` in [tellesus/BBSBOX](https://github.com/tellesus/BBSBOX) |
 | Authority | Product requirements within the canonical roadmap; latest applicable user instructions take precedence |
-| Implementation status | Specification only; no implementation or test results claimed |
+| Implementation status | M00 prototype In progress; actual results in WORK_LEDGER; full capability gates remain open |
 | Software license | **AGPL-3.0-or-later**; project design prose **CC-BY-SA-4.0**; see the [license notice](../../LICENSE.md) |
 
 ## 1. Purpose and authority
@@ -546,6 +546,7 @@ Document versions are independent of software/protocol versions. Patch revisions
 | Product document | Roadmap | Date | Change |
 | --- | --- | --- | --- |
 | 0.5.1 | 1.0.1 | 2026-10-25 | U20: consolidate product canon inside the roadmap, supersede the old Tier 1/Tier 2 authority hierarchy, archive historical plans/reviews, and require synchronized canonical documentation for design, goal and feature changes. Product feature scope is unchanged. |
+| 0.5.1 | 1.0.1 | 2026-10-30 | User authorized beginning implementation. Execution records now identify the M00 local prototype, tests and open device/private-client gates. This is progress within the existing scope and design baseline. |
 
 Earlier decisions, source audits and CR-001–CR-003 are preserved in the [historical record](../archive/product-history-through-0.5.0.md). Historical statements never override current canon.
 

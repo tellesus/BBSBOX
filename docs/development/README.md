@@ -2,7 +2,7 @@
 
 Version 1.0.1 · 2026-10-25 · Product baseline 0.5.1 · Scope approved under U19; canon clarified under U20. [Historical lock record](../decisions/ADR-0001-roadmap-lock.md).
 
-All named module scopes and T decisions are approved. Implementation is unstarted. Read [START_HERE](START_HERE.md), one brief and its contracts. Use the live [decisions](DECISIONS.md), derived [coverage](COVERAGE.md) and [ledger](WORK_LEDGER.md) as needed. The [old technical plan](../archive/technical-plan-1.0.0.md) and [earlier review](../archive/review-2026-10-25.md) are historical archives.
+All named module scopes and T decisions are approved. Implementation has begun with the M00 local foundation experiment; G0-local and G2 remain open pending their required evidence. Read [START_HERE](START_HERE.md), one brief and its contracts. Use the live [decisions](DECISIONS.md), derived [coverage](COVERAGE.md) and [ledger](WORK_LEDGER.md) as needed. The [old technical plan](../archive/technical-plan-1.0.0.md) and [earlier review](../archive/review-2026-10-25.md) are historical archives.
 
 ## Canon and document ownership
 

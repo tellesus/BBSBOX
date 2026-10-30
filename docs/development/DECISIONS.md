@@ -21,6 +21,12 @@ Version 1.0.1 · 2026-10-25 · Baseline Product baseline 0.5.1.
 | T13 | Manual local peer decisions and signed evidence; separate forum moderation from node-host suppression. | Optional rule automation can be considered for concrete workloads; no mandatory network-wide ban vote. | M14/M17: exact targets, valid role proof, delayed reply, independent restrictions/reinstatement. |
 | T14 | Offline signed release bundles, prepared dependency materials, Rust unit/property tests, browser interaction checks and isolated multi-node fixtures. Use GitHub CI for development only, with a runnable local verification path. | Containerized development/testing is useful; requiring a production container registry would conflict with offline deployment. Advanced reproducible-build/attestation program remains D06. | M00/M01/M02/M12/M19: no runtime egress, install/restore, reference-hardware resource budgets and complete evidence. |
 
+## Implementation evidence — 2026-10-30
+
+T01–T05 have an initial Windows-only M00 experiment: Axum 0.8.9, rusqlite 0.41.1, coset 0.4.2, ed25519-dalek 2.2.0 and the locked SvelteKit/TypeScript build. Rust/API/store tests and actual HTTPS browser journeys pass. The node fixture signs this disposable public test stream; it does not establish personal identity. Rust 1.99.1 and Node 24.22.1 are the tested build toolchains. Lockfiles record transitive versions.
+
+This is partial evidence for the selected architecture, not a gate pass or support matrix. T06/T07 MLS, trusted private-client distribution and phone enrollment remain unverified. T08 production recovery is not established by a process restart. Dependency license metadata is recorded with the experiment; local source/license release packaging remains M12 work. WORK_LEDGER owns the actual execution record.
+
 ## Acceptance record template
 
 `ADR ID/version; affected T row; status; owner/date; problem; recommendation; alternatives; prototype evidence; chosen scope; consequences; contracts/modules changed; migration/rollback; unresolved limits; supersedes.`

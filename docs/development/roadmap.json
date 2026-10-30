@@ -3,7 +3,7 @@
   "product_spec_version": "0.5.1",
   "authority": "U19 scope; U20 canon and change control",
   "status": "locked_for_implementation",
-  "implementation_status": "unstarted",
+  "implementation_status": "in_progress",
   "modules": [
     {
       "id": "M00",
@@ -44,7 +44,8 @@
         "T08",
         "T14"
       ],
-      "gate": "G0"
+      "gate": "G0",
+      "execution_status": "in_progress"
     },
     {
       "id": "M01",
@@ -1047,7 +1048,9 @@
       "docs/archive/product-history-through-0.5.0.md",
       "docs/archive/README.md",
       "docs/archive/review-2026-10-25.md",
-      "docs/archive/technical-plan-1.0.0.md"
+      "docs/archive/technical-plan-1.0.0.md",
+      "spikes/m00/README.md"
     ]
-  }
+  },
+  "implementation_updated": "2026-10-30"
 }

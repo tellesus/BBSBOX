@@ -1099,7 +1099,8 @@
       "crates/event-codec/README.md",
       "crates/event-core/README.md",
       "docs/decisions/ADR-0002-wire-profiles.md",
-      "crates/node-runtime/README.md"
+      "crates/node-runtime/README.md",
+      "deploy/README.md"
     ]
   },
   "implementation_updated": "2026-10-31",

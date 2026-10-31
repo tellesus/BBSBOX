@@ -1,8 +1,8 @@
 # M01 — Offline appliance and local access
 
-Brief revision 1.1.2 · Roadmap baseline 1.1.0 · 2026-10-31 · Locked scope · Product baseline 0.6.0.
+Brief revision 1.1.3 · Roadmap baseline 1.1.0 · 2026-10-31 · Locked scope · Product baseline 0.6.0.
 
-**State:** In progress under continued development authority. A runtime passed Windows/Linux HTTPS/restart/isolation checks. Offline initialization/payload preparation have local checks. Installation, Debian service execution, B/C and reference hardware remain pending.
+**State:** In progress under continued development authority. Runtime/initialization/payload preparation passed Windows/Linux checks. First-install/service fixtures have local guard tests; Debian execution, B/C and reference hardware remain pending.
 
 ## Read only this packet
 
@@ -25,11 +25,11 @@ Use a Debian stable base, systemd service, Rust binary/static assets, local DNS/
 
 deploy/ and crates/node-runtime/ own installation config, local address/certificate state, service manifests and local-only diagnostics. Runtime registers real M02–M04 providers and owns no member keys. See the [runtime reference](../../../crates/node-runtime/README.md).
 
-Runtime/status code, configuration example and a candidate service unit exist; offline installer and network/enrollment profiles remain pending. Consume the contracts in the reading packet; changes to them need affected-consumer updates. A disabled optional module retains its data and does not break unrelated local services.
+Runtime/status code, initialization/payload tools and a developer first-install/service fixture exist; network/enrollment profiles remain pending. Consume the contracts in the reading packet; changes need affected-consumer updates. Disabled optional modules retain data and preserve unrelated services. See the [install fixture](../../../deploy/README.md).
 
 ## Sequential work slices
 
-1. A: offline install and service startup with local status page. Runtime/TLS/restart/isolation passed; initialization/development-payload tools are implemented. Installation and target service execution remain open.
+1. A: offline install and service startup with local status page. Runtime/initialization/payload checks passed; first-install guards pass locally. Actual offline Debian install/service/OS-boot fixture confirmation remains open.
 2. B: router/address enrollment and verified packet-boundary configuration.
 3. C: restarts, local diagnosis and prepared-media reinstall procedure.
 
@@ -41,7 +41,7 @@ Runtime/status code, configuration example and a candidate service unit exist; o
 
 ## Locked defaults and verification
 
-Debian 13 (trixie) amd64 is the selected first full-node/courier target; systemd, nftables, local DNS and a per-node local CA are selected. Enrollment records the CA fingerprint out of band; use locally resolved names containing a node-ID suffix and local IP fallback. Never install a peer CA automatically. Manual/local certificate renewal and local clock setup are documented. Browser trust enrollment must pass M00; no public ACME/NTP/DoH fallback. Router configuration is tested for default routes and IPv6 as well as IPv4.
+Debian 13 (trixie) amd64 is the selected first full-node/courier target; systemd, nftables, local DNS and a per-node local CA are selected. Enrollment compares CA fingerprints out of band; use node-ID-suffixed home.arpa names and local IP fallback. Never install a peer CA automatically. Document manual/local certificate renewal and clock setup. Browser trust enrollment must pass M00; no public ACME/NTP/DoH fallback. Test router default routes and both IP families.
 
 ## Handoff
 

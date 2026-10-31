@@ -1,0 +1,29 @@
+# M01 developer installation fixture
+
+Reference for [M01](../docs/development/modules/M01-offline-appliance.md); the canonical roadmap and user instructions own product scope. This fixture exercises first installation on an isolated Debian 13 amd64 developer target. M12 owns authenticated production releases/updates. M01 B/C and physical appliance/phone acceptance remain pending.
+
+## Prepared inputs and first install
+
+Prepare Python 3, OpenSSL, the standard account utilities, systemd and the binary's local runtime dependencies on the developer target. The installer checks those tools and never invokes a package manager or downloads material. Build and verify the [development payload](../tools/runtime_bundle.py) on the developer/build machine, then transfer it and these project scripts locally.
+
+On the isolated test target, from a checkout of the matching source:
+
+```sh
+sudo python3 deploy/install_development.py --bundle /path/to/runtime-bundle --development --enable
+```
+
+`--enable` installs the unit's next-boot link; it does not start a service. This first-install fixture refuses existing node configuration, TLS material, activated binaries/units or nonempty state. It does not replace a live installation or initialize over community data. The full offline network/DNS profile is a later M01 slice; this initial configuration binds loopback only.
+
+The installer verifies the exact payload inventory, creates an unprivileged `bbsbox` OS account, installs immutable runtime files under `/opt/bbsbox/development/<manifest-sha256>`, and writes the [unit](systemd/bbsbox.service), `/etc/bbsbox/node.json` and private `/var/lib/bbsbox` state. Offline initialization obtains the stable node ID before certificate generation. Node metadata is not a portable member key/recovery kit.
+
+Each node gets its own local CA and a leaf for localhost, both loopback IPs and a node-ID-suffixed name under [home.arpa](https://www.rfc-editor.org/rfc/rfc8375.html). The CA private key is root-only; the service can read its leaf key and configuration but cannot replace them. The resulting public CA fingerprint/installation metadata is recorded locally. No trust store or peer trust is automatically installed. Local DNS/address cards and visitor CA enrollment remain M01 B work.
+
+## Actual Debian service verification
+
+[The CI image recipe](ci/Dockerfile) prepares dependencies from the official Debian trixie image on a developer/build network. Its installation instruction then runs with networking disabled. The image is a developer test tool; production does not require Docker or a registry.
+
+[The context/export helper](ci/prepare.py) copies only the selected payload/scripts into a fresh workspace context. Before extracting the exported OS, it validates archive paths, symlink ancestry, hardlink targets and entry types. The target must be a fresh directory beneath repository `work/`.
+
+[The boot check](ci/boot_service.py) starts the prepared tree with actual systemd under [systemd-nspawn](https://www.freedesktop.org/software/systemd/man/latest/systemd-nspawn.html), in a separate PID/network namespace containing only loopback and no gateway. It identifies that exact OS root before entering it, checks the real unit/cgroup/unprivileged process and verified HTTPS, restarts the unit, switches the fixture to IPv6 and boots the OS again with the same node identity. Shutdown signals only the child manager it started. [nsenter](https://man7.org/linux/man-pages/man1/nsenter.1.html) supplies access to that validated test namespace.
+
+These target checks must pass in CI before being called evidence. Local Windows checks cover installation-preservation/archive guards and runtime behavior; they do not execute Debian installation or systemd. Reports/logs are developer evidence, with physical reference-machine, router/radio and phone checks still separate. The remaining signed-release, coordinated backup and recovery activation work stays with M12.

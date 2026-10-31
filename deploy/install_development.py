@@ -17,6 +17,7 @@ import unicodedata
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT/'tools'))
 import runtime_bundle as payload
+import enrollment
 
 
 @dataclass(frozen=True)
@@ -167,6 +168,10 @@ def install(bundle, name, enable=False):
             (wanted/layout.unit.name).symlink_to(layout.unit)
         result = dict(format='bbsbox.development-install/v1', node_id=node_id, hostname=hostname, origin=config['origin'], ca_sha256=fingerprint, payload_sha256=information['manifest_sha256'], unit_enabled=enable)
         write_new(layout.config/'installation.json', payload.encoded(result), 0o640, 0, gid)
+        public = layout.application/'enrollment'
+        enrollment.export(layout.config/'installation.json', config_path, layout.config/'tls/ca.pem', public)
+        public.chmod(0o755)
+        for path in public.iterdir(): path.chmod(0o644)
         return result
     finally:
         os.umask(previous_umask)

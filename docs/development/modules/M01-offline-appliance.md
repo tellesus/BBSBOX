@@ -1,6 +1,6 @@
 # M01 — Offline appliance and local access
 
-Brief revision 1.1.4 · Roadmap baseline 1.1.0 · 2026-10-31 · Locked scope · Product baseline 0.6.0.
+Brief revision 1.1.5 · Roadmap baseline 1.1.0 · 2026-10-31 · Locked scope · Product baseline 0.6.0.
 
 **State:** In progress under continued development authority. Runtime/initialization/payload and actual offline Debian install/service/reboot checks passed. B's network preparation is under test; complete host activation, enrollment, C and reference hardware remain pending.
 
@@ -30,7 +30,7 @@ Runtime/status code, initialization/payload tools and a verified developer first
 ## Sequential work slices
 
 1. A: offline install and service startup with local status page. Runtime/initialization/payload and actual Debian developer installation/service/OS reboot passed CI; physical reference-machine evidence remains open.
-2. B: router/address enrollment and verified packet-boundary configuration. Explicit aliases/multiple listeners pass locally. Generated network/DNS boundaries await Linux CI; complete boot activation and enrollment remain open.
+2. B: router/address enrollment and verified packet-boundary configuration. Explicit aliases/multiple listeners pass locally. Generated network/DNS boundaries await Linux CI; a public connection-card/CA export passes local checks. Complete boot activation, LAN certificate configuration and device enrollment remain open.
 3. C: restarts, local diagnosis and prepared-media reinstall procedure.
 
 ## Completion evidence

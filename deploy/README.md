@@ -20,6 +20,10 @@ Each node gets its own local CA and a leaf for localhost, both loopback IPs and 
 
 Before enabling the unit, installation checks those read permissions as the actual service account, including denial of CA-private-key access. Directory modes are set explicitly after the private provisioning umask.
 
+The installer also writes a public connection card under `/opt/bbsbox/enrollment`: `connect.html`, `node.json` and `ca.pem`. Copy those three files to local visitor media or print the card. The card lists configured local addresses, public node ID and the CA certificate's SHA-256 fingerprint. Compare that fingerprint through a separate SysOp-supplied copy before enrolling trust. The export includes no private key or database/configuration path and changes no trust store. Device-specific enrollment still needs the planned phone milestone tests.
+
+To prepare a fresh card after a configuration change, run `sudo python3 deploy/enrollment.py --output /path/to/new-card-directory` from the matching source checkout. The tool checks that the CA matches the installation record and that addresses are local; an existing output directory is preserved and rejected. CA fingerprint checking here uses local certificate/time checks without online lookups.
+
 ## Actual Debian service verification
 
 [The CI image recipe](ci/Dockerfile) prepares dependencies from the official Debian trixie image on a developer/build network. Its installation instruction then runs with networking disabled. The image is a developer test tool; production does not require Docker or a registry.

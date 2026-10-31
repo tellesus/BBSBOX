@@ -1,4 +1,4 @@
 [workspace]
 resolver = "3"
-members = ["crates/storage", "crates/identity", "crates/credentials", "client/identity"]
+members = ["crates/storage", "crates/identity", "crates/credentials", "client/identity", "crates/event-codec"]
 exclude = ["spikes/m00/node", "spikes/m00/mls"]

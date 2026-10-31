@@ -395,3 +395,59 @@ fn link_and_signed_receipt_rollback_together_and_logout_blocks_even_completed_re
         Err(Error::InvalidSession)
     ));
 }
+
+#[test]
+fn current_challenges_reject_v1_proofs_but_accepted_legacy_receipts_remain_retryable() {
+    use coset::{CborSerializable, CoseSign1Builder, HeaderBuilder, iana};
+    use ed25519_dalek::{Signer, SigningKey};
+    let mut f = Fixture::new("neighbor");
+    let root = SigningKey::from_bytes(&[7; 32]);
+    let card = ContactCard::new(root.verifying_key().to_bytes()).unwrap();
+    let current = f.begin(&card).unwrap();
+    let mut payload: ciborium::value::Value =
+        ciborium::de::from_reader(current.encoded().unwrap().as_slice()).unwrap();
+    payload.as_array_mut().unwrap()[0] =
+        ciborium::value::Value::Text("bbsbox.account-link/v1".into());
+    payload.as_array_mut().unwrap()[1] = ciborium::value::Value::Integer(1.into());
+    let mut encoded = Vec::new();
+    ciborium::ser::into_writer(&payload, &mut encoded).unwrap();
+    let legacy = Challenge::from_encoded(&encoded).unwrap();
+    let proof = CoseSign1Builder::new()
+        .protected(
+            HeaderBuilder::new()
+                .algorithm(iana::Algorithm::EdDSA)
+                .key_id(card.person_id().bytes().to_vec())
+                .build(),
+        )
+        .payload(encoded)
+        .create_signature(b"bbsbox.account-link/v1", |message| {
+            root.sign(message).to_bytes().to_vec()
+        })
+        .build()
+        .to_vec()
+        .unwrap();
+    bbsbox_credentials::linking::verify(&legacy, &card, &proof).unwrap();
+    assert!(f.finish(&current, &proof).is_err());
+    assert_eq!(f.linked(), None);
+    // Fixture of valid state committed by the previous profile, with its original immutable proof.
+    f.db.write::<_, Error>(Class::Content, 65536, |tx| {
+        tx.execute(
+            "INSERT INTO identity_account_links VALUES(?1,?2)",
+            rusqlite::params![f.user.id.bytes().as_slice(), card.root().as_slice()],
+        )?;
+        tx.execute(
+            "INSERT INTO identity_link_receipts VALUES(?1,?2,?3,?4,?5)",
+            rusqlite::params![
+                current.nonce().as_slice(),
+                f.user.id.bytes().as_slice(),
+                f.node.bytes().as_slice(),
+                card.root().as_slice(),
+                proof
+            ],
+        )?;
+        Ok(())
+    })
+    .unwrap();
+    assert!(f.finish(&current, &proof).unwrap().replayed);
+    assert_eq!(f.linked(), Some(card.person_id()));
+}

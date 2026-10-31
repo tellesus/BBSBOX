@@ -70,6 +70,12 @@ fn restore_replaces_the_device_and_incarnation_and_retains_public_person_identit
         .export(&root, pass(PASS), b"old state is receive-side only")
         .unwrap();
     let restored = engine.import(&kit, pass(PASS)).unwrap();
+    assert_ne!(restored.control_incarnation(), root.control_incarnation());
+    assert!(
+        restored
+            .sign_current_control(root.control_incarnation(), b"old root stream")
+            .is_err()
+    );
     let fresh = restored.new_device(purposes).unwrap();
     assert_eq!(fresh.credential().body().person_id(), root.person_id());
     assert_ne!(

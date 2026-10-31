@@ -14,7 +14,7 @@ fn generate() -> SigningKey {
     SigningKey::from_bytes(&seed)
 }
 /// Client-held person root. No Debug, Clone or plaintext serialization interface.
-pub struct RootKey(SigningKey);
+pub struct RootKey(SigningKey, [u8; 16]);
 pub struct DeviceKey(SigningKey);
 pub struct ActiveDevice {
     key: SigningKey,
@@ -32,7 +32,16 @@ impl Default for DeviceKey {
 }
 impl RootKey {
     pub fn generate() -> Self {
-        Self(generate())
+        Self(generate(), fresh_incarnation())
+    }
+    pub fn control_incarnation(&self) -> &[u8; 16] {
+        &self.1
+    }
+    pub fn sign_current_control(&self, incarnation: &[u8; 16], message: &[u8]) -> Result<[u8; 64]> {
+        if incarnation != &self.1 {
+            return Err(Error::StaleIncarnation);
+        }
+        Ok(self.0.sign(message).to_bytes())
     }
     pub fn public(&self) -> [u8; 32] {
         self.0.verifying_key().to_bytes()
@@ -62,6 +71,13 @@ impl RootKey {
         let body = DeviceBody::new(self.public(), device_public, incarnation, purposes)?;
         bbsbox_credentials::issue(body, |message| self.0.sign(message).to_bytes())
     }
+}
+pub(crate) fn fresh_incarnation() -> [u8; 16] {
+    let mut incarnation = [0; 16];
+    while incarnation == [0; 16] {
+        OsRng.fill_bytes(&mut incarnation);
+    }
+    incarnation
 }
 impl DeviceKey {
     pub fn generate() -> Self {

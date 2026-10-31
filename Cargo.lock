@@ -57,6 +57,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "bbsbox-event-codec"
+version = "0.1.0"
+dependencies = [
+ "bbsbox-client-identity",
+ "bbsbox-credentials",
+ "bbsbox-identity",
+ "bbsbox-storage",
+ "ciborium",
+ "coset",
+ "ed25519-dalek",
+ "hex",
+ "serde_json",
+ "sha2 0.10.9",
+ "tempfile",
+]
+
+[[package]]
 name = "bbsbox-identity"
 version = "0.1.0"
 dependencies = [
@@ -64,6 +81,8 @@ dependencies = [
  "bbsbox-client-identity",
  "bbsbox-credentials",
  "bbsbox-storage",
+ "ciborium",
+ "coset",
  "ed25519-dalek",
  "http",
  "rand_core",

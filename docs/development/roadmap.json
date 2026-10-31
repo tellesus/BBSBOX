@@ -1059,7 +1059,9 @@
       "crates/storage/README.md",
       "crates/identity/README.md",
       "crates/credentials/README.md",
-      "client/identity/README.md"
+      "client/identity/README.md",
+      "crates/event-codec/README.md",
+      "docs/decisions/ADR-0002-wire-profiles.md"
     ]
   },
   "implementation_updated": "2026-10-31",

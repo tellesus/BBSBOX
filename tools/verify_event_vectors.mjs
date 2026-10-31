@@ -1,0 +1,31 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Independent codec/signature check, including exact unsigned/signed 64-bit integer boundaries.
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {createRequire} from 'node:module';
+import {createHash,createPrivateKey,createPublicKey,sign,verify} from 'node:crypto';
+const {Decoder,encode}=createRequire(new URL('../spikes/m00/web/package.json',import.meta.url))('cbor-x');
+const decoder=new Decoder({mapsAsObjects:false});
+const fixture=JSON.parse(readFileSync(new URL('../protocol/fixtures/event-v1.json',import.meta.url),'utf8'));
+const credential=JSON.parse(readFileSync(new URL('../crates/credentials/tests/fixtures/device-v2.json',import.meta.url),'utf8'));
+const b=value=>Buffer.from(value,'hex');
+const bytes=b(fixture.cose_hex);const body=b(fixture.body_hex);
+const [protectedBytes,unprotected,payload,signature]=decoder.decode(bytes);
+assert.equal(unprotected.size,0);
+const keyBytes=b(fixture.signer_public_hex);const subject=b(fixture.actor_subject_hex);const incarnation=b(fixture.incarnation_hex);
+assert.equal(decoder.decode(protectedBytes).get(1),-19);
+assert.deepEqual(Buffer.from(protectedBytes),Buffer.concat([Buffer.from([0xa2,1,0x32,4,0x58,0x20]),keyBytes]));
+assert.equal(fixture.credential_id,credential.credential_id);assert.equal(fixture.signer_public_hex,credential.device_public_hex);
+const personHash=createHash('sha256').update(Buffer.from('bbsbox.person/v1\0')).update(b(credential.root_public_hex)).digest();assert.deepEqual(subject,personHash);
+const streamInput=['bbsbox.stream/v1',1,subject,keyBytes,incarnation,'forum:fixture','public',1];
+const stream=createHash('sha256').update(encode(streamInput)).digest();assert.equal(stream.toString('hex'),fixture.stream_hex);
+const metadata=[fixture.format,1,0,'fixture.post',1,[1,subject,keyBytes,b(credential.credential_id.split(':')[1]),incarnation],stream,BigInt(fixture.sequence),b(fixture.previous_hex),'forum:fixture','public',1,fixture.dependencies_hex.map(value=>[1,b(value)]),BigInt(fixture.claimed_time),createHash('sha256').update(body).digest(),body.length,[[7,false,Buffer.from('annotation')]]];
+assert.deepEqual(Buffer.from(encode(metadata)),Buffer.from(payload));
+const decoded=decoder.decode(payload);assert.equal(decoded[7],18446744073709551615n);assert.equal(decoded[13],-9223372036854775808n);
+assert.deepEqual(Buffer.from(bytes),Buffer.concat([Buffer.from([0x84]),Buffer.from(encode(protectedBytes)),Buffer.from([0xa0]),Buffer.from(encode(payload)),Buffer.from(encode(signature))]));
+assert.equal(fixture.event_id,`event:${createHash('sha256').update(bytes).digest('hex')}`);
+const input=Buffer.from(encode(['Signature1',protectedBytes,Buffer.from(fixture.format),payload]));
+const key=createPublicKey({key:Buffer.concat([Buffer.from('302a300506032b6570032100','hex'),keyBytes]),format:'der',type:'spki'});assert(verify(null,input,key,signature));
+const privateKey=createPrivateKey({key:Buffer.concat([Buffer.from('302e020100300506032b657004220420','hex'),b(fixture.fixture_device_seed_hex)]),format:'der',type:'pkcs8'});assert.deepEqual(sign(null,input,privateKey),Buffer.from(signature));
+const changed=[...metadata];changed[9]='forum:other';assert(!verify(null,Buffer.from(encode(['Signature1',protectedBytes,Buffer.from(fixture.format),encode(changed)])),key,signature));
+process.stdout.write('PASS: independent event-v1 bytes, scopes, 64-bit boundaries, hashes and Ed25519 signature.\n');

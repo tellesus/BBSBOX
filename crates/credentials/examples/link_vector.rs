@@ -12,5 +12,5 @@ fn main() {
     let node_id = NodeId::from_public_key(&node.verifying_key().to_bytes()).unwrap();
     let challenge = Challenge::new(node_id, [12; 16], card.person_id(), [13; 32]).unwrap();
     let proof = prove(&challenge, &card, |message| root.sign(message).to_bytes()).unwrap();
-    println!("{}",serde_json::to_string_pretty(&serde_json::json!({"format":"bbsbox.account-link/v1","fixture_root_seed_hex":hex::encode([7;32]),"root_public_hex":hex::encode(card.root()),"node_public_hex":hex::encode(node.verifying_key().to_bytes()),"node_id":node_id.to_string(),"account_hex":hex::encode([12;16]),"nonce_hex":hex::encode([13;32]),"person_id":card.person_id().to_string(),"cose_hex":hex::encode(proof)})).unwrap());
+    println!("{}",serde_json::to_string_pretty(&serde_json::json!({"format":"bbsbox.account-link/v2","fixture_root_seed_hex":hex::encode([7;32]),"root_public_hex":hex::encode(card.root()),"node_public_hex":hex::encode(node.verifying_key().to_bytes()),"node_id":node_id.to_string(),"account_hex":hex::encode([12;16]),"nonce_hex":hex::encode([13;32]),"person_id":card.person_id().to_string(),"cose_hex":hex::encode(proof)})).unwrap());
 }

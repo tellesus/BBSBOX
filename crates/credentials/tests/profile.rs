@@ -3,7 +3,7 @@ use bbsbox_credentials::*;
 use coset::{CborSerializable, CoseSign1, HeaderBuilder, iana};
 use ed25519_dalek::{Signer, SigningKey};
 fn vector() -> serde_json::Value {
-    serde_json::from_str(include_str!("fixtures/device-v1.json")).unwrap()
+    serde_json::from_str(include_str!("fixtures/device-v2.json")).unwrap()
 }
 fn envelope() -> Vec<u8> {
     hex::decode(vector()["cose_hex"].as_str().unwrap()).unwrap()
@@ -44,7 +44,7 @@ fn public_vector_reproduces_exact_ids_bytes_and_signature() {
 #[test]
 fn root_link_vector_reproduces_exact_destination_bound_bytes() {
     let expected: serde_json::Value =
-        serde_json::from_str(include_str!("fixtures/link-v1.json")).unwrap();
+        serde_json::from_str(include_str!("fixtures/link-v2.json")).unwrap();
     let root = SigningKey::from_bytes(&[7; 32]);
     let node = SigningKey::from_bytes(&[9; 32]);
     let card = ContactCard::new(root.verifying_key().to_bytes()).unwrap();
@@ -60,6 +60,61 @@ fn root_link_vector_reproduces_exact_destination_bound_bytes() {
     })
     .unwrap();
     assert_eq!(hex::encode(proof), expected["cose_hex"].as_str().unwrap());
+}
+
+#[test]
+fn immutable_legacy_v1_records_verify_but_cannot_be_issued_again() {
+    let legacy: serde_json::Value =
+        serde_json::from_str(include_str!("fixtures/device-v1.json")).unwrap();
+    let encoded = hex::decode(legacy["cose_hex"].as_str().unwrap()).unwrap();
+    let credential = Credential::verify(&encoded).unwrap();
+    assert_eq!(credential.body().version(), 1);
+    assert_eq!(credential.encoded(), encoded);
+    assert_eq!(credential.id().to_string(), legacy["credential_id"]);
+    assert!(matches!(
+        issue(credential.body().clone(), |_| panic!(
+            "legacy issuance forbidden"
+        )),
+        Err(Error::UnsupportedVersion)
+    ));
+    let legacy: serde_json::Value =
+        serde_json::from_str(include_str!("fixtures/link-v1.json")).unwrap();
+    let encoded = hex::decode(legacy["cose_hex"].as_str().unwrap()).unwrap();
+    let cose = CoseSign1::from_slice(&encoded).unwrap();
+    let challenge =
+        bbsbox_credentials::linking::Challenge::from_encoded(cose.payload.as_ref().unwrap())
+            .unwrap();
+    let root = SigningKey::from_bytes(&[7; 32]);
+    let card = ContactCard::new(root.verifying_key().to_bytes()).unwrap();
+    bbsbox_credentials::linking::verify(&challenge, &card, &encoded).unwrap();
+    assert!(matches!(
+        bbsbox_credentials::linking::prove(&challenge, &card, |_| panic!(
+            "legacy issuance forbidden"
+        )),
+        Err(Error::UnsupportedVersion)
+    ));
+}
+
+#[test]
+fn current_profiles_reject_algorithm_downgrades_and_legacy_relabeling() {
+    let current = envelope();
+    let mut cose = CoseSign1::from_slice(&current).unwrap();
+    cose.protected.header.alg = Some(coset::Algorithm::Assigned(iana::Algorithm::EdDSA));
+    cose.protected.original_data = None;
+    assert!(matches!(
+        Credential::verify(&cose.to_vec().unwrap()),
+        Err(Error::NonCanonical)
+    ));
+    let legacy: serde_json::Value =
+        serde_json::from_str(include_str!("fixtures/device-v1.json")).unwrap();
+    let mut cose =
+        CoseSign1::from_slice(&hex::decode(legacy["cose_hex"].as_str().unwrap()).unwrap()).unwrap();
+    cose.protected.header.alg = Some(coset::Algorithm::Assigned(iana::Algorithm::Ed25519));
+    cose.protected.original_data = None;
+    assert!(matches!(
+        Credential::verify(&cose.to_vec().unwrap()),
+        Err(Error::NonCanonical)
+    ));
 }
 #[test]
 fn role_ids_and_public_cards_never_substitute_for_each_other() {
@@ -129,8 +184,8 @@ fn canonical_profile_rejects_unknown_headers_unprotected_data_and_nonminimal_pay
     let payload = cose.payload.as_mut().unwrap(); // Encode protocol integer 1 as nonminimal 0x18 0x01.
     let domain_size = DEVICE_DOMAIN.len();
     let version_offset = 1 + 2 + domain_size;
-    assert_eq!(payload[version_offset], 1);
-    payload.splice(version_offset..=version_offset, [0x18, 1]);
+    assert_eq!(payload[version_offset], 2);
+    payload.splice(version_offset..=version_offset, [0x18, 2]);
     assert!(matches!(
         Credential::verify(&cose.to_vec().unwrap()),
         Err(Error::NonCanonical)
@@ -169,7 +224,7 @@ fn weak_reused_keys_unknown_versions_and_zero_incarnations_cannot_enter_the_prof
     let mut cose = CoseSign1::from_slice(&envelope()).unwrap();
     let mut value: ciborium::value::Value =
         ciborium::de::from_reader(cose.payload.as_ref().unwrap().as_slice()).unwrap();
-    value.as_array_mut().unwrap()[1] = ciborium::value::Value::Integer(2.into());
+    value.as_array_mut().unwrap()[1] = ciborium::value::Value::Integer(3.into());
     let mut payload = Vec::new();
     ciborium::ser::into_writer(&value, &mut payload).unwrap();
     cose.payload = Some(payload);

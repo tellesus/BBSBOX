@@ -1,8 +1,8 @@
 # M04 — Signed event kernel and convergence
 
-Version 1.1.0 · 2026-10-25 · Locked development baseline · Product baseline 0.6.0.
+Brief revision 1.1.1 · Roadmap baseline 1.1.0 · 2026-10-31 · Product baseline 0.6.0.
 
-**State:** Approved for implementation under U19; unstarted. Runtime and hardware evidence remains pending.
+**State:** In progress under U22 after M02/M03 provider completion. A has local codec/authority vectors; B/C remain pending. Consume C01 v1.3.0/C02 v1.4.0.
 
 ## Read only this packet
 
@@ -23,9 +23,9 @@ Implement C02 with deterministic CBOR/COSE/Ed25519 candidate libraries, fixed si
 
 ## Ownership and interfaces
 
-Planned crates/event-core/ and protocol/fixtures/; raw events, stream heads, dependency staging, fork evidence and integration outcomes. Feature owners register kinds/reducers and relevance predicates.
+crates/event-codec/ implements A's pure signed-byte/authority boundaries; protocol/fixtures/ holds exact vectors. Planned crates/event-core/ owns B/C persistence, stream heads, staging, forks and integration outcomes. Features own reducers/relevance. See the [codec reference](../../../crates/event-codec/README.md).
 
-Paths above are planned implementation locations, not existing code. Consume the contracts in the reading packet; changes to them need affected-consumer updates. A disabled optional module retains its data and does not break unrelated local services.
+Codec authorization permits reduction; it does not imply persisted integration or credit. Consume listed contracts and update affected consumers together. Disabled modules retain data; unsupported events stay uncredited.
 
 ## Sequential work slices
 
@@ -41,7 +41,7 @@ Paths above are planned implementation locations, not existing code. Consume the
 
 ## Locked defaults and verification
 
-Deterministic CBOR, COSE_Sign1, Ed25519 and SHA-256 are selected; JSON remains debug rendering only. Streams are scoped by device, audience/resource and writer incarnation (C02), preventing private-predecessor dependencies. Set explicit maximum event/chunk sizes in the schema and fixtures before public format v1; a canonical encoder library must pass independent vectors. Unknown critical fields/versions cannot be applied or credited.
+Event v1 uses deterministic CBOR/COSE_Sign1, explicit Ed25519 (-19), SHA-256 IDs and detached bodies; JSON is debug-only. Limits: 4 KiB envelope, 64 KiB body, 32 sorted typed dependencies, 16 unique extensions (1,024 bytes each, still within envelope budget). Actor roles are device/node/forum-root/person-root; kind rules enforce roles/device purposes before causal resource policy. Required extensions need registered validation; optional annotations grant no authority. The independent Node vector covers exact bytes and 64-bit boundaries. B owns durable staging/fork/commitment behavior; unsupported semantics remain uncredited.
 
 ## Handoff
 

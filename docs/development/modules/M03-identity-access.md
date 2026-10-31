@@ -1,8 +1,8 @@
 # M03 — Identity, local accounts and permissions
 
-Brief revision 1.1.3 · Roadmap baseline 1.1.0 · 2026-10-31 · Product baseline 0.6.0.
+Brief revision 1.1.4 · Roadmap baseline 1.1.0 · 2026-10-31 · Product baseline 0.6.0.
 
-**State:** In progress, validating C under U22. A/B passed Windows/Linux; A–C have local crypto/account/recovery evidence. C Linux and consumer integration remain pending. Consume C01 v1.3.0/C02 v1.3.0.
+**State:** Complete as a provider under U22 after Windows/Linux A–C evidence. Consumer integration remains downstream. Consume C01 v1.3.0/C02 v1.4.0; new credential/link issuance uses profile v2, with immutable v1 verification.
 
 ## Read only this packet
 

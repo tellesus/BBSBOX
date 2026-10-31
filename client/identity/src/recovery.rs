@@ -68,6 +68,12 @@ impl RestoredIdentity {
     pub fn person_id(&self) -> PersonId {
         self.root.person_id()
     }
+    pub fn control_incarnation(&self) -> &[u8; 16] {
+        self.root.control_incarnation()
+    }
+    pub fn sign_current_control(&self, incarnation: &[u8; 16], message: &[u8]) -> Result<[u8; 64]> {
+        Ok(self.root.sign_current_control(incarnation, message)?)
+    }
     pub fn contact_card(&self) -> ContactCard {
         self.root.contact_card()
     }
@@ -224,7 +230,7 @@ impl Engine {
         let mut seed = Zeroizing::new([0; 32]);
         seed.copy_from_slice(&plaintext[..32]);
         Ok(RestoredIdentity {
-            root: RootKey(SigningKey::from_bytes(&seed)),
+            root: RootKey(SigningKey::from_bytes(&seed), crate::fresh_incarnation()),
             state: Zeroizing::new(plaintext[32..].to_vec()),
         })
     }

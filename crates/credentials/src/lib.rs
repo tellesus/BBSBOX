@@ -7,7 +7,21 @@ use sha2::{Digest, Sha256};
 use std::{fmt, str::FromStr};
 pub mod linking;
 
-pub const DEVICE_DOMAIN: &str = "bbsbox.device-credential/v1";
+pub const DEVICE_DOMAIN: &str = "bbsbox.device-credential/v2";
+fn device_domain(version: u8) -> &'static str {
+    if version == 1 {
+        "bbsbox.device-credential/v1"
+    } else {
+        DEVICE_DOMAIN
+    }
+}
+pub(crate) fn algorithm(version: u8) -> iana::Algorithm {
+    if version == 1 {
+        iana::Algorithm::EdDSA
+    } else {
+        iana::Algorithm::Ed25519
+    }
+}
 pub const MAX_CREDENTIAL_BYTES: usize = 512;
 pub type Result<T> = std::result::Result<T, Error>;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -22,6 +36,7 @@ pub enum Error {
     WrongPerson,
     PurposeDenied,
     WrongDestination,
+    StaleIncarnation,
 }
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -36,6 +51,7 @@ impl fmt::Display for Error {
             Self::WrongPerson => "credential belongs to another person",
             Self::PurposeDenied => "device credential does not authorize this purpose",
             Self::WrongDestination => "account-link challenge belongs to another destination",
+            Self::StaleIncarnation => "signing request uses a previous root writer incarnation",
         })
     }
 }
@@ -52,6 +68,9 @@ macro_rules! identity_id {
         #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
         pub struct $name([u8; 32]);
         impl $name {
+            pub fn from_digest(bytes: [u8; 32]) -> Self {
+                Self(bytes)
+            }
             pub fn from_public_key(public: &[u8; 32]) -> Result<Self> {
                 public_key(public)?;
                 let mut hash = Sha256::new();
@@ -127,6 +146,7 @@ impl Purposes {
 }
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DeviceBody {
+    version: u8,
     root: [u8; 32],
     device: [u8; 32],
     incarnation: [u8; 16],
@@ -148,6 +168,7 @@ impl DeviceBody {
             return Err(Error::Malformed);
         }
         Ok(Self {
+            version: 2,
             root,
             device,
             incarnation,
@@ -156,6 +177,9 @@ impl DeviceBody {
     }
     pub fn root(&self) -> &[u8; 32] {
         &self.root
+    }
+    pub fn version(&self) -> u8 {
+        self.version
     }
     pub fn device(&self) -> &[u8; 32] {
         &self.device
@@ -174,8 +198,8 @@ impl DeviceBody {
     }
     fn payload(&self) -> Result<Vec<u8>> {
         encode(&Value::Array(vec![
-            Value::Text(DEVICE_DOMAIN.into()),
-            Value::Integer(1.into()),
+            Value::Text(device_domain(self.version).into()),
+            Value::Integer(self.version.into()),
             Value::Bytes(self.root.to_vec()),
             Value::Bytes(self.device.to_vec()),
             Value::Bytes(self.incarnation.to_vec()),
@@ -185,11 +209,14 @@ impl DeviceBody {
     fn parse(payload: &[u8]) -> Result<Self> {
         let value: Value = ciborium::de::from_reader(payload).map_err(|_| Error::Malformed)?;
         let fields = value.as_array().ok_or(Error::Malformed)?;
-        if fields.len() != 6 || fields[0].as_text() != Some(DEVICE_DOMAIN) {
+        if fields.len() != 6 {
             return Err(Error::Malformed);
         }
-        version(&fields[1])?;
-        let body = Self::new(
+        let version = version(&fields[1])?;
+        if fields[0].as_text() != Some(device_domain(version)) {
+            return Err(Error::Malformed);
+        }
+        let mut body = Self::new(
             bytes(&fields[2])?,
             bytes(&fields[3])?,
             bytes(&fields[4])?,
@@ -198,6 +225,7 @@ impl DeviceBody {
                     .map_err(|_| Error::UnsupportedPurpose)?,
             )?,
         )?;
+        body.version = version;
         if body.payload()? != payload {
             return Err(Error::NonCanonical);
         }
@@ -217,17 +245,17 @@ fn bytes<const N: usize>(value: &Value) -> Result<[u8; N]> {
         .try_into()
         .map_err(|_| Error::Malformed)
 }
-fn version(value: &Value) -> Result<()> {
-    if value.as_integer().and_then(|n| u64::try_from(n).ok()) != Some(1) {
-        return Err(Error::UnsupportedVersion);
+fn version(value: &Value) -> Result<u8> {
+    match value.as_integer().and_then(|n| u8::try_from(n).ok()) {
+        Some(v @ (1 | 2)) => Ok(v),
+        _ => Err(Error::UnsupportedVersion),
     }
-    Ok(())
 }
 fn unsigned(body: &DeviceBody) -> Result<CoseSign1> {
     Ok(CoseSign1Builder::new()
         .protected(
             HeaderBuilder::new()
-                .algorithm(iana::Algorithm::EdDSA)
+                .algorithm(algorithm(body.version))
                 .key_id(body.person_id().bytes().to_vec())
                 .build(),
         )
@@ -237,6 +265,9 @@ fn unsigned(body: &DeviceBody) -> Result<CoseSign1> {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct CredentialId([u8; 32]);
 impl CredentialId {
+    pub fn from_bytes(bytes: [u8; 32]) -> Self {
+        Self(bytes)
+    }
     pub fn bytes(&self) -> &[u8; 32] {
         &self.0
     }
@@ -285,11 +316,15 @@ impl Credential {
             return Err(Error::NonCanonical);
         }
         let key = public_key(body.root())?;
-        cose.verify_signature(DEVICE_DOMAIN.as_bytes(), |signature, message| {
-            let signature = Signature::try_from(signature).map_err(|_| Error::InvalidSignature)?;
-            key.verify_strict(message, &signature)
-                .map_err(|_| Error::InvalidSignature)
-        })?;
+        cose.verify_signature(
+            device_domain(body.version).as_bytes(),
+            |signature, message| {
+                let signature =
+                    Signature::try_from(signature).map_err(|_| Error::InvalidSignature)?;
+                key.verify_strict(message, &signature)
+                    .map_err(|_| Error::InvalidSignature)
+            },
+        )?;
         Ok(Self {
             encoded: encoded.into(),
             body,
@@ -299,11 +334,16 @@ impl Credential {
 }
 /// Signing callback belongs to the client root-key holder. This crate stores no private material.
 pub fn issue(body: DeviceBody, sign: impl FnOnce(&[u8]) -> [u8; 64]) -> Result<Credential> {
+    if body.version != 2 {
+        return Err(Error::UnsupportedVersion);
+    }
     let unsigned = unsigned(&body)?;
     let signed = CoseSign1Builder::new()
         .protected(unsigned.protected.header)
         .payload(unsigned.payload.ok_or(Error::Malformed)?)
-        .create_signature(DEVICE_DOMAIN.as_bytes(), |message| sign(message).to_vec())
+        .create_signature(device_domain(body.version).as_bytes(), |message| {
+            sign(message).to_vec()
+        })
         .build()
         .to_vec()
         .map_err(|_| Error::Malformed)?;

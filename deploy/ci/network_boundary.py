@@ -18,7 +18,12 @@ import network_profile
 
 
 def run(*args, check=True):
-    return subprocess.run(args, capture_output=True, check=check, timeout=10)
+    result = subprocess.run(args, capture_output=True, timeout=10)
+    if check and result.returncode:
+        print(result.stdout.decode(errors='replace'), file=sys.stderr)
+        print(result.stderr.decode(errors='replace'), file=sys.stderr)
+        result.check_returncode()
+    return result
 
 
 def namespace(pid, *args, check=True): return run('nsenter', '--target', str(pid), '--net', *args, check=check)
@@ -117,7 +122,7 @@ def exercise(output):
             rules = output/'profile/bbsbox.nft'
             run('nft', '--check', '--file', str(rules)); run('nft', '--file', str(rules))
             capture = socket.socket(socket.AF_PACKET, socket.SOCK_RAW, socket.htons(3)); capture.bind(('bb-wan', 0)); capture.setblocking(False)
-            dns = start(['dnsmasq', '--no-daemon', '--conf-file='+str(output/'profile/dnsmasq.conf'), '--pid-file=', '--log-facility=-', '--user=root'], 'dnsmasq')
+            dns = start(['dnsmasq', '--no-daemon', '--conf-file='+str(output/'profile/dnsmasq.conf'), '--pid-file=', '--log-facility=-', '--log-queries', '--user=root'], 'dnsmasq')
             for _ in range(100):
                 if dns.poll() is not None: raise RuntimeError('Local DNS failed')
                 try:
@@ -156,6 +161,8 @@ def exercise(output):
         finally:
             for connection in held: connection.close()
     finally:
+        diagnostic = run('nft', '-j', 'list', 'ruleset', check=False)
+        (output/'final-rules.json').write_bytes(diagnostic.stdout)
         if capture: capture.close()
         for process in reversed(processes):
             if process.poll() is None: process.terminate()

@@ -49,6 +49,7 @@ def validate(profile):
                 raise ValueError('Local interface subnets must not overlap')
             networks.append(address.network)
     if not clients: raise ValueError('At least one local client interface is required')
+    if len(addresses)>8: raise ValueError('At most eight advertised local addresses are supported')
     return profile
 
 
@@ -82,7 +83,7 @@ def render(profile):
     for name, rules in [('input', inbound), ('output', outbound), ('forward', [])]:
         chains.append(f' chain {name} {{\n  type filter hook {name} priority filter; policy drop;\n' + ''.join(f'  {rule}\n' for rule in rules) + '  counter drop\n }\n')
     files['bbsbox.nft'] = '# Prepared for an isolated appliance. Load before bringing up external interfaces.\ntable inet bbsbox_boundary {\n' + ''.join(chains) + '}\n'
-    files['dnsmasq.conf'] = '# Start with --conf-file pointing only to this file. No upstream or extra conf-dir.\nno-resolv\nno-poll\nno-hosts\nbind-interfaces\nlocal=/#/\nlisten-address=' + ','.join(listeners) + '\nhost-record=' + hostname + ',' + ','.join(hosts) + '\n'
+    files['dnsmasq.conf'] = '# Start with --conf-file pointing only to this file. No upstream or extra conf-dir.\nno-resolv\nno-poll\nno-hosts\nbind-interfaces\nlocal=/home.arpa/\naddress=/#/\nlisten-address=' + ','.join(listeners) + '\n' + ''.join('host-record='+hostname+','+host+'\n' for host in hosts)
     files['90-bbsbox-local.conf'] = 'net.ipv4.ip_forward=0\nnet.ipv6.conf.all.forwarding=0\nnet.ipv6.conf.default.forwarding=0\nnet.ipv6.conf.all.accept_ra=0\nnet.ipv6.conf.default.accept_ra=0\nnet.ipv6.conf.all.autoconf=0\nnet.ipv6.conf.default.autoconf=0\n'
     binds = [f'[{ip}]:{port}' if ':' in ip else f'{ip}:{port}' for ip in hosts]
     files['origins.json'] = json.dumps(dict(bind=binds[0], additional_binds=binds[1:], origin=f'https://{hostname}:{port}', additional_origins=['https://'+bind for bind in binds]), indent=2)+'\n'

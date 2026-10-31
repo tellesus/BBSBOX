@@ -93,6 +93,7 @@ def tls_material(directory, node_id, group):
     hostname = f'bbsbox-{short}.home.arpa'
     directory.mkdir(mode=0o750)
     os.chown(directory, 0, group)
+    directory.chmod(0o750)
     with tempfile.TemporaryDirectory(prefix='tls-prepare-', dir=directory.parent) as temporary:
         work = Path(temporary).resolve()
         if not work.is_relative_to(directory.parent.resolve()):
@@ -151,6 +152,9 @@ def install(bundle, name, enable=False):
         if initialized.get('format')!='bbsbox.node-init/v1' or not re.fullmatch(r'node:[a-f0-9]{64}', node_id):
             raise ValueError('Unexpected initialization response')
         hostname, fingerprint = tls_material(layout.config/'tls', node_id, gid)
+        for needed in [config_path,layout.config/'tls/server.pem',layout.config/'tls/server-key.pem']:
+            run(['runuser','-u','bbsbox','--','/usr/bin/test','-r',str(needed)])
+        run(['runuser','-u','bbsbox','--','/usr/bin/test','!','-r',str(layout.config/'tls/ca-key.pem')])
         layout.unit.parent.mkdir(parents=True, exist_ok=True)
         write_new(layout.unit, (release/'bbsbox.service').read_bytes(), 0o644, 0, 0)
         (layout.application/'current').symlink_to(release, target_is_directory=True)

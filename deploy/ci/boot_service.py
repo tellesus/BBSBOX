@@ -101,7 +101,7 @@ def boot(root,output):
     for attempt in range(2):
         log=output.parent/f'debian-boot-{attempt}.log'
         with log.open('wb') as stream:
-            process=subprocess.Popen(['systemd-nspawn','--settings=no','--register=no','--private-users=no','--directory',str(root),'--boot','--private-network','--console=pipe','--resolv-conf=off','--link-journal=no','--machine=bbsbox-ci'],stdout=stream,stderr=subprocess.STDOUT,start_new_session=True)
+            process=subprocess.Popen(['systemd-nspawn','--settings=no','--register=no','--private-users=no','--directory',str(root),'--boot','--private-network','--console=read-only','--resolv-conf=off','--link-journal=no',f'--machine=bbsbox-ci-{attempt}-{os.getpid()}','systemd.log_target=console','systemd.show_status=yes'],stdout=stream,stderr=subprocess.STDOUT,start_new_session=True)
             pid=None;pid_fd=None
             try:
                 pid,info=wait_ready(process,root)
@@ -120,11 +120,18 @@ def boot(root,output):
                     pid,ipv6=wait_ready(process,root);assert ipv6['node_id']==info['node_id'];service_identity(pid,root)
                 cases.append(dict(boot=attempt+1,actual_unit=True,unprivileged=True,https=True,restart_identity_preserved=True,isolated_loopback_only=True))
             except Exception:
+                pid=pid or leader(root)
                 if pid and private_process(pid,root):
-                    diagnostic=enter(pid,root,['/usr/bin/journalctl','--no-pager','-n','80','-u','bbsbox.service'],False)
-                    print(diagnostic.stdout.decode(errors='replace'),file=sys.stderr)
+                    try:
+                        diagnostic=enter(pid,root,['/usr/bin/journalctl','--no-pager','-n','80','-u','bbsbox.service'],False)
+                        print(diagnostic.stdout.decode(errors='replace'),file=sys.stderr)
+                    except (OSError,subprocess.SubprocessError) as error:print(f'Guest journal unavailable: {error}',file=sys.stderr)
                 raise
             finally:
+                pid=pid or leader(root)
+                if pid_fd is None and pid and private_process(pid,root):
+                    try:pid_fd=os.pidfd_open(pid)
+                    except ProcessLookupError:pass
                 # Terminate only our unreaped nspawn child. Its documented --boot behavior
                 # requests orderly guest shutdown; never issue a host poweroff command.
                 if process.poll() is None:process.terminate()

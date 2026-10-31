@@ -18,6 +18,8 @@ The installer verifies the exact payload inventory, creates an unprivileged `bbs
 
 Each node gets its own local CA and a leaf for localhost, both loopback IPs and a node-ID-suffixed name under [home.arpa](https://www.rfc-editor.org/rfc/rfc8375.html). The CA private key is root-only; the service can read its leaf key and configuration but cannot replace them. The resulting public CA fingerprint/installation metadata is recorded locally. No trust store or peer trust is automatically installed. Local DNS/address cards and visitor CA enrollment remain M01 B work.
 
+Before enabling the unit, installation checks those read permissions as the actual service account, including denial of CA-private-key access. Directory modes are set explicitly after the private provisioning umask.
+
 ## Actual Debian service verification
 
 [The CI image recipe](ci/Dockerfile) prepares dependencies from the official Debian trixie image on a developer/build network. Its installation instruction then runs with networking disabled. The image is a developer test tool; production does not require Docker or a registry.

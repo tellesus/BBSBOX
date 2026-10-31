@@ -1,6 +1,6 @@
 # C02 — Identity, signed events and authorization
 
-Version 1.4.0 · Accepted for implementation · Owners M03 (identity), M04 (events).
+Version 1.4.1 · Accepted for implementation · Owners M03 (identity), M04 (events).
 
 ## Identity and credentials
 
@@ -24,6 +24,8 @@ Each stream binds actor role/subject/key, resource/audience/distribution and wri
 
 `integrate(event, provenance) -> rejected(reason) | unsupported(version) | staged(missing) | duplicate(original_result) | accepted(relevance)`.
 
+Duplicates return original accepted receipts; pending/unsupported/rejected inputs can be reassessed.
+
 Acceptance atomically records canonical identity/authority, projection effect, receipt provenance and earned credit. Relevant means a new authorized message or meaningful module-defined state/control transition; obsolete no-op edits and merely stored dependencies do not qualify. Hosts validate encrypted outer admission/governance; clients validate/decrypt inner content. M13 must prove exact encrypted admission before encrypted deliveries earn credit.
 
 Equal known valid events/policies yield equal replicated content/control projections regardless of arrival order. Receiver-local receipts/credit intentionally depend on arrival history. Conflicts are domain-specific: concurrent replies coexist; competing governance changes never select a wall-clock winner. Stable post IDs and immutable revision/event IDs support complaints.
@@ -32,4 +34,4 @@ Suppression may withhold a body while an authorized same-scope consumer receives
 
 ## Version boundary
 
-Unknown required event semantics are retained as unsupported within quota and never applied/credited. Optional extension fields cannot silently alter authority. C03 negotiates supported versions; old peers keep working with compatible kinds. Normative schema, algorithm identifiers, limits, test vectors, and revocation/conflict rules must be finalized in M04/M13 ADRs. [CBOR](https://www.rfc-editor.org/rfc/rfc8949.html), [COSE](https://www.rfc-editor.org/rfc/rfc9052.html).
+Unknown required event semantics remain unsupported within quota, unapplied/uncredited. Optional extensions cannot silently alter authority. C03 negotiates versions. M04 fixes v1 byte/limit vectors; features prove causal conflict rules and M13 finalizes encrypted admission/revocation. [CBOR](https://www.rfc-editor.org/rfc/rfc8949.html), [COSE](https://www.rfc-editor.org/rfc/rfc9052.html).

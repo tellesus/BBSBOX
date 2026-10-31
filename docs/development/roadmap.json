@@ -74,7 +74,8 @@
       "gate": "G1",
       "prerequisite_evidence": {
         "M00": "G0-local"
-      }
+      },
+      "execution_status": "unstarted"
     },
     {
       "id": "M02",
@@ -104,7 +105,7 @@
       "prerequisite_evidence": {
         "M00": "G0-local"
       },
-      "execution_status": "in_progress"
+      "execution_status": "complete"
     },
     {
       "id": "M03",
@@ -140,7 +141,8 @@
       "prerequisite_evidence": {
         "M00": "G0-local",
         "M02": "completed provider interfaces"
-      }
+      },
+      "execution_status": "complete"
     },
     {
       "id": "M04",
@@ -166,7 +168,8 @@
         "T04",
         "T05"
       ],
-      "gate": "G1"
+      "gate": "G1",
+      "execution_status": "in_progress"
     },
     {
       "id": "M05",
@@ -192,7 +195,8 @@
         "T03",
         "T07"
       ],
-      "gate": "G1"
+      "gate": "G1",
+      "execution_status": "unstarted"
     },
     {
       "id": "M06",
@@ -219,7 +223,8 @@
         "T05",
         "T09"
       ],
-      "gate": "G1"
+      "gate": "G1",
+      "execution_status": "unstarted"
     },
     {
       "id": "M07",
@@ -247,7 +252,8 @@
         "T11",
         "T12"
       ],
-      "gate": "G1"
+      "gate": "G1",
+      "execution_status": "unstarted"
     },
     {
       "id": "M08",
@@ -274,7 +280,8 @@
       "decisions": [
         "T09"
       ],
-      "gate": "G1"
+      "gate": "G1",
+      "execution_status": "unstarted"
     },
     {
       "id": "M09",
@@ -300,7 +307,8 @@
         "T09",
         "T10"
       ],
-      "gate": "G1"
+      "gate": "G1",
+      "execution_status": "unstarted"
     },
     {
       "id": "M10",
@@ -325,7 +333,8 @@
         "T02",
         "T09"
       ],
-      "gate": "G1"
+      "gate": "G1",
+      "execution_status": "unstarted"
     },
     {
       "id": "M11",
@@ -358,7 +367,8 @@
       "decisions": [
         "T10"
       ],
-      "gate": "G1"
+      "gate": "G1",
+      "execution_status": "unstarted"
     },
     {
       "id": "M12",
@@ -391,7 +401,8 @@
         "T12",
         "T14"
       ],
-      "gate": "G1"
+      "gate": "G1",
+      "execution_status": "unstarted"
     },
     {
       "id": "M13",
@@ -427,7 +438,8 @@
       "gate": "G2",
       "prerequisite_evidence": {
         "M00": "G0-local plus private-client/MLS evidence for G2"
-      }
+      },
+      "execution_status": "unstarted"
     },
     {
       "id": "M14",
@@ -453,7 +465,8 @@
         "T09",
         "T13"
       ],
-      "gate": "G2"
+      "gate": "G2",
+      "execution_status": "unstarted"
     },
     {
       "id": "M15",
@@ -492,7 +505,8 @@
         "T05",
         "T06"
       ],
-      "gate": "G3"
+      "gate": "G3",
+      "execution_status": "unstarted"
     },
     {
       "id": "M16",
@@ -520,7 +534,8 @@
         "T04",
         "T11"
       ],
-      "gate": "G3"
+      "gate": "G3",
+      "execution_status": "unstarted"
     },
     {
       "id": "M17",
@@ -544,7 +559,8 @@
       "decisions": [
         "T13"
       ],
-      "gate": "G3"
+      "gate": "G3",
+      "execution_status": "unstarted"
     },
     {
       "id": "M18",
@@ -572,7 +588,8 @@
       "decisions": [
         "T10"
       ],
-      "gate": "G4"
+      "gate": "G4",
+      "execution_status": "unstarted"
     },
     {
       "id": "M19",
@@ -632,7 +649,8 @@
         "T12",
         "T14"
       ],
-      "gate": "G4"
+      "gate": "G4",
+      "execution_status": "unstarted"
     },
     {
       "id": "O01",
@@ -660,7 +678,8 @@
       "decisions": [
         "T09"
       ],
-      "gate": "G5"
+      "gate": "G5",
+      "execution_status": "unstarted"
     },
     {
       "id": "O02",
@@ -688,7 +707,8 @@
         "T06",
         "T07"
       ],
-      "gate": "G5"
+      "gate": "G5",
+      "execution_status": "unstarted"
     },
     {
       "id": "O03",
@@ -715,7 +735,8 @@
       "decisions": [
         "T09"
       ],
-      "gate": "G5"
+      "gate": "G5",
+      "execution_status": "unstarted"
     },
     {
       "id": "O04",
@@ -741,7 +762,8 @@
       "decisions": [
         "T09"
       ],
-      "gate": "G5"
+      "gate": "G5",
+      "execution_status": "unstarted"
     },
     {
       "id": "O05",
@@ -768,7 +790,8 @@
         "T05",
         "T09"
       ],
-      "gate": "G5"
+      "gate": "G5",
+      "execution_status": "unstarted"
     },
     {
       "id": "O06",
@@ -794,7 +817,8 @@
         "T05",
         "T09"
       ],
-      "gate": "G5"
+      "gate": "G5",
+      "execution_status": "unstarted"
     },
     {
       "id": "O07",
@@ -821,7 +845,8 @@
         "T09",
         "T13"
       ],
-      "gate": "G5"
+      "gate": "G5",
+      "execution_status": "unstarted"
     },
     {
       "id": "O08",
@@ -848,7 +873,8 @@
         "T01",
         "T04"
       ],
-      "gate": "G5"
+      "gate": "G5",
+      "execution_status": "unstarted"
     },
     {
       "id": "O09",
@@ -876,7 +902,8 @@
         "T07",
         "T09"
       ],
-      "gate": "G5"
+      "gate": "G5",
+      "execution_status": "unstarted"
     },
     {
       "id": "O10",
@@ -900,7 +927,8 @@
       "decisions": [
         "T10"
       ],
-      "gate": "G5"
+      "gate": "G5",
+      "execution_status": "unstarted"
     },
     {
       "id": "O11",
@@ -924,7 +952,8 @@
       "decisions": [
         "T10"
       ],
-      "gate": "G5"
+      "gate": "G5",
+      "execution_status": "unstarted"
     },
     {
       "id": "O12",
@@ -956,7 +985,8 @@
         "T10",
         "T11"
       ],
-      "gate": "G5"
+      "gate": "G5",
+      "execution_status": "unstarted"
     }
   ],
   "execution_order": [

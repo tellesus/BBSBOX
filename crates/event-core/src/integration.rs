@@ -34,6 +34,7 @@ pub enum Integration {
     Rejected(String),
     MissingEvent,
     RepairPending,
+    Replayed,
 }
 
 /// Compiled feature adapter. Its SQL owns projections, causal rules and relevance. All callbacks
@@ -41,14 +42,14 @@ pub enum Integration {
 pub trait Module {
     fn id(&self) -> &str;
     fn registry(&self) -> &Registry;
-    fn action(&self, connection: &Connection, event: &CompleteEvent) -> Decision;
+    fn action(&self, connection: &Connection, event: &CompleteEvent) -> Result<Decision>;
     fn extension(
         &self,
         _connection: &Connection,
         _event: &CompleteEvent,
         _extension: &Extension,
-    ) -> Decision {
-        Decision::Deny("extension_handler_missing")
+    ) -> Result<Decision> {
+        Ok(Decision::Deny("extension_handler_missing"))
     }
     /// Required for blob scope/presence and any feature-specific dependency admission.
     fn dependency(
@@ -56,7 +57,7 @@ pub trait Module {
         connection: &Connection,
         event: &CompleteEvent,
         dependency: Dependency,
-    ) -> Decision;
+    ) -> Result<Decision>;
     /// Default denies cross-scope references. An override may admit separately authorized control
     /// proofs only; never hidden content. It sees the signed commitment, without fetching the body.
     fn cross_scope_control(
@@ -64,8 +65,8 @@ pub trait Module {
         _connection: &Connection,
         _event: &CompleteEvent,
         _proof: &Commitment,
-    ) -> bool {
-        false
+    ) -> Result<bool> {
+        Ok(false)
     }
     /// True only if this accepted event still supplies valid domain state under current causal policy.
     fn dependency_effective(&self, connection: &Connection, id: EventId) -> Result<bool>;
@@ -84,16 +85,33 @@ pub trait Module {
         Ok(())
     }
 }
+/// A feature-owned fresh projection generation. Reads/causal queries must refer to that same
+/// generation; publication checks the captured event revision plus the feature's policy revision.
+pub trait ReplayModule: Module {
+    fn project(&self, tx: &Transaction<'_>, event: &CompleteEvent) -> Result<()>;
+}
 struct Policy<'a> {
     tx: &'a Connection,
     module: &'a dyn Module,
+    error: std::cell::RefCell<Option<Error>>,
 }
 impl Authority for Policy<'_> {
     fn action(&self, event: &CompleteEvent) -> Decision {
-        self.module.action(self.tx, event)
+        self.capture(self.module.action(self.tx, event))
     }
     fn extension(&self, event: &CompleteEvent, extension: &Extension) -> Decision {
-        self.module.extension(self.tx, event, extension)
+        self.capture(self.module.extension(self.tx, event, extension))
+    }
+}
+impl Policy<'_> {
+    fn capture(&self, result: Result<Decision>) -> Decision {
+        match result {
+            Ok(decision) => decision,
+            Err(error) => {
+                *self.error.borrow_mut() = Some(error);
+                Decision::Deny("policy_unavailable")
+            }
+        }
     }
 }
 fn validate(module: &dyn Module) -> Result<()> {
@@ -249,6 +267,101 @@ pub fn integrate(
         }
         return Ok(Integration::Duplicate(old));
     }
+    with_authorized(tx, id, module, resolver, |tx, event| {
+        let relevance = module.reduce(tx, event)?;
+        let delivery = first_body_delivery(tx, id)?.ok_or(Error::CorruptRecord)?;
+        tx.execute(
+            "INSERT INTO events_receipts VALUES(?1,?2,?3,?4,?5)",
+            params![
+                id.bytes().as_slice(),
+                module.id(),
+                relevance as u8,
+                delivery.source,
+                delivery.transfer
+            ],
+        )?;
+        if relevance == Relevance::Relevant {
+            module.relevant(tx, event, &delivery)?;
+        }
+        // Accepted history moves out of the bounded pending intake budget, never out of disk accounting.
+        let charged:Option<i64>=tx.query_row("SELECT length(envelope)+coalesce(length(body),0) FROM events_raw WHERE id=?1 AND charged=1",[id.bytes().as_slice()],|r|r.get(0)).optional()?;
+        if let Some(bytes) = charged {
+            tx.execute(
+                "UPDATE events_budget SET bytes=bytes-?1 WHERE singleton=1",
+                [bytes],
+            )?;
+            tx.execute(
+                "UPDATE events_raw SET charged=0 WHERE id=?1",
+                [id.bytes().as_slice()],
+            )?;
+        }
+        crate::bump_revision(tx)?;
+        Ok(Integration::Accepted(Receipt {
+            module: module.id().into(),
+            relevance,
+            delivery,
+        }))
+    })
+}
+
+/// Rebuild one previously accepted event without rewriting its receipt, pending charge or credit.
+/// Recheck current known valid bytes/authority/dependencies; callers repeat bounded causal passes
+/// into a fresh feature generation and atomically publish only after require_revision succeeds.
+pub fn replay(
+    tx: &Transaction<'_>,
+    id: EventId,
+    module: &dyn ReplayModule,
+    resolver: &dyn Resolver,
+) -> Result<Integration> {
+    validate(module)?;
+    if !synchronize_forks(tx, module)? {
+        return Ok(Integration::RepairPending);
+    }
+    let Some(old) = receipt(tx, id)? else {
+        return Ok(Integration::MissingEvent);
+    };
+    if old.module != module.id() {
+        return Err(Error::WrongModule);
+    }
+    with_authorized(tx, id, module, resolver, |tx, event| {
+        module.project(tx, event)?;
+        Ok(Integration::Replayed)
+    })
+}
+
+pub fn accepted(
+    connection: &Connection,
+    module: &str,
+    after: Option<EventId>,
+    limit: usize,
+) -> Result<Vec<EventId>> {
+    if !valid_token(module) {
+        return Err(Error::WrongModule);
+    }
+    if limit == 0 || limit > MAX_BATCH {
+        return Err(Error::InvalidLimit);
+    }
+    let mut statement=connection.prepare("SELECT event_id FROM events_receipts WHERE module=?1 AND (?2 IS NULL OR event_id>?2) ORDER BY event_id LIMIT ?3")?;
+    let rows = statement
+        .query_map(
+            params![
+                module,
+                after.as_ref().map(|id| id.bytes().as_slice()),
+                limit as i64
+            ],
+            |r| r.get::<_, Vec<u8>>(0),
+        )?
+        .collect::<std::result::Result<Vec<_>, _>>()?;
+    rows.iter().map(|bytes| event_id(bytes)).collect()
+}
+
+fn with_authorized(
+    tx: &Transaction<'_>,
+    id: EventId,
+    module: &dyn Module,
+    resolver: &dyn Resolver,
+    work: impl FnOnce(&Transaction<'_>, &CompleteEvent) -> Result<Integration>,
+) -> Result<Integration> {
     match readiness(tx, id)? {
         None => return Ok(Integration::MissingEvent),
         Some(Readiness::Unsupported) => return Ok(Integration::Unsupported),
@@ -265,7 +378,16 @@ pub fn integrate(
         Some(Readiness::Ready) => (),
     }
     let event = complete(tx, id, resolver)?.ok_or(Error::CorruptRecord)?;
-    match module.registry().authorize(&event, &Policy { tx, module }) {
+    let policy = Policy {
+        tx,
+        module,
+        error: Default::default(),
+    };
+    let authorized = module.registry().authorize(&event, &policy);
+    if let Some(error) = policy.error.into_inner() {
+        return Err(error);
+    }
+    match authorized {
         Outcome::Authorized => (),
         Outcome::Denied(reason) => return Ok(Integration::Rejected(reason.into())),
         Outcome::Missing(deps) => return Ok(missing(deps)),
@@ -285,7 +407,7 @@ pub fn integrate(
                     Err(error) => return Err(error),
                 };
                 if proof.metadata().scope != event.metadata().scope
-                    && !module.cross_scope_control(tx, &event, &proof)
+                    && !module.cross_scope_control(tx, &event, &proof)?
                 {
                     return Ok(Integration::Rejected(
                         "cross_scope_content_dependency".into(),
@@ -317,45 +439,14 @@ pub fn integrate(
             }
             DependencyKind::Blob => (), // Module must check existence AND resource visibility below.
         }
-        if let Some(outcome) = decision(module.dependency(tx, &event, *dependency)) {
+        if let Some(outcome) = decision(module.dependency(tx, &event, *dependency)?) {
             return Ok(outcome);
         }
     }
     if !absent.is_empty() {
         return Ok(missing(absent));
     }
-    let relevance = module.reduce(tx, &event)?;
-    let delivery = first_body_delivery(tx, id)?.ok_or(Error::CorruptRecord)?;
-    tx.execute(
-        "INSERT INTO events_receipts VALUES(?1,?2,?3,?4,?5)",
-        params![
-            id.bytes().as_slice(),
-            module.id(),
-            relevance as u8,
-            delivery.source,
-            delivery.transfer
-        ],
-    )?;
-    if relevance == Relevance::Relevant {
-        module.relevant(tx, &event, &delivery)?;
-    }
-    // Accepted history moves out of the bounded pending intake budget, never out of disk accounting.
-    let charged:Option<i64>=tx.query_row("SELECT length(envelope)+coalesce(length(body),0) FROM events_raw WHERE id=?1 AND charged=1",[id.bytes().as_slice()],|r|r.get(0)).optional()?;
-    if let Some(bytes) = charged {
-        tx.execute(
-            "UPDATE events_budget SET bytes=bytes-?1 WHERE singleton=1",
-            [bytes],
-        )?;
-        tx.execute(
-            "UPDATE events_raw SET charged=0 WHERE id=?1",
-            [id.bytes().as_slice()],
-        )?;
-    }
-    Ok(Integration::Accepted(Receipt {
-        module: module.id().into(),
-        relevance,
-        delivery,
-    }))
+    work(tx, &event)
 }
 
 pub fn complete(

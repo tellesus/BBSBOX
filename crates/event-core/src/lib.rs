@@ -26,6 +26,7 @@ pub enum Error {
     ForkedStream,
     StreamGap,
     CounterExhausted,
+    RevisionChanged,
 }
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -60,6 +61,11 @@ pub fn migrations() -> Vec<Migration> {
             module: "events",
             version: 2,
             sql: include_str!("integration.sql"),
+        },
+        Migration {
+            module: "events",
+            version: 3,
+            sql: include_str!("replay.sql"),
         },
     ]
 }
@@ -184,6 +190,7 @@ impl Inbox {
         delivery: &Delivery,
         resolver: &dyn Resolver,
     ) -> Result<Intake> {
+        let before = tx.total_changes();
         delivery.validate()?;
         // Unknown structural versions remain opaque and bounded; never bind their claimed actor.
         if encoded.len() > codec::MAX_ENVELOPE {
@@ -244,6 +251,9 @@ impl Inbox {
             bind(tx, signed, resolver)?;
         }
         connect(tx, id)?;
+        if tx.total_changes() != before {
+            bump_revision(tx)?;
+        }
         Ok(Intake {
             id,
             duplicate: existed && !adds_body,
@@ -258,6 +268,7 @@ impl Inbox {
         limit: usize,
         resolver: &dyn Resolver,
     ) -> Result<Batch> {
+        let before = tx.total_changes();
         if limit == 0 || limit > MAX_BATCH {
             return Err(Error::InvalidLimit);
         }
@@ -278,6 +289,9 @@ impl Inbox {
             if readiness(tx, id)? != was {
                 changed += 1;
             }
+        }
+        if tx.total_changes() != before {
+            bump_revision(tx)?;
         }
         Ok(Batch {
             visited: rows.len(),
@@ -391,10 +405,12 @@ fn connect(tx: &Transaction<'_>, id: EventId) -> Result<()> {
     } else {
         2
     };
-    tx.execute(
-        "UPDATE events_links SET connected=?2 WHERE id=?1",
-        params![id.bytes().as_slice(), next],
-    )?;
+    if next != connected {
+        tx.execute(
+            "UPDATE events_links SET connected=?2 WHERE id=?1",
+            params![id.bytes().as_slice(), next],
+        )?;
+    }
     Ok(())
 }
 
@@ -546,4 +562,29 @@ pub fn inventory(
             })
         })
         .collect()
+}
+
+/// Intake/identity-link/chain/acceptance revision for safe multi-transaction projection rebuilds.
+/// A feature must additionally fence its own policy/version revision when publishing a new view.
+pub fn revision(connection: &Connection) -> Result<u64> {
+    let value: i64 = connection.query_row(
+        "SELECT revision FROM events_budget WHERE singleton=1",
+        [],
+        |r| r.get(0),
+    )?;
+    u64::try_from(value).map_err(|_| Error::CorruptRecord)
+}
+pub fn require_revision(connection: &Connection, expected: u64) -> Result<()> {
+    if revision(connection)? == expected {
+        Ok(())
+    } else {
+        Err(Error::RevisionChanged)
+    }
+}
+fn bump_revision(tx: &Transaction<'_>) -> Result<()> {
+    tx.execute(
+        "UPDATE events_budget SET revision=revision+1 WHERE singleton=1",
+        [],
+    )?;
+    Ok(())
 }

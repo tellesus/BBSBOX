@@ -1,8 +1,8 @@
 # M04 — Signed event kernel and convergence
 
-Brief revision 1.1.3 · Roadmap baseline 1.1.0 · 2026-10-31 · Product baseline 0.6.0.
+Brief revision 1.1.4 · Roadmap baseline 1.1.0 · 2026-10-31 · Product baseline 0.6.0.
 
-**State:** In progress under U22 after M02/M03 provider completion. A/inbox passed local/Linux checks. B's semantic integration/authoring has local evidence; C remains pending. Consume C01 v1.3.0/C02 v1.4.0.
+**State:** In progress under U22 after M02/M03 provider completion. A/B passed local/Linux checks. C has 33 local event-core checks, including all 120 arrival orders; Linux confirmation is pending. Consume C01 v1.3.0/C02 v1.4.1.
 
 ## Read only this packet
 
@@ -30,8 +30,8 @@ Codec authorization permits reduction; it does not imply persisted integration o
 ## Sequential work slices
 
 1. A: encoder/decoder/signature/authority vectors and size limits.
-2. B: durable staging, duplicate handling and fork isolation. Local evidence covers typed dependencies, reducer/result/provenance transactions, module-owned late-fork invalidation and atomic local authoring. Linux confirmation pending for this refinement.
-3. C: deterministic replay plus extension/version negotiation fixtures.
+2. B: durable staging, duplicate handling and fork isolation. Local evidence covers typed dependencies, reducer/result/provenance transactions, module-owned late-fork invalidation and atomic local authoring. Linux confirmation passed.
+3. C: deterministic replay plus extension/version negotiation fixtures. Local proof includes immutable edits/tombstones, concurrent replies/edits, fresh-generation publication fences and receipt-preserving rebuilds. Local proof includes immutable edits/tombstones, concurrent replies/edits, fresh-generation publication fences and receipt-preserving rebuilds.
 
 ## Completion evidence
 

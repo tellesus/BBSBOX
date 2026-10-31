@@ -1,6 +1,6 @@
 # M04 — durable event inbox
 
-Implementation reference for [M04](../../docs/development/modules/M04-signed-events.md), [C01](../../docs/development/contracts/C01-storage-runtime.md) and [C02](../../docs/development/contracts/C02-identity-events.md). The roadmap and current user instructions remain canon. A/B now have local evidence; C's domain replay/convergence evidence remains pending.
+Implementation reference for [M04](../../docs/development/modules/M04-signed-events.md), [C01](../../docs/development/contracts/C01-storage-runtime.md) and [C02](../../docs/development/contracts/C02-identity-events.md). The roadmap and current user instructions remain canon. A/B have local/Linux evidence; C's local domain replay/convergence proof awaits Linux confirmation.
 
 ## Retained bytes and provenance
 
@@ -24,15 +24,17 @@ Two authenticated hashes at one stream position preserve both raw envelopes and 
 
 ## Evidence and remaining work
 
-Twenty-five integration tests cover reopen/deduplication, first-body provenance, corrupt-body rejection, proof arrival, reversed histories, suppressed-body continuity, scope/sequence violations, late forks, invalid-delegation isolation, opaque future profiles, quota/lookup rollback, bounded scans, full-width positions and range pagination. They also cover the semantic/authoring APIs below with the real M02 writer/database and M03 public resolver/node signer. M04 A's independent signature vectors remain separate.
+Thirty-three integration tests cover reopen/deduplication, first-body provenance, corrupt-body rejection, proof arrival, reversed histories, suppressed-body continuity, scope/sequence violations, late forks, invalid-delegation isolation, opaque future profiles, quota/lookup rollback, bounded scans, full-width positions and range pagination. They also cover the semantic/authoring/replay APIs with the real M02 writer/database and M03 public resolver/node signer. M04 A's independent signature vectors remain separate.
 
-Next: C, proving arrival-order convergence, immutable edits/tombstones and unsupported semantic negotiation with domain reducer fixtures. The provider is not yet complete and no HTTP/private-forum/federation integration is claimed.
+Local replay evidence is described below. Linux confirmation is pending before provider completion; no HTTP/private-forum/federation integration is claimed.
 
 ## Atomic semantic integration
 
 `integration::integrate` checks readiness, the codec registry's role/purpose/version/extension gates and the compiled module's current causal/resource policy. Explicit event dependencies need accepted, effective domain state; credential dependencies need the matching verified public credential; blob dependencies require the module's existence/visibility check. Same-scope commitments can supply chain continuity, but cannot supply absent semantic state. Cross-scope content dependencies fail by default. A module can explicitly admit only separately authorized control proofs, checked from their signed commitment before any body access.
 
 Modules own SQL reducers, relevance, effective dependency state and fork invalidation. A successful reduction, immutable acceptance receipt, first-body provenance, optional relevant-acceptance hook and pending-budget release commit in the caller's one transaction. Reducer/hook failures roll everything back. Accepted receipts return their exact original result on retries, even after restart or later fork invalidation; effects and relevance hooks never run twice. Obsolete/dependency-only reductions produce receipts without calling the relevance hook. This hook is infrastructure for M16; these fixtures do not implement real Lump Drop counting or encrypted admission.
+
+Policy/extension/dependency lookup failures propagate as operational errors and roll back; they are never converted to a missing dependency or a successful denial. The pure codec's authority gate is bridged to the module's fallible database policy without losing that distinction.
 
 Rejected/unsupported/staged assessments remain retryable after dependency, policy or compiled-module changes; their retained raw bytes provide durable staging. `pending` pages unaccepted candidates with a maximum of 100, so missing/unsupported semantics do not trap a scan at its first row. The caller persists/schedules background work through C01 and repeats scans when relevant dependencies change. No timestamp selects authority or conflict winners.
 
@@ -45,3 +47,13 @@ Fork synchronization handles at most 100 new/earlier stream floors per call. Whe
 `authoring::author` takes an action without a caller-selected counter/previous hash. Within the single-writer transaction it derives the scoped stream, refuses known forks/gaps/counter exhaustion, selects the next full-width position, invokes the owning key holder and persists the verified result. Apply a local action's reducer in the same C01 idempotent command transaction and publish its bytes after commit. A failed reducer consumes no position; a retried command returns the original signed event. Twenty queued authoring operations prove contiguous, non-reused positions.
 
 Actor identity/incarnation comes from the current key holder, including M03's node signer and independently held member keys. Fresh node startup uses a fresh stream; an old incarnation passed to the new signer fails before persistence. This is the counter/signing integration, not M12's complete backup activation or M00/M13's trusted-client distribution. Migration 2 adds receipts/fork synchronization and the pending-charge flag without changing migration 1 or existing signed records; its upgrade test retains the original first-body source.
+
+## Fresh-generation replay
+
+`ReplayModule::project` rebuilds a feature-owned projection generation. `integration::accepted` pages that module's immutable accepted IDs; `replay` rechecks bytes, current causal/resource policy, kind support and effective dependencies before projecting one event. It never calls the first-acceptance reducer/relevance hook, rewrites receipts or changes quota. A feature repeats bounded causal passes, preserving unsupported/missing outcomes. Each projection's policy/dependency reads and writes must use its same fresh generation.
+
+Migration 3 adds an indexed accepted-ID scan and a monotonic event revision. New raw/body input, identity/chain binding and first acceptance advance it transactionally; exact duplicates and projection replay do not. Capture `revision` before rebuilding and call `require_revision` inside the generation-publication transaction. Features must check their own policy/schema revision there too. New input or changed policy cancels stale publication while the existing view remains intact; the feature retries/catches up. M06 and later consumers own their actual views, job scheduling, checkpoints and generation cleanup.
+
+The [revision fixture](tests/support/replay.rs) uses real SQL generations and immutable create/edit/tombstone/reply facts. All 120 orders of one five-event history produce equal heads despite inverted/extreme human timestamps. Concurrent replies coexist; separate devices' competing author edits remain visible conflicts rather than selecting a clock winner. An edit delivered before its original stages and later becomes current; replaying the older original cannot roll it back. Equal forked sets converge whether a branch was accepted early or neither was; historical receipts may differ as C02 permits. Known membership withdrawal rebuilds an empty view without rewriting those receipts. Another person's edit is denied.
+
+Compatibility fixtures retain a required unsupported extension uncredited, activate its explicitly registered validator later without rewriting signed bytes, and preserve an unknown minor version as unsupported through restart. Rebuilds preserve receipt/hook counts. These are M04 domain-conformance fixtures, not M06's final post schema or M13's membership/governance protocol; each consumer must prove its own causal rules and bounded work.

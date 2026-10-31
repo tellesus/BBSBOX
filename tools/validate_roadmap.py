@@ -83,7 +83,16 @@ def validate():
         for decision in m['decisions']:
             require(re.search(r'^\| ' + decision + r' \|', decisions, re.M), f'{mid}: unknown decision {decision}')
         require(m['gate'] in brief, f'{mid}: missing gate')
-        require(re.search(r'\[' + mid + r'\].*\| (Unstarted|In progress|Blocked|Complete|Retired) \|', ledger), f'{mid}: ledger execution status is missing')
+        status = re.search(r'\[' + mid + r'\].*\| (Unstarted|In progress|Blocked|Complete|Retired) \|', ledger)
+        require(status is not None, f'{mid}: ledger execution status is missing')
+        if status:
+            normalized = status.group(1).lower().replace(' ', '_')
+            require(m.get('execution_status') == normalized, f'{mid}: graph/ledger execution status differs')
+            state = re.search(r'\*\*State:\*\*([^\n]+)', brief)
+            state_text = state.group(1).strip().lower() if state else ''
+            agrees = ('unstarted' in state_text if normalized == 'unstarted'
+                      else state_text.startswith(status.group(1).lower()))
+            require(agrees, f'{mid}: brief/ledger execution status differs')
         text = start + '\n' + brief + '\n' + '\n'.join(read(contracts[c]) for c in m['contracts'])
         count = len(text.split())
         sizes.append((count, mid))

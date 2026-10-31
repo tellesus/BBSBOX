@@ -11,6 +11,8 @@ use coset::{CborSerializable, CoseSign1, CoseSign1Builder};
 use rusqlite::Connection;
 #[path = "support/integration.rs"]
 mod integration_tests;
+#[path = "support/replay.rs"]
+mod replay_tests;
 
 struct Fixture {
     _temp: tempfile::TempDir,

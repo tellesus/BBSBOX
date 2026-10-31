@@ -58,19 +58,19 @@ impl Module for Board {
     fn registry(&self) -> &Registry {
         &self.registry
     }
-    fn action(&self, _: &Connection, _: &CompleteEvent) -> Decision {
-        if self.member {
+    fn action(&self, _: &Connection, _: &CompleteEvent) -> core::Result<Decision> {
+        Ok(if self.member {
             Decision::Allow
         } else {
             Decision::Deny("not_a_member")
-        }
+        })
     }
     fn dependency(
         &self,
         connection: &Connection,
         _: &CompleteEvent,
         dependency: Dependency,
-    ) -> Decision {
+    ) -> core::Result<Decision> {
         if dependency.kind == DependencyKind::Blob {
             let present: bool = connection
                 .query_row(
@@ -80,18 +80,18 @@ impl Module for Board {
                 )
                 .unwrap();
             if !present {
-                return Decision::Missing(vec![dependency]);
+                return Ok(Decision::Missing(vec![dependency]));
             }
         }
-        Decision::Allow
+        Ok(Decision::Allow)
     }
     fn cross_scope_control(
         &self,
         _: &Connection,
         _: &CompleteEvent,
         proof: &codec::Commitment,
-    ) -> bool {
-        self.cross_control && proof.metadata().kind == "fixture.control"
+    ) -> core::Result<bool> {
+        Ok(self.cross_control && proof.metadata().kind == "fixture.control")
     }
     fn dependency_effective(&self, connection: &Connection, id: EventId) -> core::Result<bool> {
         Ok(connection.query_row(
@@ -692,7 +692,7 @@ fn integration_migration_preserves_v1_intake_and_its_first_source() {
     let path = temp.path().join("old.sqlite");
     let old = migrations()
         .into_iter()
-        .filter(|m| !(m.module == "events" && m.version == 2))
+        .filter(|m| !(m.module == "events" && m.version > 1))
         .collect::<Vec<_>>();
     let mut db = Database::open(&path, &old).unwrap();
     let device = device();
@@ -704,13 +704,10 @@ fn integration_migration_preserves_v1_intake_and_its_first_source() {
     .unwrap();
     let e = event(&device, "board:a", 1, None, b"kept");
     db.write::<_, core::Error>(Class::Content, 128 * 1024, |tx| {
-        Inbox::default().receive(
-            tx,
-            e.commitment().encoded(),
-            Some(e.body()),
-            &delivery("pigeon:original"),
-            &resolve,
-        )
+            // Historical v1 pending row, deliberately created before the v2/v3 columns existed.
+            tx.execute("INSERT INTO events_raw(id,envelope,body,state,first_source,first_transfer,body_source,body_transfer) VALUES(?1,?2,?3,0,'pigeon:original','fixture-delivery','pigeon:original','fixture-delivery')",params![e.id().bytes().as_slice(),e.commitment().encoded(),e.body()])?;
+            tx.execute("UPDATE events_budget SET bytes=?1",[(e.commitment().encoded().len()+e.body().len()) as i64])?;
+            Ok(())
     })
     .unwrap();
     drop(db);
@@ -721,6 +718,7 @@ fn integration_migration_preserves_v1_intake_and_its_first_source() {
         db,
         device,
     };
+    f.drain();
     let board = Board::new(&mut f);
     let Integration::Accepted(receipt) = apply(&mut f, &board, e.id()).unwrap() else {
         panic!("not accepted")

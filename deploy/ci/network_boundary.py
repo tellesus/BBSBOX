@@ -121,6 +121,7 @@ def exercise(output):
             network_profile.prepare(profile, output/'profile')
             rules = output/'profile/bbsbox.nft'
             run('nft', '--check', '--file', str(rules)); run('nft', '--file', str(rules))
+            run('nft', '--file', str(rules))  # A repeat load replaces only the owned table atomically.
             capture = socket.socket(socket.AF_PACKET, socket.SOCK_RAW, socket.htons(3)); capture.bind(('bb-wan', 0)); capture.setblocking(False)
             dns = start(['dnsmasq', '--no-daemon', '--conf-file='+str(output/'profile/dnsmasq.conf'), '--pid-file=', '--log-facility=-', '--log-queries', '--user=root'], 'dnsmasq')
             for _ in range(100):

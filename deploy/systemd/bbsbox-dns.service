@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+[Unit]
+Description=BBSBOX local DNS
+Requires=bbsbox-boundary.service systemd-networkd.service
+After=bbsbox-boundary.service systemd-networkd.service
+StartLimitIntervalSec=0
+
+[Service]
+Type=exec
+ExecStart=/usr/sbin/dnsmasq --no-daemon --conf-file=/etc/bbsbox/network/dnsmasq.conf --pid-file= --user=dnsmasq --group=dnsmasq
+Restart=on-failure
+RestartSec=2
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+
+[Install]
+WantedBy=multi-user.target

@@ -1,8 +1,8 @@
 # M01 — Offline appliance and local access
 
-Brief revision 1.1.5 · Roadmap baseline 1.1.0 · 2026-10-31 · Locked scope · Product baseline 0.6.0.
+Brief revision 1.1.6 · Roadmap baseline 1.1.0 · 2026-10-31 · Locked scope · Product baseline 0.6.0.
 
-**State:** In progress under continued development authority. Runtime/initialization/payload and actual offline Debian install/service/reboot checks passed. B's network preparation is under test; complete host activation, enrollment, C and reference hardware remain pending.
+**State:** In progress under continued development authority. Runtime/initialization/payload and actual offline Debian install/service/reboot checks passed. B's simulated packet/DNS boundary passed; inactive-tree host preparation/boot is under test. Device enrollment, C and reference hardware remain pending.
 
 ## Read only this packet
 
@@ -25,12 +25,12 @@ Use a Debian stable base, systemd service, Rust binary/static assets, local DNS/
 
 deploy/ and crates/node-runtime/ own installation config, local address/certificate state, service manifests and local-only diagnostics. Runtime registers real M02–M04 providers and owns no member keys. See the [runtime reference](../../../crates/node-runtime/README.md).
 
-Runtime/status code, initialization/payload tools and a verified developer first-install/service fixture exist. B adds explicit dual-stack listeners/local DNS-IP origins and prepared interface/subnet firewall/DNS files. Host activation/enrollment remains pending. Consume the contracts in the reading packet; changes need affected-consumer updates. Disabled optional modules retain data and preserve unrelated services. See the [install fixture](../../../deploy/README.md).
+Runtime/status code, initialization/payload tools and a verified developer first-install/service fixture exist. B adds explicit dual-stack listeners/local DNS-IP origins and prepared interface/subnet firewall/DNS files. An inactive-tree host/network/LAN-certificate setup and actual boot fixture await CI; device enrollment remains pending. Consume the contracts in the reading packet; changes need affected-consumer updates. Disabled optional modules retain data and preserve unrelated services. See the [install fixture](../../../deploy/README.md).
 
 ## Sequential work slices
 
 1. A: offline install and service startup with local status page. Runtime/initialization/payload and actual Debian developer installation/service/OS reboot passed CI; physical reference-machine evidence remains open.
-2. B: router/address enrollment and verified packet-boundary configuration. Explicit aliases/multiple listeners pass locally. Generated network/DNS boundaries await Linux CI; a public connection-card/CA export passes local checks. Complete boot activation, LAN certificate configuration and device enrollment remain open.
+2. B: router/address enrollment and verified packet-boundary configuration. Explicit aliases/multiple listeners pass locally. Generated network/DNS boundaries pass Linux CI, including zero WAN IP frames. Public connection-card/CA export passes local checks. Full host boot/LAN certificate setup awaits CI; device enrollment remains open.
 3. C: restarts, local diagnosis and prepared-media reinstall procedure.
 
 ## Completion evidence

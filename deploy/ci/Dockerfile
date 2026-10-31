@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Developer-only dependency preparation. Installation below runs without a network.
 FROM debian:trixie-20261027-slim
-RUN apt-get update && apt-get install -y --no-install-recommends python3 openssl passwd systemd systemd-sysv libgcc-s1
+RUN apt-get update && apt-get install -y --no-install-recommends python3 openssl passwd systemd systemd-sysv libgcc-s1 nftables dnsmasq-base iproute2
 WORKDIR /src
 COPY tools/ tools/
 COPY deploy/ deploy/

@@ -40,7 +40,7 @@ def leader(root):
 
 def enter(pid,root,arguments,check=True):
     if not private_process(pid,root):raise RuntimeError('Refusing to enter anything except this private test OS')
-    return subprocess.run(['nsenter','--target',str(pid),'--mount','--pid','--root','--wd','--',*arguments],capture_output=True,check=check,timeout=20)
+    return subprocess.run(['nsenter','--target',str(pid),'--mount','--pid','--net','--root','--wd','--',*arguments],capture_output=True,check=check,timeout=20)
 
 
 def probe(root):

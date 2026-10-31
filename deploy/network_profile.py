@@ -78,11 +78,11 @@ def render(profile):
             for lines, direction in [(inbound, 'iifname'), (outbound, 'oifname')]:
                 lines.append(f'{direction} "{name}" ip6 saddr {{ ::/128, fe80::/10, {next(a.network for a in addresses if a.version == 6)} }} ip6 daddr {{ fe80::/10, ff02::/16, {next(a.network for a in addresses if a.version == 6)} }} ip6 hoplimit 255 icmpv6 type {{ nd-neighbor-solicit, nd-neighbor-advert }} accept')
         link_local = 'ipv6' if any(a.version == 6 for a in addresses) else 'no'
-        files[f'networkd/30-bbsbox-{name}.network'] = f'[Match]\nName={name}\n\n[Network]\nDHCP=no\nIPv6AcceptRA=no\nLinkLocalAddressing={link_local}\nLLMNR=no\nMulticastDNS=no\nDNSDefaultRoute=no\nIPForward=no\n' + ''.join(f'Address={a}\n' for a in addresses)
+        files[f'networkd/30-bbsbox-{name}.network'] = f'[Match]\nName={name}\n\n[Link]\nRequiredForOnline=no\n\n[Network]\nConfigureWithoutCarrier=yes\nDHCP=no\nIPv6AcceptRA=no\nLinkLocalAddressing={link_local}\nLLMNR=no\nMulticastDNS=no\nDNSDefaultRoute=no\nIPv4Forwarding=no\nIPv6Forwarding=no\n' + ''.join(f'Address={a}\n' for a in addresses)
     chains = []
     for name, rules in [('input', inbound), ('output', outbound), ('forward', [])]:
         chains.append(f' chain {name} {{\n  type filter hook {name} priority filter; policy drop;\n' + ''.join(f'  {rule}\n' for rule in rules) + '  counter drop\n }\n')
-    files['bbsbox.nft'] = '# Prepared for an isolated appliance. Load before bringing up external interfaces.\ntable inet bbsbox_boundary {\n' + ''.join(chains) + '}\n'
+    files['bbsbox.nft'] = '# Replaces only the owned table, in one nft transaction.\nadd table inet bbsbox_boundary\nflush table inet bbsbox_boundary\ntable inet bbsbox_boundary {\n' + ''.join(chains) + '}\n'
     files['dnsmasq.conf'] = '# Start with --conf-file pointing only to this file. No upstream or extra conf-dir.\nno-resolv\nno-poll\nno-hosts\nbind-interfaces\nlocal=/home.arpa/\naddress=/#/\nlisten-address=' + ','.join(listeners) + '\n' + ''.join('host-record='+hostname+','+host+'\n' for host in hosts)
     files['90-bbsbox-local.conf'] = 'net.ipv4.ip_forward=0\nnet.ipv6.conf.all.forwarding=0\nnet.ipv6.conf.default.forwarding=0\nnet.ipv6.conf.all.accept_ra=0\nnet.ipv6.conf.default.accept_ra=0\nnet.ipv6.conf.all.autoconf=0\nnet.ipv6.conf.default.autoconf=0\n'
     binds = [f'[{ip}]:{port}' if ':' in ip else f'{ip}:{port}' for ip in hosts]

@@ -91,7 +91,7 @@ def exercise(binary, state_root, host, port):
                 raise RuntimeError('Expected fresh isolated test state')
             with get('/') as response:
                 html = response.read().decode()
-            if 'Good things' not in html:
+            if 'Test node' not in html or 'Messagebook' not in html:
                 raise RuntimeError('The real static interface was not served')
             assets = re.findall(r'(?:href|src)="([^"#]+)"', html)
             asset_count = 0

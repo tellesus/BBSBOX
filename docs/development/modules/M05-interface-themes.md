@@ -1,6 +1,6 @@
 # M05 — Browser shell, navigation and SysOp themes
 
-Version 1.1.0 · 2026-10-25 · Locked development baseline · Product baseline 0.6.0.
+Brief revision 1.1.1 · 2026-10-30 · Roadmap baseline 1.1.0 · Product baseline 0.6.0.
 
 **State:** Approved for implementation under U19; unstarted. Runtime and hardware evidence remains pending.
 
@@ -16,6 +16,8 @@ Look up only decision rows T03, T07 in [DECISIONS](../DECISIONS.md). Dependency 
 ## Product outcome and boundaries
 
 Provide modern phone/tablet/desktop navigation with a shipped vibrant-on-black dark theme, regardless of device light preference. SysOps customize the local place.
+
+Under the user's copy direction, shipped UI text is short and functional: labels, actions and status descriptions. Omit motivational headlines, slogans and aspirational filler. The M00 prototype follows this direction; M05 implementation remains unstarted.
 
 ## Locked implementation
 

@@ -1,6 +1,6 @@
 # M11 — Game host and local multiplayer example
 
-Version 1.0.1 · 2026-10-25 · Locked development baseline · Product baseline 0.5.1.
+Version 1.1.0 · 2026-10-25 · Locked development baseline · Product baseline 0.6.0.
 
 **State:** Approved for implementation under U19; unstarted. Runtime and hardware evidence remains pending.
 

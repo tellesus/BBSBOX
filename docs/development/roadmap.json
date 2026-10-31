@@ -1,7 +1,7 @@
 {
-  "version": "1.0.1",
-  "product_spec_version": "0.5.1",
-  "authority": "U19 scope; U20 canon and change control",
+  "version": "1.1.0",
+  "product_spec_version": "0.6.0",
+  "authority": "U19 scope; U20 canon; U22 local development and milestone phone testing",
   "status": "locked_for_implementation",
   "implementation_status": "in_progress",
   "modules": [
@@ -1049,8 +1049,14 @@
       "docs/archive/README.md",
       "docs/archive/review-2026-10-25.md",
       "docs/archive/technical-plan-1.0.0.md",
-      "spikes/m00/README.md"
+      "spikes/m00/README.md",
+      "spikes/m00/mls/README.md"
     ]
   },
-  "implementation_updated": "2026-10-30"
+  "implementation_updated": "2026-10-30",
+  "phone_testing": {
+    "public_access": "G1 integrated local-node alpha",
+    "private_client": "G2 before private-client release",
+    "authority": "U22"
+  }
 }

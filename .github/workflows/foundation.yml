@@ -29,5 +29,27 @@ jobs:
       - run: python3 tools/init_tls.py
       - run: npx playwright install --with-deps chromium && npm test
         working-directory: spikes/m00/web
+      - run: python3 -m unittest discover -s tools -p test_offline_smoke.py -v
+      - run: sudo apt-get update && sudo apt-get install -y strace iproute2
+      - run: sudo unshare --net -- bash -c 'ip link set lo up && python3 tools/offline_smoke.py'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: isolated-runtime-evidence
+          path: |
+            spikes/m00/.state/offline-evidence.json
+            spikes/m00/.state/offline-ipv4.trace
+            spikes/m00/.state/offline-ipv6.trace
       - run: python3 tools/validate_roadmap.py
         working-directory: .
+  encrypted-group-experiment:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: spikes/m00
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup toolchain install 1.99.1 --profile minimal --component rustfmt --component clippy
+      - run: cargo fmt --check --manifest-path mls/Cargo.toml
+      - run: cargo test --locked --manifest-path mls/Cargo.toml
+      - run: cargo clippy --locked --offline --manifest-path mls/Cargo.toml --all-targets -- -D warnings

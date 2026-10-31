@@ -1,8 +1,8 @@
 # Locked BBSBOX development roadmap
 
-Version 1.0.1 · 2026-10-25 · Product baseline 0.5.1 · Scope approved under U19; canon clarified under U20. [Historical lock record](../decisions/ADR-0001-roadmap-lock.md).
+Version 1.1.0 · 2026-10-25 · Product baseline 0.6.0 · Scope approved under U19; canon clarified under U20. [Historical lock record](../decisions/ADR-0001-roadmap-lock.md).
 
-All named module scopes and T decisions are approved. Implementation has begun with the M00 local foundation experiment; G0-local and G2 remain open pending their required evidence. Read [START_HERE](START_HERE.md), one brief and its contracts. Use the live [decisions](DECISIONS.md), derived [coverage](COVERAGE.md) and [ledger](WORK_LEDGER.md) as needed. The [old technical plan](../archive/technical-plan-1.0.0.md) and [earlier review](../archive/review-2026-10-25.md) are historical archives.
+All named module scopes and T decisions are approved. Implementation has begun with the M00 local foundation experiment; Gate status and pending evidence are recorded in WORK_LEDGER. Read [START_HERE](START_HERE.md), one brief and its contracts. Use the live [decisions](DECISIONS.md), derived [coverage](COVERAGE.md) and [ledger](WORK_LEDGER.md) as needed. The [old technical plan](../archive/technical-plan-1.0.0.md) and [earlier review](../archive/review-2026-10-25.md) are historical archives.
 
 ## Canon and document ownership
 
@@ -22,6 +22,8 @@ There are two sources of project canon: **the current roadmap and the user’s a
 [COVERAGE](COVERAGE.md) is a derived index; [WORK_LEDGER](WORK_LEDGER.md) records execution evidence. Neither independently approves scope. Archived reviews, ADR histories, root compatibility redirects, research and other documents are reference/archive, even when their original text says “master,” “locked,” or “approved.” The [archive guide](../archive/README.md) identifies them. Licensing notices remain applicable legal terms, not a competing product roadmap.
 
 Do not resolve a conflict by choosing whichever file sounds more authoritative. Apply the latest applicable user decision and reconcile every affected canonical component. If the intended change is genuinely unclear, keep the affected decision open and ask; continue unrelated work. A reference link alone never promotes material into canon.
+
+Phone tests are scheduled for the G1 integrated local-node alpha and G2 private-client release gates under U22. They remain required there and do not block preceding desktop/local implementation.
 
 ## Execution order and dependencies
 
@@ -54,9 +56,9 @@ M00 → M01 → M02 → M03 → M04 → M12 → M05 → M06 → M07 → M08 → 
 
 | Gate | Exit evidence |
 | --- | --- |
-| G0-local | M00 A/B core access, storage and signed-event evidence recorded. Private-client/MLS work may remain pending explicitly; no crypto release claim. |
-| G1 | M01–M12 local integration: AC01–AC03, AC08–AC09, AC15, AC20 and local portions AC04/AC10/AC21/AC22. Source/license materials AC17 are required for each distributed release. |
-| G2 | M13/M14 plus M08 encrypted audience adapter: local AC11/AC13/AC14/AC19 and actual independent client/device evidence. |
+| G0-local | M00 desktop access/HTTPS, durable storage, signed-event checks and isolated-runtime IPv4/IPv6 evidence recorded. Enables local development; private-client research and milestone phone checks remain explicit pending work. |
+| G1 | Integrated local-node alpha, including public Android Chrome/iOS Safari access/enrollment tests. M01–M12 local integration: AC01–AC03, AC08–AC09, AC15, AC20 and local portions AC04/AC10/AC21/AC22. Source/license materials AC17 are required for each distributed release. |
+| G2 | M13/M14 plus M08 encrypted audience adapter: local AC11/AC13/AC14/AC19 and actual independent client/device evidence, including private Android/iOS checks before private-client release. |
 | G3 | M15–M17: AC04–AC07, AC12/AC18, actual courier variants and private/case transport checks. Restore replay, scoped streams and suppression cannot bypass policy. |
 | G4 | M18/M19 core pilot: full AC10/AC22 and the core game/profile portions of AC21 and all applicable core checks. Approved G5 expansions are honestly listed as pending, including AC16 until O11. |
 | G5 | O01–O12 in the order below, each with AC23–AC34 and affected regressions; O12 completes the achievements/progress portion of AC21. O11 must pass AC16 as well. Completing G4 is not completion of the full accepted expansion baseline. |

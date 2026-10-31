@@ -51,6 +51,17 @@ Rust checks cover signature/body/chain tampering, wrong signing key/incarnation,
 
 On an isolated test LAN, generate a fresh TLS state with `python tools/init_tls.py --state .state/lan --san YOUR_LAN_IP`. Set `BBSBOX_STATE=.state/lan` and `BBSBOX_BIND=YOUR_LAN_IP:8443`, then start the node. Allow the specific local port through the host firewall only for that test LAN if required. Visit the IP from the chosen phone after explicit fingerprint/trust enrollment. Verify all page requests, HTTPS/secure-context support, post/reload/restart and no infrastructure internet attempts with WAN absent. The helper supports additional local DNS names using repeated `--san` arguments; it does not create DNS records or open a firewall.
 
-M00 still needs Debian reference-hardware measurements, actual Android Chrome/iOS Safari enrollment and installation, independently signed Tauri-client trust, MLS disconnected writers/removal/retention/commit branches and recovery evidence. Record results in the canonical work ledger. Do not call G0-local/G2 passed from this prototype alone.
+The [OpenMLS experiment](mls/README.md) now exercises disconnected writers, removal, retention, competing commits and encrypted client snapshots. The test recovery guard keeps restored clients receive-only until a fresh owner-authorized join. M00 still needs Debian reference-hardware measurements, actual Android Chrome/iOS Safari enrollment, independently signed Tauri-client trust and production recovery integration. Phone tests are scheduled at the integrated local-node milestone and before private-client release. Record actual gate results in the canonical work ledger.
 
 Resolved dependency names/versions/license metadata, including development and optional packages, are in [dependencies.json](dependencies.json). The upstream packages retain their own notices. Refresh the inventory with `tools/dependency_inventory.py` and filtered Cargo metadata when dependencies change; absent foreign-platform license metadata is marked for upstream inspection rather than inferred. Production source/license packaging is owned by M12.
+
+## Linux network-isolation check
+
+The Windows-local Python tests validate the trace auditor. The actual isolation experiment requires a disposable Linux developer environment with `unshare`, `iproute2` and `strace`. The GitHub workflow runs it after building the same node and generating local test certificates:
+
+```sh
+python3 -m unittest discover -s tools -p test_offline_smoke.py -v
+sudo unshare --net -- bash -c 'ip link set lo up && python3 tools/offline_smoke.py'
+```
+
+The child namespace has only loopback and no IPv4/IPv6 gateway/default route. The script tests real HTTPS/static assets, signed storage and retry on IPv4 and IPv6. It audits the actual node's network syscalls; attempted outbound connections fail the check even if routing would have blocked them. Empty traces cannot pass. Reports/traces are saved in ignored `.state/` and uploaded by CI. This establishes a bounded process-level isolation result; it does not provision or validate a physical Debian appliance, router, LAN DNS or phone.

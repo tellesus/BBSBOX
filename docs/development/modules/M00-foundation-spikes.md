@@ -1,6 +1,6 @@
 # M00 — Foundational feasibility and decisions
 
-Version 1.0.1 · 2026-10-25 · Locked development baseline · Product baseline 0.5.1.
+Version 1.1.0 · 2026-10-25 · Locked development baseline · Product baseline 0.6.0.
 
 **State:** Approved under U19; In progress under the user’s 2026-10-30 build instruction. Local prototype evidence is recorded in WORK_LEDGER; G0-local/G2 remain open.
 
@@ -19,13 +19,13 @@ Prove the few choices that could force broad redesign before building the full p
 
 ## Locked implementation
 
-Use disposable Rust/Axum + SQLite and static SvelteKit experiments. Exercise HTTPS on actual Android/iOS and desktop browsers with locally supplied trust material; compare independently signed bundled clients for private keys. Prototype OpenMLS delayed epochs and competing governance commits with three clients. Its Android/iOS/WASM targets are built but not tested by upstream CI; our device evidence must establish support. Benchmark a candidate reused machine rather than promise a hardware minimum.
+Use disposable Rust/Axum/SQLite and static SvelteKit experiments. Test desktop HTTPS now; Android/iOS follow at G1/G2 with local trust enrollment. Compare independently signed clients, and test OpenMLS delayed epochs/competing commits with three clients. Upstream mobile/WASM builds are not device evidence. Measure reused hardware before promising a minimum.
 
 ## Ownership and interfaces
 
 Current code is under spikes/m00/: a Rust/Axum/SQLite node and static SvelteKit page, plus TLS and browser checks. Its disposable schema/wire profile is not production protocol v1. See the [runbook](../../../spikes/m00/README.md). Publish supported device/access paths and measured idle/import/game resource use.
 
-Only spikes/m00/ is implemented so far; later module locations remain planned. Consume the contracts in the reading packet; changes to them need affected-consumer updates. A disabled optional module retains its data and does not break unrelated local services.
+Only spikes/m00/ is implemented so far; later module locations remain planned. Consume the listed contracts and update affected consumers with any change.
 
 ## Sequential work slices
 
@@ -42,13 +42,11 @@ Only spikes/m00/ is implemented so far; later module locations remain planned. C
 
 ## Locked defaults and verification
 
-Use the selected stack. Test Debian x86-64, desktop browsers, Android Chrome and iOS Safari; test the Tauri private-client path separately on each OS. Exact supported versions and capacity numbers come from results. G0-local needs A/B access and storage/signature evidence; failed private-client/MLS experiments are recorded blockers for G2, not blockers for independent local development. Pin dependency versions/lockfiles in the implementation commit, using maintained compatible releases.
+Use the selected stack. Test Debian x86-64, desktop browsers, Android Chrome and iOS Safari; test the Tauri private-client path separately on each OS. Exact supported versions and capacity numbers come from results. G0-local needs desktop A/B and isolated-runtime evidence; failed private-client/MLS experiments are recorded blockers for G2, not blockers for independent local development. Pin dependency versions/lockfiles in the implementation commit, using maintained compatible releases.
 
-## Current slice evidence — 2026-10-30
+## Current local evidence — 2026-10-30
 
-A and desktop portions of B run on Windows x64. Local HTTPS serves the page and public test messagebook; a persistent node fixture key signs detached-body CBOR/COSE events. A name is only a label. The node verifies stored history, rejects altered data and foreign/missing origins, deduplicates retries and survives a cold process restart. Native HTTP/2 authority handling is covered after a real browser-found bug. This is a development fixture, not M03 personal identity or M13 encryption. No wire/contract v1 is frozen.
-
-Eight automated tests pass; browser checks use Edge with one pinned leaf key in a temporary profile and separate CA-verification checks. No application request left the node during the recorded journey. Actual WAN isolation, Debian, phones, Tauri/OpenMLS and recovery experiments remain pending. See the ledger for versions, results and limitations.
+The node/UI checks pass on Windows and Ubuntu CI. Eight OpenMLS fixtures additionally cover delayed/reordered work, removal, 32-epoch retention, commit forks and encrypted snapshots. Recovery is receive-only until a fresh owner-authorized join; raw MLS does not enforce forum-owner authority. Six Python checks validate the network auditor; the actual isolated Linux IPv4/IPv6 run is tracked in WORK_LEDGER. Phone tests wait for G1/G2 milestones. Trusted-client distribution and production admission/recovery remain open.
 
 ## Handoff
 

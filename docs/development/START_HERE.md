@@ -1,6 +1,6 @@
 # BBSBOX development — bounded task context
 
-Version 1.0.1 · 2026-10-25 · Locked roadmap · Product baseline 0.5.1 · U19 scope / U20 canon.
+Version 1.1.0 · 2026-10-25 · Locked roadmap · Product baseline 0.6.0 · U19 scope / U20 canon / local-first testing under U22.
 
 The [roadmap](README.md#canon-and-document-ownership) and the user’s latest applicable instructions are the two sources of canon; user instructions take precedence. Root specification/proposal redirects, archived reviews and ADR histories are reference only. An exploratory question is not automatically a feature decision.
 
@@ -8,7 +8,7 @@ The [roadmap](README.md#canon-and-document-ownership) and the user’s latest ap
 
 Read this file, one module brief and its listed contracts. Look up only its T decision rows. The index/coverage/review documents are lookup tools, not required context on every task. A normal reading packet targets 2,500 words; exact byte schemas and code are additional task-specific implementation context.
 
-P01–P24, T01–T14 and M00–M19/O01–O12 are approved within the recorded scopes. Use their locked defaults without asking for permission again. Optional activation is an operator/user choice. D01–D07 and unnamed additions remain outside this baseline. Hardware compatibility, supported versions and capacity are evidence to collect, not facts established by approval.
+P01–P24, T01–T14 and M00–M19/O01–O12 are approved within the recorded scopes. Use their locked defaults without asking for permission again. Optional activation is an operator/user choice. D01–D07 and unnamed additions remain outside this baseline. Hardware compatibility, supported versions and capacity require evidence. Under the user’s current instruction, phone tests occur at G1 public-alpha/G2 private-client milestones; local work continues beforehand.
 
 Before implementation, verify the selected slice's prerequisites and contract versions, then record source IDs, included behavior, owned data, fixtures and exit evidence. M00 establishes G0-local access/storage/event evidence; unfinished private-client/MLS evidence blocks G2 only. Earlier modules complete their interfaces with fixtures; later consumers own actual integration and regression checks. A task cannot claim integration from mocks.
 

@@ -1,6 +1,6 @@
 # M13 — Trusted clients and encrypted forums
 
-Version 1.0.1 · 2026-10-25 · Locked development baseline · Product baseline 0.5.1.
+Version 1.1.0 · 2026-10-25 · Locked development baseline · Product baseline 0.6.0.
 
 **State:** Approved for implementation under U19; unstarted. Runtime and hardware evidence remains pending.
 
@@ -25,13 +25,13 @@ Implement the selected MLS/OpenMLS path with shared Rust/native crypto and a sep
 
 Planned crates/private-forum/ and client/crypto/; encrypted event kinds, public authority proofs, client group/key state, invitations and encrypted client backups. Hosts own ciphertext indexes only.
 
-Paths above are planned implementation locations, not existing code. Consume the contracts in the reading packet; changes to them need affected-consumer updates. A disabled optional module retains its data and does not break unrelated local services.
+Implementation paths remain planned. Consume the listed contracts, update affected consumers with any change, and retain optional-module data when disabled.
 
 ## Sequential work slices
 
 1. A: verify the selected client trust and MLS path against M00 evidence; freeze metadata/admission contract.
 2. B: create/invite/post/read/remove with two clients and no host keys.
-3. C: prolonged disconnection, concurrent governance, old-epoch messages and restore/rejoin.
+3. C: prolonged disconnection, concurrent governance, old-epoch messages and C05 receive-only backup restore/fresh rejoin.
 4. D: integrate M08 confirmed-friend audiences with encrypted sharing; repeat visibility tests without changing public following.
 5. E: owner-authorized historical access: an authorized member explicitly republishes selected readable history as an encrypted archive for the selected current-member audience through the established group encryption path. Preserve original signed provenance and mark it as a historical copy. Do not grant old epoch keys automatically or promise recovery of history no remaining client can decrypt. Test new-member denial by default, explicit grant, and removal affecting future access while retained past copies remain possible.
 

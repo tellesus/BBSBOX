@@ -1,6 +1,6 @@
 # C05 — Private content, profiles and complaint access
 
-Version 1.0.0 · Accepted for implementation · Owners M07, M13 and M14.
+Version 1.1.0 · Accepted for implementation · Owners M07, M13 and M14.
 
 ## Privacy surfaces
 
@@ -16,7 +16,7 @@ MLS commit ordering, retained old epochs and offline writers require explicit fi
 
 ## Complaint case
 
-`Complaint` binds case ID, forum ID, stable post IDs, reported immutable revision IDs where available, reporter explanation, optional alleged-illegal flag, and role-visible responses/status. The explanation goes to the SysOp; encrypted target plaintext is not attached automatically. Explicit voluntary disclosure is approved under P03 and implemented as an opt-in attachment by M14; target plaintext is never attached automatically.
+`Complaint` binds case ID, forum ID, stable post IDs, reported immutable revision IDs where available, reporter explanation, optional alleged-illegal flag, and role-visible responses/status. The explanation goes to the SysOp; encrypted target plaintext is not attached automatically. M14 attaches plaintext only through the member's explicit P03 opt-in.
 
 Only the forum's authorized owner/moderators may fetch suppressed target ciphertext through the review endpoint, after proving role according to the signed governance state known locally. A user account's SysOp role is insufficient. They decrypt using existing member keys. Ordinary queries/downloads on this host suppress selected posts; cached copies/other hosts are outside that local action. Host suppression is reversible and separate from forum edits/removal.
 
@@ -28,3 +28,9 @@ If an exact revision is not present, show missing/pending and request it through
 Hosts validate a signed outer record binding forum ID, epoch/control references, author credential, action kind, stable target/revision IDs and ciphertext hash. This necessarily discloses those routing/authority fields to authorized hosts/carriers; it does not disclose plaintext. A newly admitted opaque message can qualify for a Lump Drop without asserting that its plaintext is meaningful or decryptable. No-op known revisions do not qualify. Unsupported authority remains pending, never credited as validated content.
 
 Ordinary browser login uses same-origin cookies/CSRF protection. The independently installed client pairs by a fresh node challenge plus device proof, receives a revocable scoped token, and uses pinned local TLS; never disable certificate checks to work around mobile CORS/mixed-content restrictions. M00 must test the real native/browser boundary on Android/iOS/desktop. Owner/moderator access to suppressed targets uses a fresh role-bound challenge and an auditable case-specific fetch. Ordinary sync exports cannot bypass local suppression. C02 permits signed commitment metadata for authorized same-scope chain verification while withholding suppressed bodies; it grants no plaintext access and earns no delivery credit by itself.
+
+## Governance and backup recovery
+
+Before merging an MLS governance change, require owner-authorized control proof bound to the forum, parent epoch and commit/ciphertext hash. MLS validity alone grants no forum-owner permission. Do not choose competing branches by timestamp.
+
+An explicit backup restore starts receive-only. Require a fresh owner-authorized MLS join with new client state before sending or proposing governance; replaying a commit alone is insufficient. Lost post-snapshot replay knowledge requires application-ID reconciliation. This guard affects only the restored client; other members continue posting.

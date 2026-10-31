@@ -3,7 +3,7 @@
 | Document control | Value |
 | --- | --- |
 | Document ID | BBSBOX-T1-001 |
-| Version | **0.5.1** |
+| Version | **0.6.0** |
 | Date | **2026-10-25** |
 | Status | Approved scope and locked implementation roadmap; runtime verification pending |
 | Product owner | Michael |
@@ -68,6 +68,9 @@ The source anchors below use distinctive user wording so they can be found in th
 | U19 | 2026-10-25 request: use best judgment to test-lock all proposals, review every roadmap step as a senior developer, correct issues, lock the roadmap and push it to GitHub; authorizes the scoped selections and review corrections in CR-003 |
 
 | U20 | 2026-10-25 request: make the roadmap and user instructions the two sources of canon; treat other documentation as reference/archive; synchronize canon whenever design, goals or features change |
+
+| U21 | 2026-10-30 request: begin building the first roadmap step |
+| U22 | Continue local development/testing; defer phone tests until a major milestone and identify tools that would improve efficiency |
 
 ### 1.3 Bounded implementation documents
 
@@ -420,7 +423,7 @@ P01–P24 retain stable historical IDs and are **Accepted for implementation/tes
 | P23 | Discretionary Lump Drop rewards | O12; manual idempotent SysOp grants; M16 still owns only counting/privacy |
 | P24 | Profile/group additions | O12; opt-in achievements/progress and local group activity panel; unnamed future extras require new scope |
 
-**R28 — Approved modular development program.** Implement the scoped P01–P24 capabilities through M00–M19 and O01–O12 in roadmap baseline 1.0.1. O modules are approved expansions with optional activation, not prerequisites for a usable core pilot. Unspecified future embellishments and D01–D07 remain subject to change control. [U19]
+**R28 — Approved modular development program.** Implement the scoped P01–P24 capabilities through M00–M19 and O01–O12 in roadmap baseline 1.1.0. O modules are approved expansions with optional activation, not prerequisites for a usable core pilot. Unspecified future embellishments and D01–D07 remain subject to change control. [U19]
 
 ### 11.1 Selected technical direction
 
@@ -458,6 +461,8 @@ These entries are parked in this edition to protect the foundation. “Deferred�
 | N10 | Designing for massive anonymous parasocial groups as the target community model | R01/U09 |
 | N11 | Making a host-business purchase mandatory for ordinary participation, selling social reach through game bonuses, or redeeming host-business codes at a different BBS | R22/U13; game-economy design itself remains open |
 | N12 | Treating historical brainstorming or unspecified future ideas as approved beyond the explicit U19 selections; claiming approval proves implementation or testing | §1, R23/R28 |
+
+Phone testing follows U22: public browser/enrollment checks at the G1 integrated local-node alpha, and private-client Android/iOS checks at G2 before private release. Continue local work and record deferred device evidence explicitly.
 
 ## 13. Development phases
 
@@ -546,7 +551,8 @@ Document versions are independent of software/protocol versions. Patch revisions
 | Product document | Roadmap | Date | Change |
 | --- | --- | --- | --- |
 | 0.5.1 | 1.0.1 | 2026-10-25 | U20: consolidate product canon inside the roadmap, supersede the old Tier 1/Tier 2 authority hierarchy, archive historical plans/reviews, and require synchronized canonical documentation for design, goal and feature changes. Product feature scope is unchanged. |
-| 0.5.1 | 1.0.1 | 2026-10-30 | User authorized beginning implementation. Execution records now identify the M00 local prototype, tests and open device/private-client gates. This is progress within the existing scope and design baseline. |
+| 0.5.1 | 1.0.1 | 2026-10-30 | U21: begin the M00 local prototype; execution results recorded without claiming full device/private-client completion. |
+| 0.6.0 | 1.1.0 | 2026-10-30 | U22: continue local development; schedule phone tests at G1/G2. OpenMLS experiments refine C05 owner-authorized governance and receive-only backup recovery/fresh rejoin; local Linux isolation evidence is tracked separately from appliance/device acceptance. |
 
 Earlier decisions, source audits and CR-001–CR-003 are preserved in the [historical record](../archive/product-history-through-0.5.0.md). Historical statements never override current canon.
 

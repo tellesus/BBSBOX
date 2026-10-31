@@ -1,6 +1,6 @@
 # Development work ledger
 
-Version 1.0.1 · 2026-10-25 · Locked roadmap; M00 In progress, remaining modules Unstarted. Execution updated 2026-10-30.
+Version 1.1.0 · 2026-10-25 · Locked roadmap; M00 In progress, remaining modules Unstarted. Execution updated 2026-10-30.
 
 Evidence log — not an independent source of scope authority. Current choices live in the canonical roadmap and user instructions.
 
@@ -8,7 +8,7 @@ Design review is complete and the first M00 prototype has real local implementat
 
 | Module | Scope | Execution state | Evidence / commit | Next action |
 | --- | --- | --- | --- | --- |
-| [M00](modules/M00-foundation-spikes.md) | Approved | In progress | 2026-10-30: Rust/API/store and HTTPS browser checks pass; see run record below | Physical-device B, MLS/client C, measurements and D; G0-local/G2 open |
+| [M00](modules/M00-foundation-spikes.md) | Approved | In progress | 2026-10-30: Rust/API/store and HTTPS browser checks pass; see run record below | C fixtures pass; isolated Linux runtime verification next; phones at G1/G2, trusted-client/recovery integration pending |
 | [M01](modules/M01-offline-appliance.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
 | [M02](modules/M02-storage-jobs.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
 | [M03](modules/M03-identity-access.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
@@ -72,3 +72,13 @@ Test host: Windows x64 10.0.26300; AMD Ryzen 7 7800X3D, 16 logical CPUs, 63 GiB 
 The browser tests found and verified a correction for missing Host headers in HTTP/2: origin checks now read URI authority when needed. A narrow-layout decoration overlap was corrected after visual inspection. Test certificates, fixture keys, databases, build tools and browser state are ignored and excluded from publication. CI repeats the test recipe on Ubuntu; its actual result is tracked separately from local evidence.
 
 Still pending: actual Debian/repurposed hardware, Android Chrome/iOS Safari, fresh local-address/trust enrollment, independently signed Tauri installation/update trust, OpenMLS stale writers/removal/epochs/concurrent governance, real recovery and reference-hardware budgets. M00 stays In progress; G0-local and G2 are not passed. Next bounded slice is physical-device B plus the independent C experiments. Other modules remain Unstarted.
+
+## 2026-10-30 — M00 C/D local cryptography and runtime-isolation experiments
+
+Authority: U22 continued local development/testing with phone checks at major milestones. Baseline: roadmap 1.1.0/product 0.6.0; C02 v1.0.0 / C05 v1.1.0. Sources R04/R13/R15/R17/R28, P04/P07/P09 and AC01/AC11/AC14/AC15. Code and detailed findings: [MLS experiment](../../spikes/m00/mls/README.md), network script/run recipe in the [M00 runbook](../../spikes/m00/README.md). The original prototype's [Ubuntu CI run](https://github.com/tellesus/BBSBOX/actions/runs/41141117156) passed; full device/appliance support was not inferred.
+
+Eight real OpenMLS tests pass locally on Windows gnullvm with Rust 1.99.1, OpenMLS 0.9.2 and provider/credential/traits 0.6.0. Each actor has separate credentials, group state and crypto storage. Covered: disconnected/reordered writers and replay/tamper denial; missing-commit catch-up; stale removal/current-epoch exclusion/fresh join without history; 32/33-update retention boundary; competing valid branches and missing app-level owner enforcement; encrypted snapshots with fresh-provider reload/wrong-key/tamper denial; backup rollback losing later replay state; receive-only restore followed by fresh owner-authorized join while other members keep working. Format/clippy checks pass. The recovery guard is a harness implementation; no private client or admission layer is claimed complete.
+
+Six local Python tests pass for the syscall auditor: real listener/accepted traffic is required, empty/partial traces cannot pass, failed IPv4/IPv6 connect attempts and explicit datagram/message destinations are rejected. The actual node-in-namespace experiment runs on Linux CI with only loopback and no IPv4/IPv6 gateway; it exercises HTTPS, compiled assets, a signed message and duplicate retry for both IP families. Its report/trace artifacts and actual outcome are recorded separately; a parser unit test alone is not isolated-runtime evidence.
+
+C05 now explicitly requires owner-authorized control proofs bound to forum/parent epoch/commit hash and receive-only backup restoration until fresh authorized membership state. Retention and backup replay behavior are measured limits, not unconditional delivery or recovery guarantees. M13/M15/M16 own actual authority/transport integration. Native Tauri distribution remains unverified. Device checks are scheduled for G1/G2; M00 is In progress and G2 remains open. Pending reference Debian hardware, actual router/DNS/firewall provisioning and phones remain distinct from the namespace test.

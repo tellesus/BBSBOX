@@ -66,9 +66,27 @@ impl<T, E: From<Error>> Pending<T, E> {
 }
 pub struct Writer {
     handle: Handle,
-    worker: Option<JoinHandle<()>>,
+    worker: Option<JoinHandle<Result<()>>>,
 }
-fn lock(path: &Path) -> Result<(File, PathBuf)> {
+struct WriterLock {
+    file: File,
+    locked: bool,
+}
+impl WriterLock {
+    fn release(&mut self) -> Result<()> {
+        if self.locked {
+            self.file.unlock()?;
+            self.locked = false;
+        }
+        Ok(())
+    }
+}
+impl Drop for WriterLock {
+    fn drop(&mut self) {
+        let _ = self.release();
+    }
+}
+fn lock(path: &Path) -> Result<(WriterLock, PathBuf)> {
     let path = if path.exists() {
         path.canonicalize()?
     } else {
@@ -91,7 +109,7 @@ fn lock(path: &Path) -> Result<(File, PathBuf)> {
     }
     let file = options.open(name)?;
     match file.try_lock() {
-        Ok(()) => Ok((file, path)),
+        Ok(()) => Ok((WriterLock { file, locked: true }, path)),
         Err(TryLockError::WouldBlock) => Err(Error::WriterAlreadyRunning),
         Err(TryLockError::Error(error)) => Err(Error::Io(error)),
     }
@@ -150,7 +168,7 @@ impl Writer {
         let worker = thread::Builder::new()
             .name("bbsbox-storage-writer".into())
             .spawn(move || {
-                let _file = file;
+                let mut writer_lock = file;
                 let _ = shared.thread.set(thread::current().id());
                 let database =
                     Database::open_with_clock(path, &migrations, clock).and_then(|mut database| {
@@ -165,7 +183,7 @@ impl Writer {
                     }
                     Err(error) => {
                         let _ = ready.send(Err(error));
-                        return;
+                        return Ok(());
                     }
                 };
                 let mut interactive_run = 0;
@@ -199,6 +217,11 @@ impl Writer {
                         task(&mut database);
                     }
                 }
+                // A fork-before-exec may temporarily retain this open file description despite
+                // CLOEXEC. Close SQLite first, then explicitly unlock; closing our descriptor
+                // alone need not release a Unix flock until every inherited copy closes.
+                drop(database);
+                writer_lock.release()
             })?;
         match started.recv() {
             Ok(Ok(())) => Ok(Self {
@@ -237,7 +260,7 @@ impl Writer {
             if worker.thread().id() == thread::current().id() {
                 return Err(Error::ReentrantWriter);
             }
-            worker.join().map_err(|_| Error::WriterClosed)?;
+            worker.join().map_err(|_| Error::WriterClosed)??;
         }
         Ok(())
     }
@@ -288,5 +311,25 @@ impl Handle {
         drop(queues);
         self.shared.ready.notify_one();
         Ok(Pending { reply: receiver })
+    }
+}
+
+#[cfg(all(test, unix))]
+mod tests {
+    use super::*;
+    #[test]
+    fn drained_owner_releases_lock_even_while_an_inherited_file_description_remains_open() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("node.sqlite");
+        let (owner, _) = lock(&path).unwrap();
+        // try_clone shares the same open file description as a fork-inherited descriptor.
+        let inherited = owner.file.try_clone().unwrap();
+        assert!(matches!(lock(&path), Err(Error::WriterAlreadyRunning)));
+        drop(owner);
+        let (mut next, _) = lock(&path).unwrap();
+        drop(inherited);
+        assert!(matches!(lock(&path), Err(Error::WriterAlreadyRunning)));
+        next.release().unwrap();
+        assert!(lock(&path).is_ok());
     }
 }

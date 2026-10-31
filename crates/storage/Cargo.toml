@@ -1,0 +1,13 @@
+[package]
+name = "bbsbox-storage"
+version = "0.1.0"
+edition = "2024"
+license = "AGPL-3.0-or-later"
+publish = false
+
+[dependencies]
+rusqlite = { version = "0.41", features = ["bundled"] }
+sha2 = "0.10"
+
+[dev-dependencies]
+tempfile = "3"

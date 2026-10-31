@@ -2,7 +2,7 @@
 
 Version 1.1.0 · 2026-10-25 · Locked development baseline · Product baseline 0.6.0.
 
-**State:** Approved under U19; In progress under the user’s 2026-10-30 build instruction. Local prototype evidence is recorded in WORK_LEDGER; G0-local/G2 remain open.
+**State:** In progress under U22. G0-local is passed for local development; M00 trusted-client/device work and G2 remain open. Evidence is recorded in WORK_LEDGER.
 
 ## Read only this packet
 
@@ -25,7 +25,7 @@ Use disposable Rust/Axum/SQLite and static SvelteKit experiments. Test desktop H
 
 Current code is under spikes/m00/: a Rust/Axum/SQLite node and static SvelteKit page, plus TLS and browser checks. Its disposable schema/wire profile is not production protocol v1. See the [runbook](../../../spikes/m00/README.md). Publish supported device/access paths and measured idle/import/game resource use.
 
-Only spikes/m00/ is implemented so far; later module locations remain planned. Consume the listed contracts and update affected consumers with any change.
+M00 experiments live under spikes/m00/; core storage starts separately in M02. Consume the listed contracts and update affected consumers with any change.
 
 ## Sequential work slices
 
@@ -46,7 +46,7 @@ Use the selected stack. Test Debian x86-64, desktop browsers, Android Chrome and
 
 ## Current local evidence — 2026-10-30
 
-The node/UI checks pass on Windows and Ubuntu CI. Eight OpenMLS fixtures additionally cover delayed/reordered work, removal, 32-epoch retention, commit forks and encrypted snapshots. Recovery is receive-only until a fresh owner-authorized join; raw MLS does not enforce forum-owner authority. Six Python checks validate the network auditor; the actual isolated Linux IPv4/IPv6 run is tracked in WORK_LEDGER. Phone tests wait for G1/G2 milestones. Trusted-client distribution and production admission/recovery remain open.
+The node/UI checks pass on Windows and Ubuntu CI. Eight OpenMLS fixtures cover delayed work, removal, 32-epoch retention, forks and encrypted snapshots. Recovery is receive-only until fresh owner-authorized join; raw MLS does not enforce forum ownership. Six Python checks validate the auditor; Linux CI also passes actual isolated IPv4/IPv6 runtime checks. G0-local enables local development. Phone tests wait for G1/G2. Trusted clients and production admission/recovery remain open.
 
 ## Handoff
 

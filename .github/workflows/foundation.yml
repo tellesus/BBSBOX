@@ -1,9 +1,9 @@
 name: Foundation experiment
 on:
   push:
-    paths: ['spikes/m00/**', '.github/workflows/foundation.yml', 'tools/validate_roadmap.py', 'docs/**']
+    paths: ['spikes/m00/**', 'crates/**', 'Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', '.github/workflows/foundation.yml', 'tools/validate_roadmap.py', 'docs/**']
   pull_request:
-    paths: ['spikes/m00/**', '.github/workflows/foundation.yml', 'tools/validate_roadmap.py', 'docs/**']
+    paths: ['spikes/m00/**', 'crates/**', 'Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', '.github/workflows/foundation.yml', 'tools/validate_roadmap.py', 'docs/**']
 permissions:
   contents: read
 jobs:
@@ -53,3 +53,11 @@ jobs:
       - run: cargo fmt --check --manifest-path mls/Cargo.toml
       - run: cargo test --locked --manifest-path mls/Cargo.toml
       - run: cargo clippy --locked --offline --manifest-path mls/Cargo.toml --all-targets -- -D warnings
+  storage-foundation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup toolchain install 1.99.1 --profile minimal --component rustfmt --component clippy
+      - run: cargo fmt --check --all
+      - run: cargo test --locked --workspace
+      - run: cargo clippy --locked --offline --workspace --all-targets -- -D warnings

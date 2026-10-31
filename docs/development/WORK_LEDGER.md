@@ -1,6 +1,6 @@
 # Development work ledger
 
-Version 1.1.0 · 2026-10-25 · Locked roadmap; M00 In progress, remaining modules Unstarted. Execution updated 2026-10-30.
+Version 1.1.0 · 2026-10-25 · Locked roadmap; M00/M02 In progress, remaining modules Unstarted. Execution updated 2026-10-30.
 
 Evidence log — not an independent source of scope authority. Current choices live in the canonical roadmap and user instructions.
 
@@ -8,9 +8,9 @@ Design review is complete and the first M00 prototype has real local implementat
 
 | Module | Scope | Execution state | Evidence / commit | Next action |
 | --- | --- | --- | --- | --- |
-| [M00](modules/M00-foundation-spikes.md) | Approved | In progress | 2026-10-30: Rust/API/store and HTTPS browser checks pass; see run record below | C fixtures pass; isolated Linux runtime verification next; phones at G1/G2, trusted-client/recovery integration pending |
+| [M00](modules/M00-foundation-spikes.md) | Approved | In progress | 2026-10-30: Rust/API/store and HTTPS browser checks pass; see run record below | G0-local passed; M02 B next, plus trusted-client study; phone checks at G1/G2 |
 | [M01](modules/M01-offline-appliance.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
-| [M02](modules/M02-storage-jobs.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
+| [M02](modules/M02-storage-jobs.md) | Approved | In progress | Six local slice-A integration tests pass; see current record | B: bounded writer service and durable jobs; C: blobs/budgets/snapshots |
 | [M03](modules/M03-identity-access.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
 | [M04](modules/M04-signed-events.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
 | [M12](modules/M12-maintenance-recovery.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
@@ -82,3 +82,13 @@ Eight real OpenMLS tests pass locally on Windows gnullvm with Rust 1.99.1, OpenM
 Six local Python tests pass for the syscall auditor: real listener/accepted traffic is required, empty/partial traces cannot pass, failed IPv4/IPv6 connect attempts and explicit datagram/message destinations are rejected. The actual node-in-namespace experiment runs on Linux CI with only loopback and no IPv4/IPv6 gateway; it exercises HTTPS, compiled assets, a signed message and duplicate retry for both IP families. Its report/trace artifacts and actual outcome are recorded separately; a parser unit test alone is not isolated-runtime evidence.
 
 C05 now explicitly requires owner-authorized control proofs bound to forum/parent epoch/commit hash and receive-only backup restoration until fresh authorized membership state. Retention and backup replay behavior are measured limits, not unconditional delivery or recovery guarantees. M13/M15/M16 own actual authority/transport integration. Native Tauri distribution remains unverified. Device checks are scheduled for G1/G2; M00 is In progress and G2 remains open. Pending reference Debian hardware, actual router/DNS/firewall provisioning and phones remain distinct from the namespace test.
+
+## 2026-10-30 — G0-local evidence and M02 A storage foundation
+
+The [Linux experiment run](https://github.com/tellesus/BBSBOX/actions/runs/41148611023) for commit 63bd54c passed both jobs: the actual IPv4/IPv6 node namespace smoke test, six syscall-auditor tests, original node/browser checks and all eight OpenMLS fixtures. The workflow requires only-loopback/no-gateway state and rejects attempted outbound network syscalls, not just successful egress. Its JSON/trace artifacts retain the bounded evidence. **G0-local is passed for continuing local development.** M00 remains In progress for trusted native-client/distribution and milestone device evidence; G1/G2 have not passed.
+
+Authority U22; roadmap 1.1.0/product 0.6.0; C01 v1.1.0. M02 A is implemented at [crates/storage](../../crates/storage/README.md): an owned blocking WAL/FULL writer, atomic scoped command fingerprints/receipts, ordered migrations with SQL hashes, schema/foreign-database guards and independent read-only connections. The root Cargo workspace excludes disposable M00 crates; all toolchain pins remain Rust 1.99.1. Namespaces bind actor/action/resource; modules own request canonicalization and do not manage nested transaction boundaries.
+
+Six local integration tests pass on Windows gnullvm: durable retry after reopen; changed ID/request rejection and distinct scopes; failed-work rollback with an independent reader progressing; migration failure/changed or removed migration/downgrade rejection; foreign DB and registry-gap rejection; oversized receipt and exact SQLite disk-full rollback; process exits before and after durable commit followed by one-effect retry. The disk-full test uses SQLite's page limit, not host disk exhaustion. Rust format and clippy checks pass. Linux CI repeats this workspace separately; its result must be checked for the implementation commit.
+
+M02 A supplies primitives only. The bounded writer actor, priority/fairness and durable job claims belong to B; blobs, reserved disk budgets, consistent snapshot hooks and measured import capacity belong to C. The public prototype is not migrated or wired to this library. M02 and full AC07/AC15 remain In progress/pending. Next bounded slice: M02 B; phones remain scheduled for G1/G2.

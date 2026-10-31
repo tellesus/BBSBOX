@@ -9,7 +9,7 @@
 | Product owner | Michael |
 | Canonical location | `docs/development/PRODUCT_SPEC.md` in [tellesus/BBSBOX](https://github.com/tellesus/BBSBOX) |
 | Authority | Product requirements within the canonical roadmap; latest applicable user instructions take precedence |
-| Implementation status | M00 prototype In progress; actual results in WORK_LEDGER; full capability gates remain open |
+| Implementation status | M00 experiments/M02 A In progress; G0-local passed; module/device/release evidence in WORK_LEDGER |
 | Software license | **AGPL-3.0-or-later**; project design prose **CC-BY-SA-4.0**; see the [license notice](../../LICENSE.md) |
 
 ## 1. Purpose and authority

@@ -1,0 +1,4 @@
+[workspace]
+resolver = "3"
+members = ["crates/storage"]
+exclude = ["spikes/m00/node", "spikes/m00/mls"]

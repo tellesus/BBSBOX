@@ -103,7 +103,8 @@
       "gate": "G1",
       "prerequisite_evidence": {
         "M00": "G0-local"
-      }
+      },
+      "execution_status": "in_progress"
     },
     {
       "id": "M03",
@@ -1050,7 +1051,8 @@
       "docs/archive/review-2026-10-25.md",
       "docs/archive/technical-plan-1.0.0.md",
       "spikes/m00/README.md",
-      "spikes/m00/mls/README.md"
+      "spikes/m00/mls/README.md",
+      "crates/storage/README.md"
     ]
   },
   "implementation_updated": "2026-10-30",
@@ -1058,5 +1060,13 @@
     "public_access": "G1 integrated local-node alpha",
     "private_client": "G2 before private-client release",
     "authority": "U22"
+  },
+  "gate_evidence": {
+    "G0-local": {
+      "status": "passed_for_local_development",
+      "source_commit": "63bd54c0edf12f5a99641ba93539a3fba88cce74",
+      "ci_run": "https://github.com/tellesus/BBSBOX/actions/runs/41148611023",
+      "scope": "Desktop/core and isolated-runtime evidence; G1/G2 device, appliance and private-client acceptance remain open"
+    }
   }
 }

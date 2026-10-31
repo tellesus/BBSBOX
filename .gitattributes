@@ -9,4 +9,6 @@
 *.toml text eol=lf
 *.yml text eol=lf
 *.ps1 text eol=lf
+*.rs text eol=lf
+*.lock text eol=lf
 /.gitignore text eol=lf

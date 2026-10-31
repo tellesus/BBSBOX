@@ -1,0 +1,13 @@
+[package]
+name = "bbsbox-client-identity"
+version = "0.1.0"
+edition = "2024"
+license = "AGPL-3.0-or-later"
+publish = false
+
+[dependencies]
+bbsbox-credentials = { path = "../../crates/credentials" }
+ed25519-dalek = { version = "3", features = ["zeroize"] }
+rand_core = { version = "0.6", features = ["getrandom"] }
+zeroize = "1"
+

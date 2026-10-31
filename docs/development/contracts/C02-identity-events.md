@@ -1,14 +1,16 @@
 # C02 — Identity, signed events and authorization
 
-Version 1.1.0 · Accepted for implementation · Owners M03 (identity), M04 (events).
+Version 1.2.0 · Accepted for implementation · Owners M03 (identity), M04 (events).
 
 ## Identity and credentials
 
-Keep `PersonId`, local account ID/username, device signing key, `NodeId`, `ForumId`, and courier credential distinct. Selected stable person identity starts from a root public key; root-authorized device certificates carry bounded purposes. Local account sessions authorize HTTP access but are not portable identity proof. Node credentials sign node actions/receipts, not arbitrary user authorship. Forum governance is a separate signed authority chain. An offline recovery kit protects the root; rotating/replacing devices must not require a cloud service.
+`PersonId` derives from a root public key. Keep local accounts/usernames, devices, nodes, forums and courier credentials distinct. Root-authorized devices carry bounded purposes; local sessions authorize HTTP only. Node keys sign node actions/receipts; forums have separate signed governance. Offline client recovery protects the root and enables device replacement/rotation without cloud services.
 
 Local sessions expire on service restart; M03 owns cookie/password defaults. Account login and SysOp roles never grant portable/forum authority.
 
-Selected authorization interface: `authorize(actor, action, resource, causal_context) -> allow | deny | missing_dependency`. Local host suppression and peer policy are node-local records, never forum membership grants. Root loss without a previously authorized recovery method yields a new identity, not invented continuity. A known compromised/revoked key follows the recorded causal policy; R17 permits disconnected stale state, not ignoring known invalid transitions.
+Credential v1 uses canonical COSE_Sign1/Ed25519, AAD `bbsbox.device-credential/v1`, array `[domain,1,root,device,incarnation,purposes]`, SHA-256 byte IDs and a 512-byte cap. Root/device keys differ; incarnations are fresh 16-byte nonces. Purpose bits 1/2/4/8 cover authorship/forum governance/game ownership/identity proof, granting no resource permissions themselves.
+
+Authorization: `authorize(actor, action, resource, causal_context) -> allow | deny | missing_dependency`. Host suppression/peer policy are node-local, never membership grants. Unrecoverable root loss creates a new identity. Known compromised/revoked keys follow causal policy; R17 accepts disconnected stale state, never known-invalid transitions.
 
 ## Event envelope
 

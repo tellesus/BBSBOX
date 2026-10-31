@@ -1053,7 +1053,9 @@
       "spikes/m00/README.md",
       "spikes/m00/mls/README.md",
       "crates/storage/README.md",
-      "crates/identity/README.md"
+      "crates/identity/README.md",
+      "crates/credentials/README.md",
+      "client/identity/README.md"
     ]
   },
   "implementation_updated": "2026-10-30",

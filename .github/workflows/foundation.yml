@@ -1,9 +1,9 @@
 name: Foundation experiment
 on:
   push:
-    paths: ['spikes/m00/**', 'crates/**', 'Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', '.github/workflows/foundation.yml', 'tools/validate_roadmap.py', 'docs/**']
+    paths: ['spikes/m00/**', 'crates/**', 'client/**', 'Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', '.github/workflows/foundation.yml', 'tools/validate_roadmap.py', 'tools/verify_credentials.mjs', 'docs/**']
   pull_request:
-    paths: ['spikes/m00/**', 'crates/**', 'Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', '.github/workflows/foundation.yml', 'tools/validate_roadmap.py', 'docs/**']
+    paths: ['spikes/m00/**', 'crates/**', 'client/**', 'Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', '.github/workflows/foundation.yml', 'tools/validate_roadmap.py', 'tools/verify_credentials.mjs', 'docs/**']
 permissions:
   contents: read
 jobs:
@@ -26,6 +26,7 @@ jobs:
       - run: cargo build --locked --offline --manifest-path node/Cargo.toml
       - run: npm ci && npm run check && npm run build
         working-directory: spikes/m00/web
+      - run: node ../../tools/verify_credentials.mjs
       - run: python3 tools/init_tls.py
       - run: npx playwright install --with-deps chromium && npm test
         working-directory: spikes/m00/web

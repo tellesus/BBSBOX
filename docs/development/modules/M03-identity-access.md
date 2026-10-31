@@ -1,8 +1,8 @@
 # M03 — Identity, local accounts and permissions
 
-Brief revision 1.1.1 · Roadmap baseline 1.1.0 · 2026-10-30 · Product baseline 0.6.0.
+Brief revision 1.1.2 · Roadmap baseline 1.1.0 · 2026-10-30 · Product baseline 0.6.0.
 
-**State:** In progress under U22. A has local account/session evidence; B/C and HTTP/device integration remain pending. Consume C01 v1.3.0/C02 v1.1.0.
+**State:** In progress under U22. A passed Windows/Linux; B has local credential/client-core evidence; C and HTTP/device integration remain pending. Consume C01 v1.3.0/C02 v1.2.0.
 
 ## Read only this packet
 
@@ -23,7 +23,7 @@ Use local username/password sessions with Argon2id password hashes, secure same-
 
 ## Ownership and interfaces
 
-crates/identity/ implements A: accounts, sessions, bootstrap and local roles. Public credentials/client recovery remain planned in B/C. Core owns the public resolver/authorize API. See the [implementation reference](../../../crates/identity/README.md).
+crates/identity/ implements accounts/sessions and a public credential resolver. crates/credentials/ verifies public definitions; client/identity/ holds root/device signing keys. C adds protected recovery/linking. Core owns resolver/authorization services; features check resource authority. See [accounts](../../../crates/identity/README.md) and [credential profile](../../../crates/credentials/README.md).
 
 M05 owns HTTP/enrollment UI integration; A exposes authenticated SysOp account creation without a public bootstrap route. Consume listed contracts and update affected consumers together.
 

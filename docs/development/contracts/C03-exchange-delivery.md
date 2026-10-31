@@ -1,6 +1,6 @@
 # C03 — Selected exchange, Pigeon delivery and credit
 
-Version 1.0.0 · Accepted for implementation · Owners M15 and M16; consumes C02 v1.1.0.
+Version 1.0.0 · Accepted for implementation · Owners M15 and M16; consumes C02 v1.2.0.
 
 ## Transport-independent exchange
 

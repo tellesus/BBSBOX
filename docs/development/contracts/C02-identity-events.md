@@ -1,12 +1,14 @@
 # C02 — Identity, signed events and authorization
 
-Version 1.2.0 · Accepted for implementation · Owners M03 (identity), M04 (events).
+Version 1.3.0 · Accepted for implementation · Owners M03 (identity), M04 (events).
 
 ## Identity and credentials
 
 `PersonId` derives from a root public key. Keep local accounts/usernames, devices, nodes, forums and courier credentials distinct. Root-authorized devices carry bounded purposes; local sessions authorize HTTP only. Node keys sign node actions/receipts; forums have separate signed governance. Offline client recovery protects the root and enables device replacement/rotation without cloud services.
 
 Local sessions expire on service restart; M03 owns cookie/password defaults. Account login and SysOp roles never grant portable/forum authority.
+
+Account linking requires a destination-bound root possession proof.
 
 Credential v1 uses canonical COSE_Sign1/Ed25519, AAD `bbsbox.device-credential/v1`, array `[domain,1,root,device,incarnation,purposes]`, SHA-256 byte IDs and a 512-byte cap. Root/device keys differ; incarnations are fresh 16-byte nonces. Purpose bits 1/2/4/8 cover authorship/forum governance/game ownership/identity proof, granting no resource permissions themselves.
 

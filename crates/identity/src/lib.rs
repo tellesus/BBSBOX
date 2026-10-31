@@ -5,6 +5,8 @@ use rand_core::{OsRng, RngCore};
 use rusqlite::{Connection, OptionalExtension, Transaction, params};
 use std::fmt;
 
+pub mod linking;
+pub mod node;
 pub mod password;
 pub mod public;
 pub mod session;
@@ -31,6 +33,10 @@ pub enum Error {
     InvalidStoredHash,
     Credential(bbsbox_credentials::Error),
     InvalidStoredCredential,
+    InvalidChallenge,
+    AlreadyLinked,
+    InvalidNodeState,
+    StaleSigner,
 }
 impl From<bbsbox_storage::Error> for Error {
     fn from(e: bbsbox_storage::Error) -> Self {
@@ -40,6 +46,11 @@ impl From<bbsbox_storage::Error> for Error {
 impl From<rusqlite::Error> for Error {
     fn from(e: rusqlite::Error) -> Self {
         Self::Sqlite(e)
+    }
+}
+impl From<std::io::Error> for Error {
+    fn from(e: std::io::Error) -> Self {
+        Self::Storage(bbsbox_storage::Error::Io(e))
     }
 }
 impl From<bbsbox_credentials::Error> for Error {
@@ -73,6 +84,12 @@ impl fmt::Display for Error {
             Self::InvalidStoredHash => "stored password hash is unsupported or corrupt",
             Self::Credential(_) => "public credential verification failed",
             Self::InvalidStoredCredential => "stored credential does not match its identifier",
+            Self::InvalidChallenge => {
+                "account-link challenge is missing, expired, changed or already consumed"
+            }
+            Self::AlreadyLinked => "unlink the current portable identity before linking another",
+            Self::InvalidNodeState => "stored node signing state is corrupt",
+            Self::StaleSigner => "signing request uses a previous writer incarnation",
         })
     }
 }
@@ -135,7 +152,7 @@ pub fn migrations() -> Vec<Migration> {
 CREATE TABLE identity_settings(id INTEGER PRIMARY KEY CHECK(id=1),bootstrapped INTEGER NOT NULL CHECK(bootstrapped=1));
 CREATE TABLE identity_accounts(id BLOB PRIMARY KEY CHECK(length(id)=16),username TEXT NOT NULL UNIQUE,password_hash TEXT NOT NULL,credential_version INTEGER NOT NULL DEFAULT 1,role TEXT NOT NULL CHECK(role IN('member','sysop')),active INTEGER NOT NULL DEFAULT 1 CHECK(active IN(0,1)));
 CREATE TABLE identity_sessions(token_hash BLOB PRIMARY KEY CHECK(length(token_hash)=32),csrf_hash BLOB NOT NULL CHECK(length(csrf_hash)=32),account_id BLOB NOT NULL REFERENCES identity_accounts(id),credential_version INTEGER NOT NULL,boot BLOB NOT NULL CHECK(length(boot)=16),created_tick INTEGER NOT NULL,seen_tick INTEGER NOT NULL);
-CREATE INDEX identity_sessions_account ON identity_sessions(account_id);"},Migration{module:"identity",version:2,sql:"CREATE TABLE identity_device_credentials(id BLOB PRIMARY KEY CHECK(length(id)=32),person_id BLOB NOT NULL CHECK(length(person_id)=32),encoded BLOB NOT NULL CHECK(length(encoded)>0 AND length(encoded)<=512)); CREATE INDEX identity_credentials_person ON identity_device_credentials(person_id);"}]
+CREATE INDEX identity_sessions_account ON identity_sessions(account_id);"},Migration{module:"identity",version:2,sql:"CREATE TABLE identity_device_credentials(id BLOB PRIMARY KEY CHECK(length(id)=32),person_id BLOB NOT NULL CHECK(length(person_id)=32),encoded BLOB NOT NULL CHECK(length(encoded)>0 AND length(encoded)<=512)); CREATE INDEX identity_credentials_person ON identity_device_credentials(person_id);"},Migration{module:"identity",version:3,sql:linking::SCHEMA},Migration{module:"identity",version:4,sql:"CREATE TABLE identity_node_identity(id INTEGER PRIMARY KEY CHECK(id=1),public_key BLOB NOT NULL CHECK(length(public_key)=32),seed BLOB NOT NULL CHECK(length(seed)=32));"}]
 }
 
 pub(crate) fn account_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Account> {

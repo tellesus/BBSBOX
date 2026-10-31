@@ -6,6 +6,7 @@ use bbsbox_credentials::{
 use ed25519_dalek::{Signer, SigningKey};
 use rand_core::{OsRng, RngCore};
 use zeroize::Zeroizing;
+pub mod recovery;
 
 fn generate() -> SigningKey {
     let mut seed = Zeroizing::new([0; 32]);
@@ -41,6 +42,17 @@ impl RootKey {
     }
     pub fn contact_card(&self) -> ContactCard {
         ContactCard::new(self.public()).expect("generated valid root")
+    }
+    pub fn prove_account_link(
+        &self,
+        challenge: &bbsbox_credentials::linking::Challenge,
+        expected_node: bbsbox_credentials::NodeId,
+        expected_account: &[u8; 16],
+    ) -> Result<Vec<u8>> {
+        challenge.check_destination(expected_node, expected_account)?;
+        bbsbox_credentials::linking::prove(challenge, &self.contact_card(), |message| {
+            self.0.sign(message).to_bytes()
+        })
     }
     pub fn issue_device(&self, device_public: [u8; 32], purposes: Purposes) -> Result<Credential> {
         let mut incarnation = [0; 16];

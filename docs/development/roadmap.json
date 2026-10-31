@@ -136,7 +136,11 @@
         "T08",
         "T09"
       ],
-      "gate": "G1"
+      "gate": "G1",
+      "prerequisite_evidence": {
+        "M00": "G0-local",
+        "M02": "completed provider interfaces"
+      }
     },
     {
       "id": "M04",
@@ -1058,7 +1062,7 @@
       "client/identity/README.md"
     ]
   },
-  "implementation_updated": "2026-10-30",
+  "implementation_updated": "2026-10-31",
   "phone_testing": {
     "public_access": "G1 integrated local-node alpha",
     "private_client": "G2 before private-client release",

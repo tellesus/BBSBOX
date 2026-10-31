@@ -101,7 +101,7 @@ fn migration_two_keeps_existing_accounts_and_receipts() {
     old.transaction(command(), |_| Ok(b"durable".to_vec()))
         .unwrap();
     drop(old);
-    let mut db = Database::open(&path, &all).unwrap();
+    let mut db = Database::open(&path, &all[..2]).unwrap();
     assert_eq!(
         bbsbox_identity::account(&open_reader(&path).unwrap(), account.id).unwrap(),
         account

@@ -5,6 +5,7 @@ use coset::{CborSerializable, CoseSign1, CoseSign1Builder, HeaderBuilder, iana};
 use ed25519_dalek::{Signature, VerifyingKey};
 use sha2::{Digest, Sha256};
 use std::{fmt, str::FromStr};
+pub mod linking;
 
 pub const DEVICE_DOMAIN: &str = "bbsbox.device-credential/v1";
 pub const MAX_CREDENTIAL_BYTES: usize = 512;
@@ -20,6 +21,7 @@ pub enum Error {
     InvalidSignature,
     WrongPerson,
     PurposeDenied,
+    WrongDestination,
 }
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -33,6 +35,7 @@ impl fmt::Display for Error {
             Self::InvalidSignature => "invalid credential signature",
             Self::WrongPerson => "credential belongs to another person",
             Self::PurposeDenied => "device credential does not authorize this purpose",
+            Self::WrongDestination => "account-link challenge belongs to another destination",
         })
     }
 }

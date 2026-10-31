@@ -130,7 +130,7 @@ impl Writer {
         }
         config.disk.validate()?;
         let (file, path) = lock(path.as_ref())?;
-        if crate::snapshot::recovery_marker(&path).exists() {
+        if crate::snapshot::recovery_marker(&path).try_exists()? {
             return Err(Error::RecoveryRequired);
         }
         let shared = Arc::new(Shared {

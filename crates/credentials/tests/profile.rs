@@ -40,6 +40,27 @@ fn public_vector_reproduces_exact_ids_bytes_and_signature() {
         credential.body()
     );
 }
+
+#[test]
+fn root_link_vector_reproduces_exact_destination_bound_bytes() {
+    let expected: serde_json::Value =
+        serde_json::from_str(include_str!("fixtures/link-v1.json")).unwrap();
+    let root = SigningKey::from_bytes(&[7; 32]);
+    let node = SigningKey::from_bytes(&[9; 32]);
+    let card = ContactCard::new(root.verifying_key().to_bytes()).unwrap();
+    let challenge = bbsbox_credentials::linking::Challenge::new(
+        NodeId::from_public_key(&node.verifying_key().to_bytes()).unwrap(),
+        [12; 16],
+        card.person_id(),
+        [13; 32],
+    )
+    .unwrap();
+    let proof = bbsbox_credentials::linking::prove(&challenge, &card, |message| {
+        root.sign(message).to_bytes()
+    })
+    .unwrap();
+    assert_eq!(hex::encode(proof), expected["cose_hex"].as_str().unwrap());
+}
 #[test]
 fn role_ids_and_public_cards_never_substitute_for_each_other() {
     let public = body().root().to_owned();

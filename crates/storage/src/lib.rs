@@ -176,6 +176,19 @@ fn configure(connection: &Connection, writable: bool) -> Result<()> {
     }
     Ok(())
 }
+#[cfg(unix)]
+fn private_database_files(path: &Path) -> Result<()> {
+    use std::os::unix::fs::PermissionsExt;
+    for suffix in ["", "-wal", "-shm", "-journal"] {
+        let mut name = path.as_os_str().to_os_string();
+        name.push(suffix);
+        let name = PathBuf::from(name);
+        if name.try_exists()? {
+            std::fs::set_permissions(name, std::fs::Permissions::from_mode(0o600))?;
+        }
+    }
+    Ok(())
+}
 impl Database {
     pub fn open(path: impl AsRef<Path>, migrations: &[Migration]) -> Result<Self> {
         Self::open_with_clock(path, migrations, Arc::new(clock::SystemClock::default()))
@@ -208,6 +221,22 @@ impl Database {
             }
             previous_version = version;
         }
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::OpenOptionsExt;
+            if !path.as_ref().try_exists()? {
+                match std::fs::OpenOptions::new()
+                    .write(true)
+                    .create_new(true)
+                    .mode(0o600)
+                    .open(&path)
+                {
+                    Ok(_) => (),
+                    Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => (),
+                    Err(error) => return Err(error.into()),
+                }
+            }
+        }
         let mut connection = Connection::open(&path)?;
         let application: i32 =
             connection.pragma_query_value(None, "application_id", |r| r.get(0))?;
@@ -224,6 +253,8 @@ impl Database {
         if !fresh && !(1..=SCHEMA_VERSION).contains(&version) {
             return Err(Error::UnsupportedSchema(version));
         }
+        #[cfg(unix)]
+        private_database_files(path.as_ref())?;
         configure(&connection, true)?;
         let tx = connection.transaction()?;
         if fresh {
@@ -301,6 +332,9 @@ impl Database {
         self.budget = budget.validate()?;
         self.space = probe;
         Ok(())
+    }
+    pub fn recovery_required(&self) -> Result<bool> {
+        Ok(snapshot::recovery_marker(&self.path).try_exists()?)
     }
     fn directory(&self) -> &Path {
         self.path

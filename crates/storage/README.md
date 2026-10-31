@@ -6,6 +6,8 @@ The first core crate owns a SQLite WAL/FULL writer connection. `Database::transa
 
 The migration registry validates contiguous, unique module versions and records SQL hashes. All missing migrations run in one transaction; failing SQL rolls back the module/core bootstrap. Altered or removed applied migrations, schema downgrades and foreign databases fail explicitly. Keep migrations registered when a module is disabled. The reader helper opens an independent read-only connection; tests verify committed state stays readable during a write.
 
+Unix live database files and existing WAL/SHM/journal sidecars use 0600; the appliance owns a private data directory. `recovery_required` lets sensitive consumers check the persistent restore marker and propagates filesystem errors. Writer startup also treats an unreadable marker check as an error.
+
 Consumers with typed business errors use `transaction_service` and `Handle::submit_service`; storage/panic errors convert to that module's error type. `Database::write` supplies a committed service transaction without a durable response receipt for operations such as login. Password/session secrets and low-entropy password fingerprints never belong in general command receipts. Existing command/queue APIs retain their storage-error defaults.
 
 ## Run

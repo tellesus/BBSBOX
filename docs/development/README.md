@@ -27,7 +27,7 @@ Phone tests are scheduled for the G1 integrated local-node alpha and G2 private-
 
 ## Execution order and dependencies
 
-M00 → M01 → M02 → M03 → M04 → M12 → M05 → M06 → M07 → M08 → M09 → M10 → M11 → M13 → M14 → M15 → M16 → M17 → M18 → M19. Maintenance moves immediately after the durable identity/event foundation. G0-local evidence enables independent local work even if G2 private-client research remains open. A dependency on M00 means G0-local for M01/M02 and full relevant private-client/MLS evidence for M13. Other dependencies require completed provider interfaces; bounded earlier research uses fixtures and claims no integration.
+M00 → M01 → M02 → M03 → M04 → M12 → M05 → M06 → M07 → M08 → M09 → M10 → M11 → M13 → M14 → M15 → M16 → M17 → M18 → M19. Maintenance moves immediately after the durable identity/event foundation. G0-local evidence enables independent local work even if G2 private-client research remains open. M00 supplies G0-local for M01–M03 provider work and full relevant private-client/MLS evidence for M13. Other dependencies require completed provider interfaces; bounded earlier research uses fixtures and claims no integration.
 
 | Module | Gate | Prerequisites for completion | Decisions |
 | --- | --- | --- | --- |

@@ -1,8 +1,8 @@
 # M03 — Identity, local accounts and permissions
 
-Brief revision 1.1.2 · Roadmap baseline 1.1.0 · 2026-10-30 · Product baseline 0.6.0.
+Brief revision 1.1.3 · Roadmap baseline 1.1.0 · 2026-10-31 · Product baseline 0.6.0.
 
-**State:** In progress under U22. A passed Windows/Linux; B has local credential/client-core evidence; C and HTTP/device integration remain pending. Consume C01 v1.3.0/C02 v1.2.0.
+**State:** In progress, validating C under U22. A/B passed Windows/Linux; A–C have local crypto/account/recovery evidence. C Linux and consumer integration remain pending. Consume C01 v1.3.0/C02 v1.3.0.
 
 ## Read only this packet
 
@@ -12,6 +12,8 @@ Look up only decision rows T04, T08, T09 in [DECISIONS](../DECISIONS.md). Depend
 **Source scope:** R07, R13, R14, R17, P07, P22, AC01, AC11, AC12, AC14, AC15. **Target gate:** G1. Scope summaries below preserve these source IDs; reconcile conflicts with the current product requirements and user instructions.
 
 **Prerequisites:** [M00](M00-foundation-spikes.md), [M02](M02-storage-jobs.md).
+
+M00 supplies G0-local here; actual private-client acceptance remains G2.
 
 ## Product outcome and boundaries
 
@@ -23,7 +25,7 @@ Use local username/password sessions with Argon2id password hashes, secure same-
 
 ## Ownership and interfaces
 
-crates/identity/ implements accounts/sessions and a public credential resolver. crates/credentials/ verifies public definitions; client/identity/ holds root/device signing keys. C adds protected recovery/linking. Core owns resolver/authorization services; features check resource authority. See [accounts](../../../crates/identity/README.md) and [credential profile](../../../crates/credentials/README.md).
+crates/identity/ implements accounts, public resolution, destination linking and node signer lifecycle. crates/credentials/ verifies proofs; client/identity/ owns signing/recovery. Core supplies authorization services; features check resource authority. See [accounts](../../../crates/identity/README.md) and [credential profile](../../../crates/credentials/README.md).
 
 M05 owns HTTP/enrollment UI integration; A exposes authenticated SysOp account creation without a public bootstrap route. Consume listed contracts and update affected consumers together.
 
@@ -44,6 +46,8 @@ M05 owns HTTP/enrollment UI integration; A exposes authenticated SysOp account c
 Local account/password sessions and separate root-authorized device credentials are selected. Recovery is an encrypted user-held kit containing the root and necessary client state; passwords alone recover no E2E keys. Use established authenticated encryption and password derivation libraries. Public QR/fingerprint introductions contain no secret. Every restore creates a new authorized writer incarnation; root loss with no kit creates a new identity. Device addition requires existing root authorization.
 
 A defaults: case-folded 1–32 ASCII letters/digits/underscore/hyphen usernames; passwords 15+ characters/1,024-byte maximum, Argon2id 19 MiB/two passes/one lane. Two password slots, ten attempts/username/minute, 1,024 limiter entries. Secure host-only session cookies use HttpOnly/SameSite=Strict plus origin/CSRF checks. Sessions use monotonic seven-day absolute/twelve-hour idle expiry, 32/account maximum, and end on restart. Role/password changes revoke sessions; preserve the last active SysOp. Never persist password/session secrets in receipts or plain request fingerprints.
+
+C defaults: recovery profile 1 uses Argon2id 64 MiB/three passes/one lane and XChaCha20Poly1305; up to 8 MiB supplied client state. Restore creates fresh devices. Linking requires the current account session plus a node/account/nonce-bound root proof; challenges expire after five minutes, maximum eight pending/account. Explicit unlink preserves signed history. Node seed/public identity commit together; each startup changes incarnation and restored storage blocks signing pending M12 recovery.
 
 ## Handoff
 

@@ -3,6 +3,7 @@
 import argparse
 import json
 import os
+import re
 from pathlib import Path
 import secrets
 import shutil
@@ -38,7 +39,7 @@ def preflight(root, profile):
     config = enrollment.read_json(target(root, 'etc/bbsbox/node.json'))
     node_id = installed.get('node_id', '')
     hostname = 'bbsbox-'+node_id.split(':')[-1][:16]+'.home.arpa'
-    if installed.get('format') != 'bbsbox.development-install/v1' or installed.get('hostname') != hostname:
+    if installed.get('format') != 'bbsbox.development-install/v1' or not re.fullmatch(r'node:[a-f0-9]{64}',node_id) or installed.get('hostname') != hostname:
         raise ValueError('Expected a matching developer installation')
     profile = json.loads(json.dumps(profile))
     if profile.get('hostname') == 'auto': profile['hostname'] = hostname

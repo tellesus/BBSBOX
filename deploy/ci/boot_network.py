@@ -46,13 +46,18 @@ def exercise(root, output):
         run('ip','-6','addr','add','fd42:bb50::2/64','dev','bbs-visitor','nodad')
         run('ip','link','set','bbs-visitor','up')
         with (output/f'network-boot-{attempt}.log').open('wb') as stream:
-            process = subprocess.Popen(['systemd-nspawn','--settings=no','--register=no','--private-users=no','--directory',str(root),'--boot','--private-network','--network-interface=bbs-client','--console=read-only','--resolv-conf=off','--link-journal=no',f'--machine=bbsbox-net-{attempt}-{os.getpid()}','systemd.log_target=console'],stdout=stream,stderr=subprocess.STDOUT,start_new_session=True)
+            process = subprocess.Popen(['systemd-nspawn','--settings=no','--register=no','--private-users=no','--directory',str(root),'--boot','--private-network','--console=read-only','--resolv-conf=off','--link-journal=no',f'--machine=bbsbox-net-{attempt}-{os.getpid()}','systemd.log_target=console'],stdout=stream,stderr=subprocess.STDOUT,start_new_session=True)
             pid=None; pid_fd=None
             try:
-                until=time.monotonic()+60
+                until=time.monotonic()+60; attached=False
                 while time.monotonic()<until:
                     if process.poll() is not None: raise RuntimeError('Prepared network OS stopped')
                     pid=service.leader(root)
+                    if pid and not attached:
+                        # netlink moves only our fixture interface into the validated guest.
+                        # nspawn's preboot device lookup uses the outer /sys mount, which
+                        # need not expose devices created in this parent network namespace.
+                        run('ip','link','set','bbs-client','netns',str(pid)); attached=True
                     try:
                         if pid and service.enter(pid,root,['/usr/bin/systemctl','is-active','bbsbox.service'],False).stdout.strip()==b'active':
                             info=fetch(root,installed['hostname'],'192.168.50.1'); break
@@ -77,6 +82,9 @@ def exercise(root, output):
                     assert service.enter(pid,root,['/usr/bin/systemctl','is-enabled',unit],False).stdout.strip()==b'masked'
                 counters=service.enter(pid,root,['/usr/sbin/nft','-j','list','table','inet','bbsbox_boundary']).stdout
                 (output/f'boundary-{attempt}.json').write_bytes(counters)
+                diagnostic=service.enter(pid,root,['/usr/bin/python3','/src/deploy/diagnose.py'],False)
+                (output/f'diagnostic-{attempt}.json').write_bytes(diagnostic.stdout)
+                assert diagnostic.returncode==0,diagnostic.stdout.decode(errors='replace')
                 cases.append(dict(boot=attempt+1,local_client_https_ipv4_ipv6=True,dns_local_only=True,actual_networkd_boundary_dns_units=True,node_identity_and_ca_preserved=True,no_default_route=True,forwarding_disabled=True,online_services_masked=True,no_peers=True))
             except Exception:
                 pid=pid or service.leader(root)

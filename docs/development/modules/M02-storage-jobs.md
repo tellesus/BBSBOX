@@ -1,8 +1,8 @@
 # M02 — Durable storage and bounded jobs
 
-Brief revision 1.1.1 · Roadmap baseline 1.1.0 · 2026-10-30 · Product baseline 0.6.0.
+Brief revision 1.1.2 · Roadmap baseline 1.1.0 · 2026-10-30 · Product baseline 0.6.0.
 
-**State:** In progress under U22 after G0-local evidence. A/B are implemented; C and full G1 evidence remain pending. Consume C01 v1.2.0.
+**State:** In progress, validating C under U22 after G0-local evidence. A/B passed Windows and Linux checks; A–C have 25 passing Windows integration tests. C Linux evidence is pending. Consume C01 v1.3.0.
 
 ## Read only this packet
 
@@ -23,7 +23,7 @@ Use SQLite WAL through rusqlite with a dedicated bounded writer and read connect
 
 ## Ownership and interfaces
 
-crates/storage/ implements A/B: migration registry, scoped command receipts, independent readers, bounded writer and transactional jobs with fenced claims/retries. Blobs and snapshot hooks follow in C. Feature rows remain module-owned. See the [implementation runbook](../../../crates/storage/README.md).
+crates/storage/ implements A–C: migrations/receipts, independent readers, bounded writer, fenced jobs/retries, content-addressed blobs, explicit references/collection, disk admission and core snapshot/restore hooks. Feature rows remain module-owned. See the [implementation runbook](../../../crates/storage/README.md).
 
 The library is not wired to HTTP or the prototype. Async handlers await writer replies; callbacks execute on its dedicated thread. Module SQL uses the existing transaction rather than managing its own. Consume C01 and update affected consumers together.
 
@@ -45,6 +45,6 @@ SQLite WAL with synchronous=FULL, one bounded writer, transactional outbox and e
 
 ## Handoff
 
-Current evidence covers command/job crash recovery, fencing, retry/pause, bounded admission, fair scheduling, independent WAL reads and migration guards. A finite concurrent workload measures interactive latency and confirms background progress; results are in WORK_LEDGER. Full completion still requires C; AC07/AC15 remain pending.
+Current evidence covers command/job/upload crashes, interrupted migrations with spilled WAL frames, fencing, retries, bounded/fair scheduling, disk floors, collection and real WAL-aware core restore. A finite concurrent workload measures interactive latency/background progress; results are in WORK_LEDGER. C needs Linux confirmation. M12 owns full-node backup/recovery and M10/consumers own integration; full AC07/AC15 remain pending.
 
 Record completed slices, approved ADRs, contract/schema revisions, evidence and commit, remaining limitations and next slice in [WORK_LEDGER](../WORK_LEDGER.md). Existing scopes are approved. Every design, goal or feature change updates affected roadmap canon before completion; follow START_HERE. See [coverage](../COVERAGE.md) when changing source IDs.

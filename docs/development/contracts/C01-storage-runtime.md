@@ -1,12 +1,12 @@
 # C01 — Storage, runtime and module boundary
 
-Version 1.2.0 · Accepted for implementation · Owner M02; operations co-owner M12.
+Version 1.3.0 · Accepted for implementation · Owner M02; operations co-owner M12.
 
 ## Responsibilities and interface
 
 Use one Rust node service with explicit internal modules and one local SQLite database using WAL. Modules own prefixed tables and ordered migrations; only the owning service writes those tables. Cross-module operations call typed services within a shared transaction when atomicity matters. Read projections are replaceable; signed records, receipts, role decisions, and user data are durable. Large local files are content-addressed on disk with database metadata. This is not database-file replication.
 
-Selected interfaces: `transaction(namespace, command_id, canonical_request, work)`, `enqueue(queue, idempotency_key, payload)`, `claim_job/finish_job`, `module_query`, `blob_put/get`, `snapshot_manifest`. These are design names, not a published API. The command namespace binds authenticated actor/action/resource context; canonical request bytes bind all relevant arguments. Reusing an ID with changed bytes fails. Mutation and durable response receipt commit together. Browser endpoints use versioned JSON schemas/OpenAPI; core Rust interfaces do not expose database handles to games.
+Interfaces: scoped transactions/receipts, transactional enqueue, claim/finish, module queries, blob put/get and snapshots. Command namespaces bind authenticated actor/action/resource; canonical request bytes bind every argument. Changed-byte ID reuse fails; mutation and response commit together. Browser endpoints use versioned JSON/OpenAPI. Games never receive core database handles.
 
 Use a bounded writer worker with rusqlite off async request threads. Keep SQLite on a local filesystem. Default durable transactions use FULL synchronous behavior pending M00 measurements. HTTP success for a mutation follows durable commit; filesystem bytes must be finalized before their row becomes visible. Recover orphan temporary files safely after interruption.
 
@@ -14,9 +14,11 @@ Use a bounded writer worker with rusqlite off async request threads. Keep SQLite
 
 Serve local interactive work ahead of incoming bulk processing. Give background queues bounded batches plus a minimum service share so sync cannot starve indefinitely. Retry with persistent progress; failures carry a typed reason and retry condition. A command ID deduplicates browser retries; a network event ID deduplicates synchronization. They are different identifiers.
 
-The M02 writer defaults to 64 pending tasks plus one executing task; while both priorities are pending, serve at most eight interactive tasks before one background task. Reject saturation explicitly. Accepted work survives caller disconnection. Keep callbacks bounded and never submit recursively. A process lock protects startup job recovery; direct database opens are bootstrap/test interfaces. Jobs use fresh claim tokens, monotonic lease deadlines and fenced transactional completion; calendar retry times use wall time. Restart makes unfinished claims retryable, preserving paused/done jobs. External effects require their own durable idempotence/outbox; a claim alone is insufficient.
+M02 defaults: 64 pending tasks plus one executing; at most eight interactive tasks before one pending background task. Reject saturation; accepted work survives disconnection. Bound callbacks; reject recursion. A process lock protects startup recovery; direct opens are bootstrap/tests. Fresh tokens and monotonic leases fence completion; retry dates use wall time. Restart retries unfinished claims, preserving paused/done jobs. External effects need durable idempotence/outboxes.
 
 Take a consistent SQLite backup through its backup API plus a manifest of referenced blobs, configuration, node secrets and counters. Protect required blobs from deletion while taking the snapshot. Client private keys are a separate client export; a server backup does not magically contain them. Do not copy only the main SQLite file while ignoring live WAL state.
+
+M02 supplies core-only snapshot/restore hooks; restored writers remain recovery-blocked until M03/M12 activation. Blob references protect pending exports/dependencies; collection removes only explicitly unreferenced bytes. Configurable content/control free-space floors default to 256/32 MiB; default blob maximum is 64 MiB. Admission checks cannot reserve space against other processes; actual I/O failures remain recoverable.
 
 ## Module lifecycle
 

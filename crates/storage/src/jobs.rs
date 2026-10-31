@@ -98,10 +98,13 @@ fn active(tx: &Transaction<'_>, claim: &Claim, now: i64) -> Result<(String, Opti
 }
 impl Database {
     pub fn enqueue(&mut self, job: JobSpec<'_>) -> Result<i64> {
+        let guard = self.admission(crate::disk::Class::Control);
+        guard.check(job.payload.len() as u64 + 65536)?;
         let tx = self
             .connection
             .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
         let id = enqueue(&tx, job)?;
+        guard.check(0)?;
         tx.commit()?;
         Ok(id)
     }
@@ -117,6 +120,8 @@ impl Database {
         if kinds.is_empty() {
             return Ok(None);
         }
+        let guard = self.admission(crate::disk::Class::Control);
+        guard.check(65536)?;
         let now = self.clock.monotonic_millis();
         let until = lease_end(now, lease)?;
         let mut arguments = vec![
@@ -151,6 +156,7 @@ impl Database {
         let mut token = [0u8; 16];
         OsRng.fill_bytes(&mut token);
         tx.execute("UPDATE core_jobs SET state='running',attempts=?1,claim_token=?2,lease_until=?3 WHERE id=?4",params![attempts,token.as_slice(),until,id])?;
+        guard.check(0)?;
         tx.commit()?;
         Ok(Some(Claim {
             id,
@@ -166,6 +172,7 @@ impl Database {
         claim: &Claim,
         work: impl FnOnce(&Transaction<'_>) -> Result<Vec<u8>>,
     ) -> Result<Receipt> {
+        let guard = self.admission(crate::disk::Class::Control);
         let tx = self
             .connection
             .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
@@ -177,12 +184,14 @@ impl Database {
                 replayed: true,
             });
         }
+        guard.check(MAX_RECEIPT_BYTES as u64 + 65536)?;
         let bytes = work(&tx)?;
         if bytes.len() > MAX_RECEIPT_BYTES {
             return Err(Error::ReceiptTooLarge);
         }
         active(&tx, claim, self.clock.monotonic_millis())?;
         tx.execute("UPDATE core_jobs SET state='done',response=?1,lease_until=NULL,error_code=NULL,retry_condition=NULL WHERE id=?2",params![bytes,claim.id])?;
+        guard.check(0)?;
         tx.commit()?;
         Ok(Receipt {
             bytes,
@@ -190,6 +199,8 @@ impl Database {
         })
     }
     pub fn renew_claim(&mut self, claim: &Claim, lease: Duration) -> Result<()> {
+        let guard = self.admission(crate::disk::Class::Control);
+        guard.check(65536)?;
         let now = self.clock.monotonic_millis();
         let until = lease_end(now, lease)?;
         let tx = self
@@ -202,10 +213,13 @@ impl Database {
             "UPDATE core_jobs SET lease_until=?1 WHERE id=?2",
             params![until, claim.id],
         )?;
+        guard.check(0)?;
         tx.commit()?;
         Ok(())
     }
     pub fn retry_job(&mut self, claim: &Claim, code: &str, retry: Retry) -> Result<()> {
+        let guard = self.admission(crate::disk::Class::Control);
+        guard.check(65536)?;
         if !valid_key(code) {
             return Err(Error::InvalidJob);
         }
@@ -220,14 +234,21 @@ impl Database {
             Retry::Manual => ("paused", None, "operator_or_dependency"),
         };
         tx.execute("UPDATE core_jobs SET state=?1,ready_at=?2,lease_until=NULL,error_code=?3,retry_condition=?4 WHERE id=?5",params![state,at,code,condition,claim.id])?;
+        guard.check(0)?;
         tx.commit()?;
         Ok(())
     }
     pub fn resume_job(&mut self, id: i64, ready_at: Option<i64>) -> Result<bool> {
-        Ok(self.connection.execute(
+        let guard = self.admission(crate::disk::Class::Control);
+        guard.check(65536)?;
+        let tx = self.connection.transaction()?;
+        let changed = tx.execute(
             "UPDATE core_jobs SET state='ready',ready_at=?1 WHERE id=?2 AND state='paused'",
             params![ready_at, id],
-        )? == 1)
+        )? == 1;
+        guard.check(0)?;
+        tx.commit()?;
+        Ok(changed)
     }
     pub fn job_status(&self, id: i64) -> Result<Option<Status>> {
         Ok(self
@@ -253,6 +274,20 @@ impl Database {
             .optional()?)
     }
     pub(crate) fn recover_running_jobs(&mut self) -> Result<usize> {
-        Ok(self.connection.execute("UPDATE core_jobs SET state='ready',ready_at=NULL,lease_until=NULL,error_code='writer_restarted',retry_condition='restart' WHERE state='running'",[])?)
+        let count: i64 = self.connection.query_row(
+            "SELECT count(*) FROM core_jobs WHERE state='running'",
+            [],
+            |r| r.get(0),
+        )?;
+        if count == 0 {
+            return Ok(0);
+        }
+        let guard = self.admission(crate::disk::Class::Control);
+        guard.check(65536)?;
+        let tx = self.connection.transaction()?;
+        let changed=tx.execute("UPDATE core_jobs SET state='ready',ready_at=NULL,lease_until=NULL,error_code='writer_restarted',retry_condition='restart' WHERE state='running'",[])?;
+        guard.check(0)?;
+        tx.commit()?;
+        Ok(changed)
     }
 }

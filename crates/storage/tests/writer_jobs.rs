@@ -65,6 +65,7 @@ fn bounded_queue_prioritizes_interaction_and_reserves_background_progress() {
         Config {
             capacity: 6,
             interactive_burst: 2,
+            ..Config::default()
         },
     )
     .unwrap();
@@ -489,7 +490,7 @@ fn schema_one_upgrades_atomically_and_keeps_existing_command_receipts() {
     .unwrap();
     drop(db);
     let raw = rusqlite::Connection::open(&path).unwrap();
-    raw.execute_batch("DROP TABLE core_jobs; PRAGMA user_version=1;")
+    raw.execute_batch("DROP TABLE core_blob_refs; DROP TABLE core_blobs; DROP TABLE core_jobs; PRAGMA user_version=1;")
         .unwrap();
     drop(raw);
     let mut db = Database::open(&path, &migrations()).unwrap();

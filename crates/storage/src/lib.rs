@@ -1,16 +1,24 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! M02 A/B: bounded SQLite writer, ordered migrations, atomic commands and durable jobs.
-//! Blob lifecycle, disk budgets and snapshot hooks follow in C.
+//! M02: bounded writer, atomic commands/jobs, local blobs, disk admission and core snapshots.
 use rusqlite::{Connection, OpenFlags, OptionalExtension, Transaction};
 use sha2::{Digest, Sha256};
-use std::{collections::BTreeMap, fmt, path::Path, sync::Arc, time::Duration};
+use std::{
+    collections::BTreeMap,
+    fmt,
+    path::{Path, PathBuf},
+    sync::Arc,
+    time::Duration,
+};
 
+pub mod blobs;
 pub mod clock;
+pub mod disk;
 pub mod jobs;
+pub mod snapshot;
 pub mod writer;
 
 const APPLICATION_ID: i32 = 0x42425358;
-const SCHEMA_VERSION: i32 = 2;
+const SCHEMA_VERSION: i32 = 3;
 const MAX_RECEIPT_BYTES: usize = 1024 * 1024;
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -35,6 +43,12 @@ pub enum Error {
     InvalidJob,
     ReusedJobId,
     StaleClaim,
+    DiskPressure { available: u64, needed: u64 },
+    BlobTooLarge,
+    InvalidBlob,
+    CorruptBlob,
+    InvalidSnapshot,
+    RecoveryRequired,
 }
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -74,6 +88,17 @@ impl fmt::Display for Error {
                 f.write_str("job idempotency key was reused with different arguments")
             }
             Self::StaleClaim => f.write_str("the job claim is expired or has been replaced"),
+            Self::DiskPressure { available, needed } => write!(
+                f,
+                "storage pressure: {available} bytes available; {needed} required"
+            ),
+            Self::BlobTooLarge => f.write_str("the file exceeds the configured size limit"),
+            Self::InvalidBlob => f.write_str("invalid or missing blob/reference"),
+            Self::CorruptBlob => f.write_str("blob contents do not match their address"),
+            Self::InvalidSnapshot => f.write_str("snapshot is incomplete, corrupt or unsupported"),
+            Self::RecoveryRequired => {
+                f.write_str("restored storage requires recovery before starting a writer")
+            }
         }
     }
 }
@@ -121,6 +146,9 @@ pub struct Receipt {
 pub struct Database {
     connection: Connection,
     clock: Arc<dyn clock::Clock>,
+    path: PathBuf,
+    budget: disk::Budget,
+    space: Arc<dyn disk::SpaceProbe>,
 }
 
 fn valid_key(value: &str) -> bool {
@@ -180,7 +208,7 @@ impl Database {
             }
             previous_version = version;
         }
-        let mut connection = Connection::open(path)?;
+        let mut connection = Connection::open(&path)?;
         let application: i32 =
             connection.pragma_query_value(None, "application_id", |r| r.get(0))?;
         let version: i32 = connection.pragma_query_value(None, "user_version", |r| r.get(0))?;
@@ -193,7 +221,7 @@ impl Database {
         if !fresh && application != APPLICATION_ID {
             return Err(Error::ForeignDatabase);
         }
-        if !fresh && version != 1 && version != SCHEMA_VERSION {
+        if !fresh && !(1..=SCHEMA_VERSION).contains(&version) {
             return Err(Error::UnsupportedSchema(version));
         }
         configure(&connection, true)?;
@@ -205,6 +233,11 @@ impl Database {
         }
         if fresh || version == 1 {
             tx.execute_batch(jobs::SCHEMA)?;
+        }
+        if fresh || version < 3 {
+            tx.execute_batch(blobs::SCHEMA)?;
+        }
+        if version != SCHEMA_VERSION {
             tx.pragma_update(None, "user_version", SCHEMA_VERSION)?;
         }
         let applied = {
@@ -250,7 +283,42 @@ impl Database {
             }
         }
         tx.commit()?;
-        Ok(Self { connection, clock })
+        Ok(Self {
+            connection,
+            clock,
+            path: path.as_ref().canonicalize()?,
+            budget: disk::Budget::default(),
+            space: Arc::new(disk::FilesystemSpace),
+        })
+    }
+
+    /// Set once during service initialization. Injectable probe permits pressure tests without filling a disk.
+    pub fn configure_disk(
+        &mut self,
+        budget: disk::Budget,
+        probe: Arc<dyn disk::SpaceProbe>,
+    ) -> Result<()> {
+        self.budget = budget.validate()?;
+        self.space = probe;
+        Ok(())
+    }
+    fn directory(&self) -> &Path {
+        self.path
+            .parent()
+            .filter(|p| !p.as_os_str().is_empty())
+            .unwrap_or_else(|| Path::new("."))
+    }
+    pub(crate) fn admit(&self, class: disk::Class, growth: u64) -> Result<()> {
+        self.budget
+            .admit(self.space.as_ref(), self.directory(), class, growth)
+    }
+    pub(crate) fn admission(&self, class: disk::Class) -> disk::Admission {
+        disk::Admission {
+            budget: self.budget,
+            probe: self.space.clone(),
+            path: self.directory().to_owned(),
+            class,
+        }
     }
 
     /// Execute module-owned work and its durable receipt in the same transaction.
@@ -262,9 +330,21 @@ impl Database {
         command: Command<'_>,
         work: impl FnOnce(&Transaction<'_>) -> Result<Vec<u8>>,
     ) -> Result<Receipt> {
+        self.transaction_with_budget(command, disk::Class::Content, 64 * 1024, work)
+    }
+
+    /// Trusted module services select a class and conservative growth estimate, including WAL/receipts.
+    pub fn transaction_with_budget(
+        &mut self,
+        command: Command<'_>,
+        class: disk::Class,
+        expected_growth: u64,
+        work: impl FnOnce(&Transaction<'_>) -> Result<Vec<u8>>,
+    ) -> Result<Receipt> {
         if !valid_key(command.namespace) || !valid_key(command.id) {
             return Err(Error::InvalidCommandKey);
         }
+        let directory = self.directory().to_owned();
         let digest = Sha256::digest(command.request);
         let tx = self
             .connection
@@ -280,6 +360,8 @@ impl Database {
                 replayed: true,
             });
         }
+        self.budget
+            .admit(self.space.as_ref(), &directory, class, expected_growth)?;
         let bytes = work(&tx)?;
         if bytes.len() > MAX_RECEIPT_BYTES {
             return Err(Error::ReceiptTooLarge);
@@ -288,6 +370,8 @@ impl Database {
             "INSERT INTO core_command_receipts VALUES (?1,?2,?3,?4)",
             rusqlite::params![command.namespace, command.id, digest.as_slice(), bytes],
         )?;
+        self.budget
+            .admit(self.space.as_ref(), &directory, class, 0)?;
         tx.commit()?;
         Ok(Receipt {
             bytes,

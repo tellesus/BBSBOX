@@ -8,7 +8,7 @@ use std::{
     collections::VecDeque,
     fs::{File, OpenOptions, TryLockError},
     panic::{AssertUnwindSafe, catch_unwind},
-    path::Path,
+    path::{Path, PathBuf},
     sync::{Arc, Condvar, Mutex, OnceLock, mpsc},
     thread::{self, JoinHandle, ThreadId},
 };
@@ -23,12 +23,14 @@ pub enum Priority {
 pub struct Config {
     pub capacity: usize,
     pub interactive_burst: usize,
+    pub disk: crate::disk::Budget,
 }
 impl Default for Config {
     fn default() -> Self {
         Self {
             capacity: 64,
             interactive_burst: 8,
+            disk: crate::disk::Budget::default(),
         }
     }
 }
@@ -66,7 +68,7 @@ pub struct Writer {
     handle: Handle,
     worker: Option<JoinHandle<()>>,
 }
-fn lock(path: &Path) -> Result<File> {
+fn lock(path: &Path) -> Result<(File, PathBuf)> {
     let path = if path.exists() {
         path.canonicalize()?
     } else {
@@ -89,7 +91,7 @@ fn lock(path: &Path) -> Result<File> {
     }
     let file = options.open(name)?;
     match file.try_lock() {
-        Ok(()) => Ok(file),
+        Ok(()) => Ok((file, path)),
         Err(TryLockError::WouldBlock) => Err(Error::WriterAlreadyRunning),
         Err(TryLockError::Error(error)) => Err(Error::Io(error)),
     }
@@ -108,11 +110,29 @@ impl Writer {
         config: Config,
         clock: Arc<dyn Clock>,
     ) -> Result<Self> {
+        Self::start_with_resources(
+            path,
+            migrations,
+            config,
+            clock,
+            Arc::new(crate::disk::FilesystemSpace),
+        )
+    }
+    pub fn start_with_resources(
+        path: impl AsRef<Path>,
+        migrations: Vec<Migration>,
+        config: Config,
+        clock: Arc<dyn Clock>,
+        space: Arc<dyn crate::disk::SpaceProbe>,
+    ) -> Result<Self> {
         if config.capacity == 0 || config.interactive_burst == 0 {
             return Err(Error::InvalidConfiguration);
         }
-        let file = lock(path.as_ref())?;
-        let path = path.as_ref().to_owned();
+        config.disk.validate()?;
+        let (file, path) = lock(path.as_ref())?;
+        if crate::snapshot::recovery_marker(&path).exists() {
+            return Err(Error::RecoveryRequired);
+        }
         let shared = Arc::new(Shared {
             queues: Mutex::new(Queues {
                 interactive: VecDeque::new(),
@@ -134,6 +154,7 @@ impl Writer {
                 let _ = shared.thread.set(thread::current().id());
                 let database =
                     Database::open_with_clock(path, &migrations, clock).and_then(|mut database| {
+                        database.configure_disk(config.disk, space)?;
                         database.recover_running_jobs()?;
                         Ok(database)
                     });

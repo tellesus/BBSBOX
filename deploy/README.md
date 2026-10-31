@@ -29,3 +29,19 @@ Before enabling the unit, installation checks those read permissions as the actu
 [The boot check](ci/boot_service.py) starts the prepared tree with actual systemd under [systemd-nspawn](https://www.freedesktop.org/software/systemd/man/latest/systemd-nspawn.html), in a separate PID/network namespace containing only loopback and no gateway. It identifies that exact OS root before entering it, checks the real unit/cgroup/unprivileged process and verified HTTPS, restarts the unit, switches the fixture to IPv6 and boots the OS again with the same node identity. Shutdown signals only the child manager it started. [nsenter](https://man7.org/linux/man-pages/man1/nsenter.1.html) supplies access to that validated test namespace.
 
 These target checks must pass in CI before being called evidence. Local Windows checks cover installation-preservation/archive guards and runtime behavior; they do not execute Debian installation or systemd. Reports/logs are developer evidence, with physical reference-machine, router/radio and phone checks still separate. The remaining signed-release, coordinated backup and recovery activation work stays with M12.
+
+## Local network profile preparation
+
+[The profile preparer](network_profile.py) takes an explicit [local-interface configuration](network.example.json) and writes a fresh output directory without activating anything:
+
+```sh
+python3 deploy/network_profile.py --profile deploy/network.example.json --output work/local-network
+```
+
+Replace the example hostname with the installation's node-ID-suffixed name and select actual interface names/static addresses. Networks must be nonoverlapping RFC1918 IPv4 or ULA IPv6 subnets. This profile uses the isolated router for client address assignment; it does not run DHCP or provide internet routing. Peer interfaces require an explicit `peer` role; the shipped example has none. Application federation still requires separately approved peers.
+
+Prepared files include static networkd settings without DHCP/default gateway/router advertisements, forwarding-off sysctls, a DNS-only dnsmasq configuration, exact DNS/IP runtime origins/listeners, and an inet nftables boundary. Rules bind each allowed subnet to its named interface and node address. Clients can reach HTTPS/local DNS; new node-originated HTTPS is restricted to explicitly configured peer interfaces. Established replies are permitted only inside those same interface/address boundaries, so an already established WAN connection receives no exemption. Other input/output and all forwarding drop in both IP families. IPv6 neighbor discovery is limited to configured local links.
+
+The DNS process must use only the generated `--conf-file`, without additional configuration directories or upstream arguments. It serves the exact local hostname using [dnsmasq's](https://thekelleys.org.uk/dnsmasq/docs/dnsmasq-man.html) local-only mode, ignores resolver/hosts files and has no upstream server. The [nftables reference](https://netfilter.org/projects/nftables/manpage.html) defines the inet hooks, interface matches and state handling used here.
+
+[The isolated boundary test](ci/network_boundary.py) creates simulated client, peer and WAN interfaces/default routes, checks both IP families, local DNS/HTTPS-port traffic, peer initiation, blocked client initiation/forwarding and blocked new/already-established WAN traffic. It captures outgoing IP frames on the simulated WAN and saves counters. These assertions require passing Linux CI. They test the generated rules/DNS; boot-time host activation, background-service suppression, LAN certificate issuance/enrollment, router instructions and physical acceptance remain M01 B/C work. Do not apply this candidate as a complete appliance installer yet.

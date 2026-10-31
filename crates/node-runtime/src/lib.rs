@@ -30,7 +30,11 @@ pub struct Config {
     pub format: String,
     pub name: String,
     pub bind: SocketAddr,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub additional_binds: Vec<SocketAddr>,
     pub origin: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub additional_origins: Vec<String>,
     pub database: PathBuf,
     pub certificate: PathBuf,
     pub certificate_key: PathBuf,
@@ -56,28 +60,34 @@ impl Config {
         {
             return Err("invalid node configuration format/name".into());
         }
-        let local = match self.bind.ip() {
-            IpAddr::V4(ip) => ip.is_loopback() || ip.is_private() || ip.is_link_local(),
-            IpAddr::V6(ip) => {
-                ip.is_loopback() || ip.is_unique_local() || ip.is_unicast_link_local()
+        if self.additional_binds.len() > 8 {
+            return Err("at most eight additional listeners are supported".into());
+        }
+        let mut listeners = std::collections::BTreeSet::new();
+        for bind in std::iter::once(&self.bind).chain(&self.additional_binds) {
+            let local = match bind.ip() {
+                IpAddr::V4(ip) => ip.is_loopback() || ip.is_private() || ip.is_link_local(),
+                IpAddr::V6(ip) => {
+                    ip.is_loopback() || ip.is_unique_local() || ip.is_unicast_link_local()
+                }
+            };
+            if !local
+                || bind.port() < 1024
+                || bind.port() != self.bind.port()
+                || !listeners.insert(bind)
+            {
+                return Err("bind must be an explicit local address and unprivileged port".into());
             }
-        };
-        if !local || self.bind.port() < 1024 {
-            return Err("bind must be an explicit local address and unprivileged port".into());
         }
-        let uri: Uri = self.origin.parse()?;
-        let authority = uri.authority().ok_or("HTTPS origin has no authority")?;
-        let port = authority.port_u16().unwrap_or(443);
-        if uri.scheme_str() != Some("https")
-            || uri.path_and_query().is_some_and(|p| p.as_str() != "/")
-            || authority.as_str().contains('@')
-            || authority.host().is_empty()
-            || port != self.bind.port()
-        {
-            return Err("origin must be a bare HTTPS origin matching the listening port".into());
+        if self.additional_origins.len() > 8 {
+            return Err("at most eight additional local origins are supported".into());
         }
-        if self.origin.ends_with('/') {
-            return Err("origin must omit its trailing slash".into());
+        let mut seen = std::collections::BTreeSet::new();
+        for origin in std::iter::once(&self.origin).chain(&self.additional_origins) {
+            let authority = self.origin_authority(origin)?;
+            if !seen.insert(authority) {
+                return Err("duplicate local origin".into());
+            }
         }
         for path in [&self.database, &self.certificate, &self.certificate_key] {
             if !path.is_absolute()
@@ -96,15 +106,29 @@ impl Config {
         }
         Ok(())
     }
-    fn authority(&self) -> Result<String> {
+    fn origin_authority(&self, origin: &str) -> Result<String> {
+        let uri: Uri = origin.parse()?;
+        let authority = uri.authority().ok_or("HTTPS origin has no authority")?;
+        let port = authority.port_u16().unwrap_or(443);
+        if uri.scheme_str() != Some("https")
+            || uri.path_and_query().is_some_and(|p| p.as_str() != "/")
+            || authority.as_str().contains('@')
+            || authority.host().is_empty()
+            || port != self.bind.port()
+        {
+            return Err("origin must be a bare HTTPS origin matching the listening port".into());
+        }
+        if origin.ends_with('/') {
+            return Err("origin must omit its trailing slash".into());
+        }
+        Ok(authority.as_str().into())
+    }
+    fn authorities(&self) -> Result<Vec<String>> {
         self.validate()?;
-        Ok(self
-            .origin
-            .parse::<Uri>()?
-            .authority()
-            .ok_or("missing local authority")?
-            .as_str()
-            .into())
+        std::iter::once(&self.origin)
+            .chain(&self.additional_origins)
+            .map(|origin| self.origin_authority(origin))
+            .collect()
     }
 }
 pub fn migrations() -> Vec<Migration> {
@@ -123,7 +147,7 @@ pub struct NodeInfo {
 #[derive(Clone)]
 struct AppState {
     info: Arc<NodeInfo>,
-    authority: Arc<str>,
+    authorities: Arc<[String]>,
 }
 pub struct Runtime {
     writer: Writer,
@@ -164,18 +188,20 @@ async fn health(State(state): State<AppState>) -> Json<NodeInfo> {
     Json(state.info.as_ref().clone())
 }
 async fn policy(State(state): State<AppState>, request: Request, next: Next) -> Response {
-    let conflicting_host = request
-        .headers()
-        .get_all(header::HOST)
-        .iter()
-        .any(|value| value.to_str().ok() != Some(state.authority.as_ref()));
     let authority = request.uri().authority().map(|a| a.as_str()).or_else(|| {
         request
             .headers()
             .get(header::HOST)
             .and_then(|v| v.to_str().ok())
     });
-    let mut response = if conflicting_host || authority != Some(state.authority.as_ref()) {
+    let conflicting_host = request
+        .headers()
+        .get_all(header::HOST)
+        .iter()
+        .any(|value| value.to_str().ok() != authority);
+    let known = authority.is_some_and(|value| state.authorities.iter().any(|a| a == value));
+    let invalid_scheme = request.uri().scheme_str().is_some_and(|s| s != "https");
+    let mut response = if conflicting_host || !known || invalid_scheme {
         (
             StatusCode::MISDIRECTED_REQUEST,
             "Unknown local node address.",
@@ -206,7 +232,7 @@ fn asset(content: &'static str, mime: &'static str) -> Response {
 pub fn app(config: &Config, info: NodeInfo) -> Result<Router> {
     let state = AppState {
         info: Arc::new(info),
-        authority: config.authority()?.into(),
+        authorities: config.authorities()?.into(),
     };
     Ok(Router::new()
         .route("/", get(|| async { Html(include_str!("status.html")) }))
@@ -245,22 +271,43 @@ pub async fn serve(config: Config) -> Result<()> {
         &config.certificate_key,
     )
     .await?;
+    // Bind every configured address before activating any HTTP service. A partial
+    // listener set must never advertise readiness after another bind fails.
+    let mut prepared = Vec::new();
+    let mut handles = Vec::new();
+    for address in std::iter::once(&config.bind).chain(&config.additional_binds) {
+        let listener = tokio::net::TcpListener::bind(address).await?.into_std()?;
+        let handle = axum_server::Handle::new();
+        prepared.push(axum_server::from_tcp_rustls(listener, tls.clone())?.handle(handle.clone()));
+        handles.push(handle);
+    }
     let runtime = Runtime::start(&config).await?;
-    let handle = axum_server::Handle::new();
-    let shutdown = handle.clone();
-    let signal = tokio::spawn(async move {
-        if let Err(error) = stop_signal().await {
-            eprintln!("stop signal setup failed: {error}");
-        }
-        shutdown.graceful_shutdown(Some(Duration::from_secs(10)));
-    });
+    let router = app(&config, runtime.info().clone())?;
+    let mut servers = tokio::task::JoinSet::new();
+    for server in prepared {
+        let service = router.clone().into_make_service();
+        servers.spawn(async move { server.serve(service).await });
+    }
     println!("BBSBOX {} at {}", runtime.info().node_id, config.origin);
-    let result = axum_server::bind_rustls(config.bind, tls)
-        .handle(handle)
-        .serve(app(&config, runtime.info().clone())?.into_make_service())
-        .await;
-    signal.abort();
+    let mut outcome: Result<()> = tokio::select! {
+        result = stop_signal() => result,
+        result = servers.join_next() => match result.expect("at least one server") {
+            Ok(result) => result.map_err(Into::into),
+            Err(error) => Err(error.into()),
+        },
+    };
+    for handle in handles {
+        handle.graceful_shutdown(Some(Duration::from_secs(10)));
+    }
+    while let Some(result) = servers.join_next().await {
+        let completion: Result<()> = match result {
+            Ok(result) => result.map_err(Into::into),
+            Err(error) => Err(error.into()),
+        };
+        if outcome.is_ok() {
+            outcome = completion;
+        }
+    }
     runtime.shutdown().await?;
-    result?;
-    Ok(())
+    outcome
 }

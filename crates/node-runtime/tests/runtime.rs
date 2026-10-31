@@ -10,7 +10,9 @@ fn config(directory: &std::path::Path) -> Config {
         format: "bbsbox.node-config/v1".into(),
         name: "Neighborhood <node>".into(),
         bind: "127.0.0.1:8443".parse().unwrap(),
+        additional_binds: vec![],
         origin: "https://localhost:8443".into(),
+        additional_origins: vec![],
         database: directory.join("node.sqlite"),
         certificate: directory.join("server.pem"),
         certificate_key: directory.join("server-key.pem"),
@@ -42,6 +44,16 @@ fn config_requires_bounded_known_fields_local_literal_addresses_https_and_distin
         c.bind = bind.parse().unwrap();
         assert!(c.validate().is_ok());
     }
+    for bind in [
+        "0.0.0.0:8443",
+        "8.8.8.8:8443",
+        "[::1]:9443",
+        "127.0.0.1:8443",
+    ] {
+        let mut c = valid.clone();
+        c.additional_binds.push(bind.parse().unwrap());
+        assert!(c.validate().is_err());
+    }
     let mut c = valid.clone();
     c.database = "relative.sqlite".into();
     assert!(c.validate().is_err());
@@ -60,6 +72,20 @@ fn config_requires_bounded_known_fields_local_literal_addresses_https_and_distin
     )
     .unwrap();
     assert!(Config::read(&path).is_err());
+    std::fs::write(&path, serde_json::to_vec(&valid).unwrap()).unwrap();
+    assert!(Config::read(&path).unwrap().additional_origins.is_empty());
+    for origins in [
+        vec!["https://localhost:8443"],
+        vec!["https://127.0.0.1:9443"],
+        vec!["https://127.0.0.1:8443/path"],
+        vec!["http://127.0.0.1:8443"],
+        vec!["https://127.0.0.1:8443/"],
+        vec!["https://127.0.0.1:8443"; 9],
+    ] {
+        let mut c = valid.clone();
+        c.additional_origins = origins.into_iter().map(String::from).collect();
+        assert!(c.validate().is_err());
+    }
 }
 #[tokio::test]
 async fn lifecycle_uses_real_registered_storage_and_preserves_identity_with_one_writer() {
@@ -87,7 +113,11 @@ async fn lifecycle_uses_real_registered_storage_and_preserves_identity_with_one_
 #[tokio::test]
 async fn status_surface_uses_exact_authority_and_exposes_no_private_state_or_mutation_route() {
     let temp = tempfile::tempdir().unwrap();
-    let c = config(temp.path());
+    let mut c = config(temp.path());
+    c.additional_origins = vec![
+        "https://127.0.0.1:8443".into(),
+        "https://bbsbox-test.home.arpa:8443".into(),
+    ];
     let runtime = Runtime::start(&c).await.unwrap();
     let router = app(&c, runtime.info().clone()).unwrap();
     let request = |path: &str, host: &str, method: &str| {
@@ -137,6 +167,41 @@ async fn status_surface_uses_exact_authority_and_exposes_no_private_state_or_mut
         .map(|v| v.as_str().unwrap())
         .collect::<std::collections::BTreeSet<_>>();
     assert_eq!(keys, declared);
+    for host in ["127.0.0.1:8443", "bbsbox-test.home.arpa:8443"] {
+        assert_eq!(
+            router
+                .clone()
+                .oneshot(request("/api/v1/node", host, "GET"))
+                .await
+                .unwrap()
+                .status(),
+            StatusCode::OK
+        );
+    }
+    for (uri, host) in [
+        ("https://localhost:8443/api/v1/node", "127.0.0.1:8443"),
+        ("http://localhost:8443/api/v1/node", "localhost:8443"),
+    ] {
+        assert_eq!(
+            router
+                .clone()
+                .oneshot(request(uri, host, "GET"))
+                .await
+                .unwrap()
+                .status(),
+            StatusCode::MISDIRECTED_REQUEST
+        );
+    }
+    let duplicate = Request::builder()
+        .uri("/api/v1/node")
+        .header("host", "localhost:8443")
+        .header("host", "127.0.0.1:8443")
+        .body(Body::empty())
+        .unwrap();
+    assert_eq!(
+        router.clone().oneshot(duplicate).await.unwrap().status(),
+        StatusCode::MISDIRECTED_REQUEST
+    );
     assert_eq!(
         router
             .clone()

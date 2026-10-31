@@ -29,11 +29,16 @@ def exercise(binary, state_root, host, isolated):
         port = reserve.getsockname()[1]
     address = f'[{host}]' if ':' in host else host
     origin = f'https://{address}:{port}'
+    other_host = '127.0.0.1' if family == socket.AF_INET6 else '::1'
+    other_address = f'[{other_host}]' if ':' in other_host else other_host
+    other_origin = f'https://{other_address}:{port}'
     with tempfile.TemporaryDirectory(prefix='runtime-', dir=state_root) as temporary:
         state = Path(temporary).resolve()
         if not state.is_relative_to(state_root):
             raise RuntimeError('Temporary state escaped the selected test directory')
-        config = dict(format='bbsbox.node-config/v1', name='Runtime fixture <node>', bind=f'{address}:{port}', origin=origin, database=str(state/'node.sqlite'), certificate=str(state/'tls/server.pem'), certificate_key=str(state/'tls/server-key.pem'))
+        config = dict(format='bbsbox.node-config/v1', name='Runtime fixture <node>', bind=f'{address}:{port}', origin=origin, additional_origins=[f'https://localhost:{port}'], database=str(state/'node.sqlite'), certificate=str(state/'tls/server.pem'), certificate_key=str(state/'tls/server-key.pem'))
+        config['additional_binds'] = [f'{other_address}:{port}']
+        config['additional_origins'].append(other_origin)
         config_path = state/'node.json'
         config_path.write_text(json.dumps(config), encoding='utf-8')
         initialize=[str(binary),'--config',str(config_path),'--initialize']
@@ -78,6 +83,10 @@ def exercise(binary, state_root, host, isolated):
                 if identity is not None:
                     assert info['node_id'] == identity, 'Node identity changed after restart'
                 identity = info['node_id']
+                with request('/api/v1/node', headers={'Host': f'localhost:{port}'}) as response:
+                    assert json.load(response)['node_id'] == identity
+                with opener.open(other_origin+'/api/v1/node', timeout=2) as response:
+                    assert json.load(response)['node_id'] == identity
                 with request('/') as response:
                     html = response.read().decode()
                     assert 'default-src' in response.headers['Content-Security-Policy']
@@ -120,7 +129,7 @@ def exercise(binary, state_root, host, isolated):
                 text = trace.read_text(encoding='utf-8')
                 traces.append(audit.audit_trace(text))
                 (state_root/f'runtime-{"ipv6" if family == socket.AF_INET6 else "ipv4"}-{attempt}.trace').write_text(text, encoding='utf-8')
-        return dict(family='IPv6' if family == socket.AF_INET6 else 'IPv4', tls=True, untrusted_ca_rejected=True, local_assets=2, identity_preserved_after_restart=True, unexpected_authority_rejected=True, mutation_route_absent=True, initialization_audit=initial_audit, network_audit=traces)
+        return dict(family='IPv6' if family == socket.AF_INET6 else 'IPv4', simultaneous_dual_stack=True, tls=True, untrusted_ca_rejected=True, local_assets=2, identity_preserved_after_restart=True, configured_alias_accepted=True, unexpected_authority_rejected=True, mutation_route_absent=True, initialization_audit=initial_audit, network_audit=traces)
 
 
 def main():

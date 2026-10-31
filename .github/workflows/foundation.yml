@@ -1,12 +1,24 @@
 name: Foundation experiment
 on:
   push:
-    paths: ['spikes/m00/**', 'crates/**', 'client/**', 'protocol/**', 'deploy/**', 'Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', '.github/workflows/foundation.yml', 'tools/validate_roadmap.py', 'tools/verify_credentials.mjs', 'tools/verify_event_vectors.mjs', 'tools/runtime_smoke.py', 'tools/runtime_bundle.py', 'tools/test_runtime_bundle.py', 'tools/test_install_development.py', 'docs/**']
+    paths: ['spikes/m00/**', 'crates/**', 'client/**', 'protocol/**', 'deploy/**', 'Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', '.github/workflows/foundation.yml', 'tools/validate_roadmap.py', 'tools/verify_credentials.mjs', 'tools/verify_event_vectors.mjs', 'tools/runtime_smoke.py', 'tools/runtime_bundle.py', 'tools/test_runtime_bundle.py', 'tools/test_install_development.py', 'tools/test_network_profile.py', 'docs/**']
   pull_request:
-    paths: ['spikes/m00/**', 'crates/**', 'client/**', 'protocol/**', 'deploy/**', 'Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', '.github/workflows/foundation.yml', 'tools/validate_roadmap.py', 'tools/verify_credentials.mjs', 'tools/verify_event_vectors.mjs', 'tools/runtime_smoke.py', 'tools/runtime_bundle.py', 'tools/test_runtime_bundle.py', 'tools/test_install_development.py', 'docs/**']
+    paths: ['spikes/m00/**', 'crates/**', 'client/**', 'protocol/**', 'deploy/**', 'Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', '.github/workflows/foundation.yml', 'tools/validate_roadmap.py', 'tools/verify_credentials.mjs', 'tools/verify_event_vectors.mjs', 'tools/runtime_smoke.py', 'tools/runtime_bundle.py', 'tools/test_runtime_bundle.py', 'tools/test_install_development.py', 'tools/test_network_profile.py', 'docs/**']
 permissions:
   contents: read
 jobs:
+  local-network-boundary:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 -m unittest discover -s tools -p test_network_profile.py -v
+      - run: sudo apt-get update && sudo apt-get install -y nftables dnsmasq-base iproute2
+      - run: sudo unshare --net -- bash -c 'ip link set lo up && python3 deploy/ci/network_boundary.py'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: local-network-boundary-evidence
+          path: work/network-boundary/**
   local-foundation:
     runs-on: ubuntu-latest
     defaults:

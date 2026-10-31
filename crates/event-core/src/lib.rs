@@ -5,6 +5,8 @@ use bbsbox_event_codec::{self as codec, Commitment, EventId, Metadata, SignedEnv
 use bbsbox_storage::Migration;
 use rusqlite::{Connection, OptionalExtension, Transaction, params};
 use sha2::{Digest, Sha256};
+pub mod authoring;
+pub mod integration;
 
 pub type Result<T> = std::result::Result<T, Error>;
 pub const MAX_BATCH: usize = 100;
@@ -19,6 +21,11 @@ pub enum Error {
     InvalidLimit,
     Quota,
     CorruptRecord,
+    WrongModule,
+    RepairBacklog,
+    ForkedStream,
+    StreamGap,
+    CounterExhausted,
 }
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -43,11 +50,18 @@ impl From<codec::Error> for Error {
 }
 
 pub fn migrations() -> Vec<Migration> {
-    vec![Migration {
-        module: "events",
-        version: 1,
-        sql: include_str!("schema.sql"),
-    }]
+    vec![
+        Migration {
+            module: "events",
+            version: 1,
+            sql: include_str!("schema.sql"),
+        },
+        Migration {
+            module: "events",
+            version: 2,
+            sql: include_str!("integration.sql"),
+        },
+    ]
 }
 
 /// Receiver-supplied provenance after transport authentication/admission. Never trust an envelope's claim.

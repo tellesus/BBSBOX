@@ -1,8 +1,8 @@
 # M04 — Signed event kernel and convergence
 
-Brief revision 1.1.2 · Roadmap baseline 1.1.0 · 2026-10-31 · Product baseline 0.6.0.
+Brief revision 1.1.3 · Roadmap baseline 1.1.0 · 2026-10-31 · Product baseline 0.6.0.
 
-**State:** In progress under U22 after M02/M03 provider completion. A passed local/Linux checks. B's durable inbox has local evidence; semantic integration and C remain pending. Consume C01 v1.3.0/C02 v1.4.0.
+**State:** In progress under U22 after M02/M03 provider completion. A/inbox passed local/Linux checks. B's semantic integration/authoring has local evidence; C remains pending. Consume C01 v1.3.0/C02 v1.4.0.
 
 ## Read only this packet
 
@@ -30,7 +30,7 @@ Codec authorization permits reduction; it does not imply persisted integration o
 ## Sequential work slices
 
 1. A: encoder/decoder/signature/authority vectors and size limits.
-2. B: durable staging, duplicate handling and fork isolation. Inbox retention/chain readiness is implemented; semantic dependency, reducer/result transactions and projection repair remain open.
+2. B: durable staging, duplicate handling and fork isolation. Local evidence covers typed dependencies, reducer/result/provenance transactions, module-owned late-fork invalidation and atomic local authoring. Linux confirmation pending for this refinement.
 3. C: deterministic replay plus extension/version negotiation fixtures.
 
 ## Completion evidence

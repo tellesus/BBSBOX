@@ -9,6 +9,8 @@ use bbsbox_storage::{Database, disk::Class, open_reader};
 use ciborium::value::Value;
 use coset::{CborSerializable, CoseSign1, CoseSign1Builder};
 use rusqlite::Connection;
+#[path = "support/integration.rs"]
+mod integration_tests;
 
 struct Fixture {
     _temp: tempfile::TempDir,

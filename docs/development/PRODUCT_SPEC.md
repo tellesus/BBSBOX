@@ -9,7 +9,7 @@
 | Product owner | Michael |
 | Canonical location | `docs/development/PRODUCT_SPEC.md` in [tellesus/BBSBOX](https://github.com/tellesus/BBSBOX) |
 | Authority | Product requirements within the canonical roadmap; latest applicable user instructions take precedence |
-| Implementation status | G0-local passed; M02/M03 providers Complete; M00/M04 In progress; module/device/release evidence in WORK_LEDGER |
+| Implementation status | G0-local passed; M02/M03/M04 providers Complete; M00/M01 In progress; module/device/release evidence in WORK_LEDGER |
 | Software license | **AGPL-3.0-or-later**; project design prose **CC-BY-SA-4.0**; see the [license notice](../../LICENSE.md) |
 
 ## 1. Purpose and authority
@@ -181,7 +181,7 @@ Active Linux couriers and passive USB lumps, configured multi-hop and Pigeon-to-
 
 **R12 — Signed-event and asynchronous-delivery foundation.** Signed information, distinct identities/authority, interrupted connectivity, protected carriage, and sequence-based ordering form the resulting design direction. Out-of-order delivery preserves valid missing information without rolling back newer authorized state; accurate synchronized clocks and courier arrival order must not decide authoritative state. These are the later discussion's delivery principles, distinct from the specific protocol implementation pitched beneath them. [U03–U08, U10, U15–U16]
 
-The original pitch is now accepted as the bounded P06/T04/T05 implementation direction under U19. C02/C03 define the reviewed scoped-stream and delivery contracts; exact encoded fixtures and implementation conformance remain M04 work.
+The original pitch is now accepted as the bounded P06/T04/T05 implementation direction under U19. C02/C03 define the reviewed scoped-stream and delivery contracts; M04 supplies exact encoded fixtures and provider conformance; delivery/private consumers own their remaining integration evidence.
 
 U07 initially suggested rejecting an older delivery after a newer sequence had arrived. The subsequent explanation, protocol pitch, and later foundation recap consistently developed event-level reconciliation because an older package can contain unseen valid messages. The resulting direction preserves the user's anti-rollback goal while accepting missing valid history. Keep the earlier whole-package rejection idea in the correction history, not as a competing current requirement. The original conversation did not ratify each detail; U19 subsequently authorizes the reviewed P06 implementation choices, recorded in C02/C03.
 
@@ -485,7 +485,7 @@ No numeric latency, uptime, simultaneous-user, storage, battery-life, or radio-r
 
 ## 14. Acceptance criteria
 
-These are accepted verification scenarios for the settled scope and locked design. They define what evidence should be collected; **none has been executed by this document task**. Detailed byte schemas/fixtures must pass M04 verification before public protocol v1.
+These are accepted verification scenarios for the settled scope and locked design. They define what evidence should be collected; execution evidence lives in WORK_LEDGER. M04 v1 byte fixtures have provider evidence; full feature/device/gate acceptance remains separately recorded.
 
 | ID | Scenario and pass condition | Trace |
 | --- | --- | --- |
@@ -553,6 +553,8 @@ Document versions are independent of software/protocol versions. Patch revisions
 | 0.5.1 | 1.0.1 | 2026-10-25 | U20: consolidate product canon inside the roadmap, supersede the old Tier 1/Tier 2 authority hierarchy, archive historical plans/reviews, and require synchronized canonical documentation for design, goal and feature changes. Product feature scope is unchanged. |
 | 0.5.1 | 1.0.1 | 2026-10-30 | U21: begin the M00 local prototype; execution results recorded without claiming full device/private-client completion. |
 | 0.6.0 | 1.1.0 | 2026-10-30 | U22: continue local development; schedule phone tests at G1/G2. OpenMLS experiments refine C05 owner-authorized governance and receive-only backup recovery/fresh rejoin; local Linux isolation evidence is tracked separately from appliance/device acceptance. |
+
+| 0.6.0 | 1.1.0 / execution 1.1.1 | 2026-10-31 | Continued development authority: M02–M04 providers complete; M01 now explicitly depends on them for its real node runtime and precedes M12. Scope/T decisions unchanged. C02 v1.4.1 clarifies reassessment/accepted receipts; provider/replay and appliance execution evidence remains in WORK_LEDGER. |
 
 Earlier decisions, source audits and CR-001–CR-003 are preserved in the [historical record](../archive/product-history-through-0.5.0.md). Historical statements never override current canon.
 

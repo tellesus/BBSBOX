@@ -1,0 +1,186 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+use axum::{
+    body::{Body, to_bytes},
+    http::{Request, StatusCode, header},
+};
+use bbsbox_node_runtime::{Config, Runtime, app};
+use tower::ServiceExt;
+fn config(directory: &std::path::Path) -> Config {
+    Config {
+        format: "bbsbox.node-config/v1".into(),
+        name: "Neighborhood <node>".into(),
+        bind: "127.0.0.1:8443".parse().unwrap(),
+        origin: "https://localhost:8443".into(),
+        database: directory.join("node.sqlite"),
+        certificate: directory.join("server.pem"),
+        certificate_key: directory.join("server-key.pem"),
+    }
+}
+#[test]
+fn config_requires_bounded_known_fields_local_literal_addresses_https_and_distinct_absolute_paths()
+{
+    let temp = tempfile::tempdir().unwrap();
+    let valid = config(temp.path());
+    valid.validate().unwrap();
+    for (bind, origin) in [
+        ("0.0.0.0:8443", "https://localhost:8443"),
+        ("8.8.8.8:8443", "https://localhost:8443"),
+        ("[2001:4860::1]:8443", "https://localhost:8443"),
+        ("127.0.0.1:443", "https://localhost"),
+        ("127.0.0.1:8443", "http://localhost:8443"),
+        ("127.0.0.1:8443", "https://localhost:8443/path"),
+        ("127.0.0.1:8443", "https://localhost:8443/"),
+        ("127.0.0.1:8443", "https://localhost:9443"),
+    ] {
+        let mut c = valid.clone();
+        c.bind = bind.parse().unwrap();
+        c.origin = origin.into();
+        assert!(c.validate().is_err(), "{bind} {origin}");
+    }
+    for bind in ["192.168.4.1:8443", "[fd00::1]:8443", "[::1]:8443"] {
+        let mut c = valid.clone();
+        c.bind = bind.parse().unwrap();
+        assert!(c.validate().is_ok());
+    }
+    let mut c = valid.clone();
+    c.database = "relative.sqlite".into();
+    assert!(c.validate().is_err());
+    c = valid.clone();
+    c.certificate = c.certificate_key.clone();
+    assert!(c.validate().is_err());
+    c = valid.clone();
+    c.name = "control\ntext".into();
+    assert!(c.validate().is_err());
+    let path = temp.path().join("oversized.json");
+    std::fs::write(&path, vec![b' '; 65537]).unwrap();
+    assert!(Config::read(&path).is_err());
+    std::fs::write(
+        &path,
+        b"{\"format\":\"bbsbox.node-config/v1\",\"unexpected\":true}",
+    )
+    .unwrap();
+    assert!(Config::read(&path).is_err());
+}
+#[tokio::test]
+async fn lifecycle_uses_real_registered_storage_and_preserves_identity_with_one_writer() {
+    let temp = tempfile::tempdir().unwrap();
+    let c = config(temp.path());
+    let first = Runtime::start(&c).await.unwrap();
+    let id = first.info().node_id.clone();
+    assert!(Runtime::start(&c).await.is_err());
+    first.shutdown().await.unwrap();
+    let again = Runtime::start(&c).await.unwrap();
+    assert_eq!(again.info().node_id, id);
+    again.shutdown().await.unwrap();
+    let reader = bbsbox_storage::open_reader(&c.database).unwrap();
+    assert_eq!(
+        reader
+            .query_row(
+                "SELECT count(*) FROM core_migrations WHERE module='events'",
+                [],
+                |r| r.get::<_, i64>(0)
+            )
+            .unwrap(),
+        3
+    );
+}
+#[tokio::test]
+async fn status_surface_uses_exact_authority_and_exposes_no_private_state_or_mutation_route() {
+    let temp = tempfile::tempdir().unwrap();
+    let c = config(temp.path());
+    let runtime = Runtime::start(&c).await.unwrap();
+    let router = app(&c, runtime.info().clone()).unwrap();
+    let request = |path: &str, host: &str, method: &str| {
+        Request::builder()
+            .uri(path)
+            .header("host", host)
+            .method(method)
+            .body(Body::empty())
+            .unwrap()
+    };
+    let response = router
+        .clone()
+        .oneshot(request("/api/v1/node", "localhost:8443", "GET"))
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(response.headers()[header::CACHE_CONTROL], "no-store");
+    assert!(
+        response.headers()[header::CONTENT_SECURITY_POLICY]
+            .to_str()
+            .unwrap()
+            .contains("default-src 'none'")
+    );
+    let bytes = to_bytes(response.into_body(), 8192).await.unwrap();
+    let json: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+    let keys = json
+        .as_object()
+        .unwrap()
+        .keys()
+        .map(String::as_str)
+        .collect::<std::collections::BTreeSet<_>>();
+    assert_eq!(
+        keys,
+        ["format", "name", "node_id", "status", "version"]
+            .into_iter()
+            .collect()
+    );
+    assert_eq!(json["name"], c.name);
+    let contract: serde_json::Value = serde_json::from_str(include_str!(
+        "../../../protocol/http/node-runtime.openapi.json"
+    ))
+    .unwrap();
+    let declared = contract["components"]["schemas"]["NodeInfo"]["required"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v.as_str().unwrap())
+        .collect::<std::collections::BTreeSet<_>>();
+    assert_eq!(keys, declared);
+    assert_eq!(
+        router
+            .clone()
+            .oneshot(request("/api/v1/node", "foreign.invalid", "GET"))
+            .await
+            .unwrap()
+            .status(),
+        StatusCode::MISDIRECTED_REQUEST
+    );
+    let conflicting = Request::builder()
+        .uri("https://localhost:8443/api/v1/node")
+        .header("host", "foreign.invalid")
+        .body(Body::empty())
+        .unwrap();
+    assert_eq!(
+        router.clone().oneshot(conflicting).await.unwrap().status(),
+        StatusCode::MISDIRECTED_REQUEST
+    );
+    assert_eq!(
+        router
+            .clone()
+            .oneshot(request("/api/v1/node", "localhost:8443", "POST"))
+            .await
+            .unwrap()
+            .status(),
+        StatusCode::METHOD_NOT_ALLOWED
+    );
+    for (path, mime) in [
+        ("/", "text/html"),
+        ("/assets/status.js", "text/javascript"),
+        ("/assets/status.css", "text/css"),
+    ] {
+        let response = router
+            .clone()
+            .oneshot(request(path, "localhost:8443", "GET"))
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        assert!(
+            response.headers()[header::CONTENT_TYPE]
+                .to_str()
+                .unwrap()
+                .starts_with(mime)
+        );
+    }
+    runtime.shutdown().await.unwrap();
+}

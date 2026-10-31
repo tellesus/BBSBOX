@@ -52,7 +52,10 @@
       "path": "docs/development/modules/M01-offline-appliance.md",
       "title": "Offline appliance and local access",
       "deps": [
-        "M00"
+        "M00",
+        "M02",
+        "M03",
+        "M04"
       ],
       "refs": [
         "R02",
@@ -73,9 +76,12 @@
       ],
       "gate": "G1",
       "prerequisite_evidence": {
-        "M00": "G0-local"
+        "M00": "G0-local",
+        "M02": "completed provider interfaces",
+        "M03": "completed provider interfaces",
+        "M04": "completed provider interfaces; CI 41245899257"
       },
-      "execution_status": "unstarted"
+      "execution_status": "in_progress"
     },
     {
       "id": "M02",
@@ -169,7 +175,7 @@
         "T05"
       ],
       "gate": "G1",
-      "execution_status": "in_progress"
+      "execution_status": "complete"
     },
     {
       "id": "M05",
@@ -991,10 +997,10 @@
   ],
   "execution_order": [
     "M00",
-    "M01",
     "M02",
     "M03",
     "M04",
+    "M01",
     "M12",
     "M05",
     "M06",
@@ -1092,7 +1098,8 @@
       "client/identity/README.md",
       "crates/event-codec/README.md",
       "crates/event-core/README.md",
-      "docs/decisions/ADR-0002-wire-profiles.md"
+      "docs/decisions/ADR-0002-wire-profiles.md",
+      "crates/node-runtime/README.md"
     ]
   },
   "implementation_updated": "2026-10-31",
@@ -1108,5 +1115,6 @@
       "ci_run": "https://github.com/tellesus/BBSBOX/actions/runs/41148611023",
       "scope": "Desktop/core and isolated-runtime evidence; G1/G2 device, appliance and private-client acceptance remain open"
     }
-  }
+  },
+  "execution_revision": "1.1.1"
 }

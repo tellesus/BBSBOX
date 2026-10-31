@@ -1,0 +1,30 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+[Unit]
+Description=BBSBOX local node
+After=local-fs.target network.target
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=exec
+User=bbsbox
+Group=bbsbox
+ExecStart=/opt/bbsbox/current/bbsbox-node --config /etc/bbsbox/node.json
+WorkingDirectory=/var/lib/bbsbox
+StateDirectory=bbsbox
+StateDirectoryMode=0700
+UMask=0077
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=20
+KillSignal=SIGTERM
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+ReadWritePaths=/var/lib/bbsbox
+
+[Install]
+WantedBy=multi-user.target

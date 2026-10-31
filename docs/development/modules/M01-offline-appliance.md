@@ -1,8 +1,8 @@
 # M01 — Offline appliance and local access
 
-Version 1.1.0 · 2026-10-25 · Locked development baseline · Product baseline 0.6.0.
+Brief revision 1.1.1 · Roadmap baseline 1.1.0 · 2026-10-31 · Locked scope · Product baseline 0.6.0.
 
-**State:** Approved for implementation under U19; unstarted. Runtime and hardware evidence remains pending.
+**State:** In progress under continued development authority. A runtime has local Rust and real HTTPS/restart evidence. Offline installation, Debian service execution, B/C and reference hardware remain pending.
 
 ## Read only this packet
 
@@ -11,7 +11,7 @@ Look up only decision rows T01, T07, T14 in [DECISIONS](../DECISIONS.md). Depend
 
 **Source scope:** R02, R04, R05, P04, P09, AC01, AC02. **Target gate:** G1. Scope summaries below preserve these source IDs; reconcile conflicts with the current product requirements and user instructions.
 
-**Prerequisites:** [M00](M00-foundation-spikes.md).
+**Prerequisites:** [M00](M00-foundation-spikes.md) G0-local, [M02](M02-storage-jobs.md), [M03](M03-identity-access.md), [M04](M04-signed-events.md) completed providers.
 
 ## Product outcome and boundaries
 
@@ -23,13 +23,13 @@ Use a Debian stable base, systemd service, Rust binary/static assets, local DNS/
 
 ## Ownership and interfaces
 
-Planned deploy/ and crates/node-runtime/; installation config, local address/certificate state, service manifests, local-only diagnostics. Does not own user keys.
+deploy/ and crates/node-runtime/ own installation config, local address/certificate state, service manifests and local-only diagnostics. Runtime registers real M02–M04 providers and owns no member keys. See the [runtime reference](../../../crates/node-runtime/README.md).
 
-Paths above are planned implementation locations, not existing code. Consume the contracts in the reading packet; changes to them need affected-consumer updates. A disabled optional module retains its data and does not break unrelated local services.
+Runtime/status code, configuration example and a candidate service unit exist; offline installer and network/enrollment profiles remain pending. Consume the contracts in the reading packet; changes to them need affected-consumer updates. A disabled optional module retains its data and does not break unrelated local services.
 
 ## Sequential work slices
 
-1. A: offline install and service startup with local status page.
+1. A: offline install and service startup with local status page. Local runtime/TLS/restart checks pass; installation and target service execution remain open.
 2. B: router/address enrollment and verified packet-boundary configuration.
 3. C: restarts, local diagnosis and prepared-media reinstall procedure.
 
@@ -41,7 +41,7 @@ Paths above are planned implementation locations, not existing code. Consume the
 
 ## Locked defaults and verification
 
-Debian stable x86-64 is the first full-node/courier target; systemd, nftables, local DNS and a per-node local CA are selected. Enrollment records the CA fingerprint out of band; use locally resolved names containing a node-ID suffix and local IP fallback. Never install a peer CA automatically. Manual/local certificate renewal and local clock setup are documented. Browser trust enrollment must pass M00; no public ACME/NTP/DoH fallback. Router configuration is tested for default routes and IPv6 as well as IPv4.
+Debian 13 (trixie) amd64 is the selected first full-node/courier target; systemd, nftables, local DNS and a per-node local CA are selected. Enrollment records the CA fingerprint out of band; use locally resolved names containing a node-ID suffix and local IP fallback. Never install a peer CA automatically. Manual/local certificate renewal and local clock setup are documented. Browser trust enrollment must pass M00; no public ACME/NTP/DoH fallback. Router configuration is tested for default routes and IPv6 as well as IPv4.
 
 ## Handoff
 

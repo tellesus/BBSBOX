@@ -1,6 +1,6 @@
 # M04 — durable event inbox
 
-Implementation reference for [M04](../../docs/development/modules/M04-signed-events.md), [C01](../../docs/development/contracts/C01-storage-runtime.md) and [C02](../../docs/development/contracts/C02-identity-events.md). The roadmap and current user instructions remain canon. A/B have local/Linux evidence; C's local domain replay/convergence proof awaits Linux confirmation.
+Implementation reference for [M04](../../docs/development/modules/M04-signed-events.md), [C01](../../docs/development/contracts/C01-storage-runtime.md) and [C02](../../docs/development/contracts/C02-identity-events.md). The roadmap and current user instructions remain canon. A–C have local/Linux evidence and M04 is complete as a provider.
 
 ## Retained bytes and provenance
 
@@ -26,7 +26,7 @@ Two authenticated hashes at one stream position preserve both raw envelopes and 
 
 Thirty-three integration tests cover reopen/deduplication, first-body provenance, corrupt-body rejection, proof arrival, reversed histories, suppressed-body continuity, scope/sequence violations, late forks, invalid-delegation isolation, opaque future profiles, quota/lookup rollback, bounded scans, full-width positions and range pagination. They also cover the semantic/authoring/replay APIs with the real M02 writer/database and M03 public resolver/node signer. M04 A's independent signature vectors remain separate.
 
-Local replay evidence is described below. Linux confirmation is pending before provider completion; no HTTP/private-forum/federation integration is claimed.
+Replay evidence is described below and confirmed by CI 41245899257. Feature/private-forum/federation integration remains downstream.
 
 ## Atomic semantic integration
 

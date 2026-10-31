@@ -1,0 +1,32 @@
+{
+  "openapi": "3.1.0",
+  "info": {"title": "BBSBOX local node status", "version": "0.1.0"},
+  "paths": {
+    "/api/v1/node": {
+      "get": {
+        "operationId": "nodeStatus",
+        "summary": "Read public local-node readiness",
+        "responses": {
+          "200": {"description": "Node is ready", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/NodeInfo"}}}},
+          "421": {"description": "Request authority does not match this configured node"}
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "NodeInfo": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["format", "name", "node_id", "version", "status"],
+        "properties": {
+          "format": {"type": "string", "const": "bbsbox.node-info/v1"},
+          "name": {"type": "string", "minLength": 1, "maxLength": 64},
+          "node_id": {"type": "string", "pattern": "^node:[a-f0-9]{64}$"},
+          "version": {"type": "string"},
+          "status": {"type": "string", "const": "ready"}
+        }
+      }
+    }
+  }
+}

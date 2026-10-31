@@ -1,9 +1,9 @@
 name: Foundation experiment
 on:
   push:
-    paths: ['spikes/m00/**', 'crates/**', 'client/**', 'protocol/**', 'Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', '.github/workflows/foundation.yml', 'tools/validate_roadmap.py', 'tools/verify_credentials.mjs', 'tools/verify_event_vectors.mjs', 'docs/**']
+    paths: ['spikes/m00/**', 'crates/**', 'client/**', 'protocol/**', 'deploy/**', 'Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', '.github/workflows/foundation.yml', 'tools/validate_roadmap.py', 'tools/verify_credentials.mjs', 'tools/verify_event_vectors.mjs', 'tools/runtime_smoke.py', 'docs/**']
   pull_request:
-    paths: ['spikes/m00/**', 'crates/**', 'client/**', 'protocol/**', 'Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', '.github/workflows/foundation.yml', 'tools/validate_roadmap.py', 'tools/verify_credentials.mjs', 'tools/verify_event_vectors.mjs', 'docs/**']
+    paths: ['spikes/m00/**', 'crates/**', 'client/**', 'protocol/**', 'deploy/**', 'Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', '.github/workflows/foundation.yml', 'tools/validate_roadmap.py', 'tools/verify_credentials.mjs', 'tools/verify_event_vectors.mjs', 'tools/runtime_smoke.py', 'docs/**']
 permissions:
   contents: read
 jobs:
@@ -63,6 +63,14 @@ jobs:
       - run: cargo fmt --check --all
       - run: cargo test --locked --workspace
       - run: cargo clippy --locked --offline --workspace --all-targets -- -D warnings
+      - run: cargo build --locked --offline -p bbsbox-node-runtime
+      - run: sudo apt-get update && sudo apt-get install -y strace iproute2
+      - run: sudo unshare --net -- bash -c 'ip link set lo up && python3 tools/runtime_smoke.py --isolated'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: runtime-isolation-evidence
+          path: work/runtime-evidence/*
       - run: cargo run --release --locked --offline --example writer_load > writer-load.json
       - uses: actions/upload-artifact@v4
         with:

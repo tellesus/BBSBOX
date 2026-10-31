@@ -1,8 +1,8 @@
 # Locked BBSBOX development roadmap
 
-Version 1.1.0 · 2026-10-25 · Product baseline 0.6.0 · Scope approved under U19; canon clarified under U20. [Historical lock record](../decisions/ADR-0001-roadmap-lock.md).
+Index revision 1.1.1 · Roadmap baseline 1.1.0 · 2026-10-31 · Product baseline 0.6.0 · Scope approved under U19; canon clarified under U20. [Historical lock record](../decisions/ADR-0001-roadmap-lock.md).
 
-All named module scopes and T decisions are approved. G0-local passed; M02/M03 providers are Complete; M00/M04 remain In progress. Current module/device/release evidence is in WORK_LEDGER. Read [START_HERE](START_HERE.md), one brief and its contracts. Use the live [decisions](DECISIONS.md), derived [coverage](COVERAGE.md) and [ledger](WORK_LEDGER.md) as needed. The [old technical plan](../archive/technical-plan-1.0.0.md) and [earlier review](../archive/review-2026-10-25.md) are historical archives.
+All named module scopes and T decisions are approved. G0-local passed; M02/M03/M04 providers are Complete; M00/M01 remain In progress. Current module/device/release evidence is in WORK_LEDGER. Read [START_HERE](START_HERE.md), one brief and its contracts. Use the live [decisions](DECISIONS.md), derived [coverage](COVERAGE.md) and [ledger](WORK_LEDGER.md) as needed. The [old technical plan](../archive/technical-plan-1.0.0.md) and [earlier review](../archive/review-2026-10-25.md) are historical archives.
 
 ## Canon and document ownership
 
@@ -27,12 +27,12 @@ Phone tests are scheduled for the G1 integrated local-node alpha and G2 private-
 
 ## Execution order and dependencies
 
-M00 → M01 → M02 → M03 → M04 → M12 → M05 → M06 → M07 → M08 → M09 → M10 → M11 → M13 → M14 → M15 → M16 → M17 → M18 → M19. Maintenance moves immediately after the durable identity/event foundation. G0-local evidence enables independent local work even if G2 private-client research remains open. M00 supplies G0-local for M01–M03 provider work and full relevant private-client/MLS evidence for M13. Other dependencies require completed provider interfaces; bounded earlier research uses fixtures and claims no integration.
+M00 → M02 → M03 → M04 → M01 → M12 → M05 → M06 → M07 → M08 → M09 → M10 → M11 → M13 → M14 → M15 → M16 → M17 → M18 → M19. M01 integrates the completed M02–M04 runtime providers before M12 maintenance integration. G0-local evidence enables independent local work even if G2 private-client research remains open. M00 supplies G0-local for M01–M03 provider work and full relevant private-client/MLS evidence for M13. Other dependencies require completed provider interfaces; bounded earlier research uses fixtures and claims no integration.
 
 | Module | Gate | Prerequisites for completion | Decisions |
 | --- | --- | --- | --- |
 | [M00 — Foundational feasibility and decisions](modules/M00-foundation-spikes.md) | G0 | None | T01, T02, T03, T04, T05, T06, T07, T08, T14 |
-| [M01 — Offline appliance and local access](modules/M01-offline-appliance.md) | G1 | M00 | T01, T07, T14 |
+| [M01 — Offline appliance and local access](modules/M01-offline-appliance.md) | G1 | M00, M02, M03, M04 | T01, T07, T14 |
 | [M02 — Durable storage and bounded jobs](modules/M02-storage-jobs.md) | G1 | M00 | T02, T14 |
 | [M03 — Identity, local accounts and permissions](modules/M03-identity-access.md) | G1 | M00, M02 | T04, T08, T09 |
 | [M04 — Signed event kernel and convergence](modules/M04-signed-events.md) | G1 | M02, M03 | T04, T05 |

@@ -8,6 +8,9 @@ publish = false
 [dependencies]
 rusqlite = { version = "0.41", features = ["bundled"] }
 sha2 = "0.10"
+rand_core = { version = "0.6", features = ["getrandom"] }
+tokio = { version = "1", features = ["sync"] }
 
 [dev-dependencies]
 tempfile = "3"
+tokio = { version = "1", features = ["macros", "rt", "time"] }

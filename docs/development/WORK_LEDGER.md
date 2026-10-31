@@ -10,7 +10,7 @@ Design review is complete and the first M00 prototype has real local implementat
 | --- | --- | --- | --- | --- |
 | [M00](modules/M00-foundation-spikes.md) | Approved | In progress | 2026-10-30: Rust/API/store and HTTPS browser checks pass; see run record below | G0-local passed; M02 B next, plus trusted-client study; phone checks at G1/G2 |
 | [M01](modules/M01-offline-appliance.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
-| [M02](modules/M02-storage-jobs.md) | Approved | In progress | Six local slice-A integration tests pass; see current record | B: bounded writer service and durable jobs; C: blobs/budgets/snapshots |
+| [M02](modules/M02-storage-jobs.md) | Approved | In progress | A/B implemented; 16 local integration tests and finite concurrent load; see current record | C: blobs/budgets/snapshots |
 | [M03](modules/M03-identity-access.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
 | [M04](modules/M04-signed-events.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
 | [M12](modules/M12-maintenance-recovery.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
@@ -96,3 +96,9 @@ M02 A supplies primitives only. The bounded writer actor, priority/fairness and 
 ## 2026-10-30 — direct interface copy
 
 User requested removal of motivational/promotional wording from the site. Replaced the M00 hero, navigation, form/empty-state copy, callout and footer with functional labels and status text; removed the decorative slogan stamp. M05 brief revision 1.1.1 records the writing direction for future interface work. Updated existing browser journeys and the isolated-runtime page check to the current labels. Feature scope and roadmap/product baselines are unchanged.
+
+## 2026-10-30 — M02 B bounded writer and transactional jobs
+
+Authority: continued autonomous local development under U22 and current user instruction. Roadmap 1.1.0/product 0.6.0; C01 v1.2.0; M02 brief revision 1.1.1. Sources R05/R07/R12, P04/P06, AC01/AC07/AC15; no new product scope. Implementation is this record's containing commit. Defaults are 64 pending tasks, one executing task and an eight-interactive/one-background service ratio while both queues are pending. Async replies avoid running SQLite on request threads; accepted work survives caller disconnection. Jobs bind immutable queue/key arguments, fence stale tokens before/after completion, persist retries/pauses and recover interrupted claims only under the exclusive writer lock. Wall-clock schedules are distinct from monotonic leases. Core schema 2 upgrades schema 1 atomically.
+
+Six A plus ten B integration tests pass on the recorded Windows workstation, including actual child-process exits before/after job completion followed by recovery to one effect. Formatting/clippy pass. The optimized finite workload concurrently completed 400 interactive writes and 200 jobs importing 20,000 rows (100/job) in 463 ms; interactive commit latency p50 19.342 ms, p95 24.054 ms, maximum 24.585 ms. This is an observation, not an appliance capacity promise. CI repeats the checks and saves its own workload result. M02 C, actual HTTP/module integration, M12 coordinated backups and full AC07/AC15 remain pending. Next: C, content-addressed blobs, disk reserve and core snapshot/restore hooks.

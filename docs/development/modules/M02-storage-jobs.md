@@ -1,8 +1,8 @@
 # M02 — Durable storage and bounded jobs
 
-Version 1.1.0 · 2026-10-25 · Locked development baseline · Product baseline 0.6.0.
+Brief revision 1.1.1 · Roadmap baseline 1.1.0 · 2026-10-30 · Product baseline 0.6.0.
 
-**State:** In progress under U22 after G0-local evidence. Slice A has six passing local integration tests; B/C and full G1 evidence remain pending.
+**State:** In progress under U22 after G0-local evidence. A/B are implemented; C and full G1 evidence remain pending. Consume C01 v1.2.0.
 
 ## Read only this packet
 
@@ -23,9 +23,9 @@ Use SQLite WAL through rusqlite with a dedicated bounded writer and read connect
 
 ## Ownership and interfaces
 
-crates/storage/ now implements slice A: an owned SQLite writer, migration registry, scoped command fingerprints/durable receipts and independent read-only connections. Jobs, blobs and snapshot hooks follow in B/C. Feature rows remain owned by their module. See the [implementation runbook](../../../crates/storage/README.md).
+crates/storage/ implements A/B: migration registry, scoped command receipts, independent readers, bounded writer and transactional jobs with fenced claims/retries. Blobs and snapshot hooks follow in C. Feature rows remain module-owned. See the [implementation runbook](../../../crates/storage/README.md).
 
-The library is not wired to HTTP or the prototype. The bounded writer actor and fairness are B work; callers must not put the current blocking writer on async request threads. Module SQL uses the existing transaction rather than managing its own. Consume C01 and update affected consumers together.
+The library is not wired to HTTP or the prototype. Async handlers await writer replies; callbacks execute on its dedicated thread. Module SQL uses the existing transaction rather than managing its own. Consume C01 and update affected consumers together.
 
 ## Sequential work slices
 
@@ -45,6 +45,6 @@ SQLite WAL with synchronous=FULL, one bounded writer, transactional outbox and e
 
 ## Handoff
 
-Current local evidence: six tests pass for reopen/idempotency, changed request rejection, state/receipt rollback, WAL reads during a write, migration failure/change/downgrade and foreign-database denial. SQLite page limits verify exact disk-full rollback. Child processes exit before/after commit; retries produce one effect. Full module completion still requires B/C and measured sustained-import fairness. This is progress within AC07/AC15, not completion of those criteria.
+Current evidence covers command/job crash recovery, fencing, retry/pause, bounded admission, fair scheduling, independent WAL reads and migration guards. A finite concurrent workload measures interactive latency and confirms background progress; results are in WORK_LEDGER. Full completion still requires C; AC07/AC15 remain pending.
 
 Record completed slices, approved ADRs, contract/schema revisions, evidence and commit, remaining limitations and next slice in [WORK_LEDGER](../WORK_LEDGER.md). Existing scopes are approved. Every design, goal or feature change updates affected roadmap canon before completion; follow START_HERE. See [coverage](../COVERAGE.md) when changing source IDs.

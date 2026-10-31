@@ -61,3 +61,8 @@ jobs:
       - run: cargo fmt --check --all
       - run: cargo test --locked --workspace
       - run: cargo clippy --locked --offline --workspace --all-targets -- -D warnings
+      - run: cargo run --release --locked --offline --example writer_load > writer-load.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: storage-load-observation
+          path: writer-load.json

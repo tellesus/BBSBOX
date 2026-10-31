@@ -1,6 +1,6 @@
 # C01 — Storage, runtime and module boundary
 
-Version 1.1.0 · Accepted for implementation · Owner M02; operations co-owner M12.
+Version 1.2.0 · Accepted for implementation · Owner M02; operations co-owner M12.
 
 ## Responsibilities and interface
 
@@ -13,6 +13,8 @@ Use a bounded writer worker with rusqlite off async request threads. Keep SQLite
 ## Jobs and recovery
 
 Serve local interactive work ahead of incoming bulk processing. Give background queues bounded batches plus a minimum service share so sync cannot starve indefinitely. Retry with persistent progress; failures carry a typed reason and retry condition. A command ID deduplicates browser retries; a network event ID deduplicates synchronization. They are different identifiers.
+
+The M02 writer defaults to 64 pending tasks plus one executing task; while both priorities are pending, serve at most eight interactive tasks before one background task. Reject saturation explicitly. Accepted work survives caller disconnection. Keep callbacks bounded and never submit recursively. A process lock protects startup job recovery; direct database opens are bootstrap/test interfaces. Jobs use fresh claim tokens, monotonic lease deadlines and fenced transactional completion; calendar retry times use wall time. Restart makes unfinished claims retryable, preserving paused/done jobs. External effects require their own durable idempotence/outbox; a claim alone is insufficient.
 
 Take a consistent SQLite backup through its backup API plus a manifest of referenced blobs, configuration, node secrets and counters. Protect required blobs from deletion while taking the snapshot. Client private keys are a separate client export; a server backup does not magically contain them. Do not copy only the main SQLite file while ignoring live WAL state.
 

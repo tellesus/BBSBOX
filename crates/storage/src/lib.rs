@@ -1,12 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! M02 A: owned SQLite writer, ordered migrations and atomic idempotent commands.
-//! The bounded writer actor, durable jobs, blobs and snapshot coordinator follow in B/C.
+//! M02 A/B: bounded SQLite writer, ordered migrations, atomic commands and durable jobs.
+//! Blob lifecycle, disk budgets and snapshot hooks follow in C.
 use rusqlite::{Connection, OpenFlags, OptionalExtension, Transaction};
 use sha2::{Digest, Sha256};
-use std::{collections::BTreeMap, fmt, path::Path, time::Duration};
+use std::{collections::BTreeMap, fmt, path::Path, sync::Arc, time::Duration};
+
+pub mod clock;
+pub mod jobs;
+pub mod writer;
 
 const APPLICATION_ID: i32 = 0x42425358;
-const SCHEMA_VERSION: i32 = 1;
+const SCHEMA_VERSION: i32 = 2;
 const MAX_RECEIPT_BYTES: usize = 1024 * 1024;
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -21,6 +25,16 @@ pub enum Error {
     ReusedCommandId,
     ReceiptTooLarge,
     WalUnavailable,
+    Io(std::io::Error),
+    WriterAlreadyRunning,
+    QueueFull,
+    WriterClosed,
+    ReentrantWriter,
+    WorkPanicked,
+    InvalidConfiguration,
+    InvalidJob,
+    ReusedJobId,
+    StaleClaim,
 }
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -44,6 +58,22 @@ impl fmt::Display for Error {
             }
             Self::ReceiptTooLarge => f.write_str("the command response exceeds the receipt limit"),
             Self::WalUnavailable => f.write_str("SQLite WAL is unavailable on this storage path"),
+            Self::Io(error) => write!(f, "storage I/O failed: {error}"),
+            Self::WriterAlreadyRunning => f.write_str("a writer already owns this database"),
+            Self::QueueFull => f.write_str("the bounded writer queue is full"),
+            Self::WriterClosed => f.write_str("the writer is closed"),
+            Self::ReentrantWriter => f.write_str("writer work cannot submit more writer work"),
+            Self::WorkPanicked => {
+                f.write_str("writer work panicked; consult durable receipts before retrying")
+            }
+            Self::InvalidConfiguration => {
+                f.write_str("invalid storage configuration or clock value")
+            }
+            Self::InvalidJob => f.write_str("invalid job parameters"),
+            Self::ReusedJobId => {
+                f.write_str("job idempotency key was reused with different arguments")
+            }
+            Self::StaleClaim => f.write_str("the job claim is expired or has been replaced"),
         }
     }
 }
@@ -51,6 +81,7 @@ impl std::error::Error for Error {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             Self::Sqlite(error) => Some(error),
+            Self::Io(error) => Some(error),
             _ => None,
         }
     }
@@ -60,8 +91,14 @@ impl From<rusqlite::Error> for Error {
         Self::Sqlite(value)
     }
 }
+impl From<std::io::Error> for Error {
+    fn from(value: std::io::Error) -> Self {
+        Self::Io(value)
+    }
+}
 
 /// All compiled module migrations remain registered even when a module is disabled.
+#[derive(Clone)]
 pub struct Migration {
     pub module: &'static str,
     pub version: u32,
@@ -79,10 +116,11 @@ pub struct Receipt {
 }
 
 /// This connection has one owner and is deliberately not shared across async request threads.
-/// M02 B will place it behind the bounded writer service. Until then this is a tested library,
-/// not a production HTTP integration.
+/// Node modules access it through writer::Writer; direct opens are for bootstrap/tests.
+/// This crate is not yet integrated into the public HTTP prototype.
 pub struct Database {
     connection: Connection,
+    clock: Arc<dyn clock::Clock>,
 }
 
 fn valid_key(value: &str) -> bool {
@@ -112,6 +150,13 @@ fn configure(connection: &Connection, writable: bool) -> Result<()> {
 }
 impl Database {
     pub fn open(path: impl AsRef<Path>, migrations: &[Migration]) -> Result<Self> {
+        Self::open_with_clock(path, migrations, Arc::new(clock::SystemClock::default()))
+    }
+    pub fn open_with_clock(
+        path: impl AsRef<Path>,
+        migrations: &[Migration],
+        clock: Arc<dyn clock::Clock>,
+    ) -> Result<Self> {
         let mut known = BTreeMap::new();
         for migration in migrations {
             if !valid_key(migration.module)
@@ -148,7 +193,7 @@ impl Database {
         if !fresh && application != APPLICATION_ID {
             return Err(Error::ForeignDatabase);
         }
-        if !fresh && version != SCHEMA_VERSION {
+        if !fresh && version != 1 && version != SCHEMA_VERSION {
             return Err(Error::UnsupportedSchema(version));
         }
         configure(&connection, true)?;
@@ -157,6 +202,9 @@ impl Database {
             tx.execute_batch("CREATE TABLE core_migrations(module TEXT NOT NULL,version INTEGER NOT NULL,digest BLOB NOT NULL,PRIMARY KEY(module,version));
                 CREATE TABLE core_command_receipts(namespace TEXT NOT NULL,command_id TEXT NOT NULL,request_hash BLOB NOT NULL,response BLOB NOT NULL,PRIMARY KEY(namespace,command_id));")?;
             tx.pragma_update(None, "application_id", APPLICATION_ID)?;
+        }
+        if fresh || version == 1 {
+            tx.execute_batch(jobs::SCHEMA)?;
             tx.pragma_update(None, "user_version", SCHEMA_VERSION)?;
         }
         let applied = {
@@ -202,7 +250,7 @@ impl Database {
             }
         }
         tx.commit()?;
-        Ok(Self { connection })
+        Ok(Self { connection, clock })
     }
 
     /// Execute module-owned work and its durable receipt in the same transaction.

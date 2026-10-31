@@ -19,6 +19,8 @@ python tools/runtime_smoke.py
 
 The smoke tool creates disposable state and a development CA using M00's test-only TLS fixture; it never installs trust or modifies live node data. It opens actual IPv4/IPv6 HTTPS connections, verifies trust failure without the CA, serves both packaged assets, checks authority/method rejection and restarts the process against the same database. Windows termination is a process-loss check; the lifecycle test separately exercises a drained writer shutdown. Linux also exercises SIGTERM. Phone enrollment waits for G1/G2.
 
+`bbsbox-node --config <node.json> --initialize` prepares the database/node identity and exits with `bbsbox.node-init/v1` public metadata. It needs no TLS files and opens no listener. Provisioning can obtain the node ID before making its local certificate/address card. Later server starts retain that identity. The smoke check now initializes before generating TLS, and its Linux audit checks that phase separately for successful exit without a listener/outbound attempts.
+
 For Linux isolation evidence, build first on the developer machine, install developer test tools there, then run in a disposable namespace:
 
 ```sh
@@ -37,4 +39,17 @@ TLS material must already exist and parse before storage/listener startup. The p
 
 The selected first appliance target is [Debian 13 trixie amd64](https://www.debian.org/releases/trixie/), the verified stable family as of 2026-10-31. Service directives follow the official [systemd service](https://www.freedesktop.org/software/systemd/man/latest/systemd.service.html) and [execution environment](https://www.freedesktop.org/software/systemd/man/latest/systemd.exec.html) documentation; the actual target version still needs execution evidence. Neither this reference nor a test CA is a release trust root.
 
-Three Rust tests cover bounded config validation, literal/local addressing, exact status surface, real registered migrations, restart identity and exclusive writer ownership. The real-process HTTPS smoke complements those checks. M01 remains In progress until offline installation/service execution, full-host network boundaries, local address enrollment and recovery/reinstall procedures pass.
+Four Rust tests cover bounded config validation, literal/local addressing, exact status surface, real registered migrations, offline initialization, restart identity and exclusive writer ownership. The real-process HTTPS smoke complements those checks. M01 remains In progress until offline installation/service execution, full-host network boundaries, local address enrollment and recovery/reinstall procedures pass.
+
+## Prepared development payload
+
+On a Linux developer/build machine, after building the executable:
+
+```sh
+python3 tools/runtime_bundle.py build --binary target/debug/bbsbox-node --output work/runtime-bundle
+python3 tools/runtime_bundle.py verify work/runtime-bundle
+```
+
+[The builder/verifier](../../tools/runtime_bundle.py) copies the ELF64 amd64 executable, candidate unit, config example and license notices into a fresh destination. A bounded canonical manifest lists exact bytes/SHA-256 values and the source commit/dirty flag; it is written last and existing destinations are refused. Verification rejects incomplete/changed/unlisted files, path escapes, duplicates, symlinked members, unknown formats and wrong executable targets. It performs no download, install or service activation.
+
+This format is explicitly a development payload, supplying integrity/target checks for local install tests. M12 owns authenticated signed releases, installed trust roots, dependency/source packaging and updates. No production release or completed appliance installation is implied by preparing this payload. CI checks a real Linux binary; portable unit fixtures use a labeled synthetic ELF header and never execute it.

@@ -184,3 +184,32 @@ async fn status_surface_uses_exact_authority_and_exposes_no_private_state_or_mut
     }
     runtime.shutdown().await.unwrap();
 }
+
+#[tokio::test]
+async fn offline_initialization_prepares_identity_without_tls_or_a_listener_and_retains_it_at_boot()
+{
+    let temp = tempfile::tempdir().unwrap();
+    let c = config(temp.path());
+    let config_path = temp.path().join("config.json");
+    std::fs::write(&config_path, serde_json::to_vec(&c).unwrap()).unwrap();
+    let mut command = std::process::Command::new(env!("CARGO_BIN_EXE_bbsbox-node"));
+    command.args(["--config", config_path.to_str().unwrap(), "--initialize"]);
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        command.creation_flags(0x0800_0000);
+    }
+    let output = command.output().unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let initialized: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(initialized["format"], "bbsbox.node-init/v1");
+    assert!(!c.certificate.exists());
+    assert!(!c.certificate_key.exists());
+    let runtime = Runtime::start(&c).await.unwrap();
+    assert_eq!(initialized["node_id"], runtime.info().node_id);
+    runtime.shutdown().await.unwrap();
+}

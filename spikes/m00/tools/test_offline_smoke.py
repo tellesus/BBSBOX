@@ -12,8 +12,9 @@ class TraceAuditTests(unittest.TestCase):
 
     def test_failed_ipv4_and_ipv6_attempts_are_rejected(self):
         for family in ('AF_INET', 'AF_INET6'):
-            with self.subTest(family=family), self.assertRaises(ValueError):
-                audit_trace(LISTENER+f'100 connect(9, {{sa_family={family}}}, 16) = -1 ENETUNREACH\n')
+            for prefix in ['100 ', '[pid 100] ']:
+                with self.subTest(family=family,prefix=prefix), self.assertRaises(ValueError):
+                    audit_trace(LISTENER+f'{prefix}connect(9, {{sa_family={family}}}, 16) = -1 ENETUNREACH\n')
 
     def test_datagram_destination_is_rejected(self):
         with self.assertRaises(ValueError):
@@ -31,6 +32,17 @@ class TraceAuditTests(unittest.TestCase):
     def test_explicit_message_destination_is_rejected(self):
         with self.assertRaises(ValueError):
             audit_trace(LISTENER+'100 sendmsg(9, {msg_name={sa_family=AF_INET}}, 0) = 1\n')
+
+    def test_initializer_needs_successful_execution_without_listener_or_outbound_attempts(self):
+        exited='100 +++ exited with 0 +++\n'
+        self.assertFalse(audit_trace(exited, require_listener=False)['listener_observed'])
+        for trace in ['', LISTENER+exited, '100 connect(9, {sa_family=AF_INET}, 16) = -1 ENETUNREACH\n'+exited]:
+            with self.subTest(trace=trace), self.assertRaises(ValueError):
+                audit_trace(trace, require_listener=False)
+
+    def test_listener_words_inside_payload_are_not_observed_syscalls(self):
+        with self.assertRaises(ValueError):
+            audit_trace('100 sendto(9, "bind( listen( accept(", 22, MSG_NOSIGNAL, NULL, 0) = 22\n')
 
 
 if __name__ == '__main__':

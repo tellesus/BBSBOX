@@ -33,15 +33,26 @@ def exercise(binary, state_root, host, isolated):
         state = Path(temporary).resolve()
         if not state.is_relative_to(state_root):
             raise RuntimeError('Temporary state escaped the selected test directory')
-        subprocess.run([sys.executable, str(ROOT/'spikes/m00/tools/init_tls.py'), '--state', str(state)], check=True, capture_output=True)
         config = dict(format='bbsbox.node-config/v1', name='Runtime fixture <node>', bind=f'{address}:{port}', origin=origin, database=str(state/'node.sqlite'), certificate=str(state/'tls/server.pem'), certificate_key=str(state/'tls/server-key.pem'))
         config_path = state/'node.json'
         config_path.write_text(json.dumps(config), encoding='utf-8')
+        initialize=[str(binary),'--config',str(config_path),'--initialize']
+        init_trace=state/'initialization.trace'
+        if isolated:
+            initialize=['strace','-f','-s','256','-e','trace=network','-o',str(init_trace),*initialize]
+        initialized=json.loads(subprocess.check_output(initialize,timeout=15,creationflags=subprocess.CREATE_NO_WINDOW if os.name=='nt' else 0))
+        assert initialized['format']=='bbsbox.node-init/v1'
+        initial_audit=[]
+        if isolated:
+            text=init_trace.read_text(encoding='utf-8')
+            initial_audit.append(audit.audit_trace(text,require_listener=False))
+            (state_root/f'runtime-{"ipv6" if family==socket.AF_INET6 else "ipv4"}-initialization.trace').write_text(text,encoding='utf-8')
+        subprocess.run([sys.executable, str(ROOT/'spikes/m00/tools/init_tls.py'), '--state', str(state)], check=True, capture_output=True)
         context = ssl.create_default_context(cafile=str(state/'tls/ca.pem'))
         opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), urllib.request.HTTPSHandler(context=context))
         def request(path, method='GET', headers=None):
             return opener.open(urllib.request.Request(origin+path, method=method, headers=headers or {}), timeout=2)
-        identity = None
+        identity = initialized['node_id']
         traces = []
         for attempt in range(2):
             command = [str(binary), '--config', str(config_path)]
@@ -109,7 +120,7 @@ def exercise(binary, state_root, host, isolated):
                 text = trace.read_text(encoding='utf-8')
                 traces.append(audit.audit_trace(text))
                 (state_root/f'runtime-{"ipv6" if family == socket.AF_INET6 else "ipv4"}-{attempt}.trace').write_text(text, encoding='utf-8')
-        return dict(family='IPv6' if family == socket.AF_INET6 else 'IPv4', tls=True, untrusted_ca_rejected=True, local_assets=2, identity_preserved_after_restart=True, unexpected_authority_rejected=True, mutation_route_absent=True, network_audit=traces)
+        return dict(family='IPv6' if family == socket.AF_INET6 else 'IPv4', tls=True, untrusted_ca_rejected=True, local_assets=2, identity_preserved_after_restart=True, unexpected_authority_rejected=True, mutation_route_absent=True, initialization_audit=initial_audit, network_audit=traces)
 
 
 def main():

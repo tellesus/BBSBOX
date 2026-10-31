@@ -15,17 +15,23 @@ import urllib.error
 import urllib.request
 
 ROOT = Path(__file__).resolve().parents[1]
+TRACE_PREFIX = r'^\s*(?:(?:\d+|\[pid\s+\d+\])\s+)?'
 
 
-def audit_trace(text):
+def audit_trace(text, require_listener=True):
     """Require actual listener/accept evidence, and reject any outbound IP connect/send destination."""
-    if 'bind(' not in text or 'listen(' not in text or not re.search(r'\baccept(?:4)?\(', text):
+    bound = bool(re.search(TRACE_PREFIX+r'bind\(', text, re.M))
+    listening = bool(re.search(TRACE_PREFIX+r'listen\(', text, re.M))
+    accepted = bool(re.search(TRACE_PREFIX+r'accept(?:4)?\(', text, re.M))
+    if require_listener and not (bound and listening and accepted):
         raise ValueError('Incomplete trace: expected bind, listen and accepted traffic')
+    if not require_listener and (bound or listening or accepted or '+++ exited with 0 +++' not in text):
+        raise ValueError('Initialization must finish successfully without a listener')
     if '<unfinished ...>' in text and re.search(r'\bconnect\(.*<unfinished', text):
         raise ValueError('Unfinished outbound connect cannot be treated as safe')
     # Match only syscall lines, not text embedded inside application payload strings.
     for line in text.splitlines():
-        call = re.match(r'^\s*(?:\d+\s+)?(connect|sendto|sendmsg|sendmmsg)\(', line)
+        call = re.match(TRACE_PREFIX+r'(connect|sendto|sendmsg|sendmmsg)\(', line)
         if not call:
             continue
         if call[1] == 'connect':
@@ -37,7 +43,7 @@ def audit_trace(text):
             raise ValueError('Unexpected explicit sendto destination')
         if call[1] in ('sendmsg', 'sendmmsg') and not re.search(r'msg_name=NULL', line):
             raise ValueError('Unexpected explicit message destination')
-    return {'listener_observed': True, 'accepted_requests_observed': True, 'outbound_connects': 0, 'explicit_datagram_destinations': 0}
+    return {'listener_observed': bound and listening, 'accepted_requests_observed': accepted, 'outbound_connects': 0, 'explicit_datagram_destinations': 0}
 
 
 def check_namespace():

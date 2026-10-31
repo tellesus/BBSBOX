@@ -1,9 +1,9 @@
 name: Foundation experiment
 on:
   push:
-    paths: ['spikes/m00/**', 'crates/**', 'client/**', 'protocol/**', 'deploy/**', 'Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', '.github/workflows/foundation.yml', 'tools/validate_roadmap.py', 'tools/verify_credentials.mjs', 'tools/verify_event_vectors.mjs', 'tools/runtime_smoke.py', 'docs/**']
+    paths: ['spikes/m00/**', 'crates/**', 'client/**', 'protocol/**', 'deploy/**', 'Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', '.github/workflows/foundation.yml', 'tools/validate_roadmap.py', 'tools/verify_credentials.mjs', 'tools/verify_event_vectors.mjs', 'tools/runtime_smoke.py', 'tools/runtime_bundle.py', 'tools/test_runtime_bundle.py', 'docs/**']
   pull_request:
-    paths: ['spikes/m00/**', 'crates/**', 'client/**', 'protocol/**', 'deploy/**', 'Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', '.github/workflows/foundation.yml', 'tools/validate_roadmap.py', 'tools/verify_credentials.mjs', 'tools/verify_event_vectors.mjs', 'tools/runtime_smoke.py', 'docs/**']
+    paths: ['spikes/m00/**', 'crates/**', 'client/**', 'protocol/**', 'deploy/**', 'Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', '.github/workflows/foundation.yml', 'tools/validate_roadmap.py', 'tools/verify_credentials.mjs', 'tools/verify_event_vectors.mjs', 'tools/runtime_smoke.py', 'tools/runtime_bundle.py', 'tools/test_runtime_bundle.py', 'docs/**']
 permissions:
   contents: read
 jobs:
@@ -64,6 +64,9 @@ jobs:
       - run: cargo test --locked --workspace
       - run: cargo clippy --locked --offline --workspace --all-targets -- -D warnings
       - run: cargo build --locked --offline -p bbsbox-node-runtime
+      - run: python3 -m unittest discover -s tools -p test_runtime_bundle.py -v
+      - run: python3 tools/runtime_bundle.py build --binary target/debug/bbsbox-node --output work/runtime-bundle
+      - run: python3 tools/runtime_bundle.py verify work/runtime-bundle
       - run: sudo apt-get update && sudo apt-get install -y strace iproute2
       - run: sudo unshare --net -- bash -c 'ip link set lo up && python3 tools/runtime_smoke.py --isolated'
       - uses: actions/upload-artifact@v4

@@ -1,8 +1,8 @@
 # M01 — Offline appliance and local access
 
-Brief revision 1.1.1 · Roadmap baseline 1.1.0 · 2026-10-31 · Locked scope · Product baseline 0.6.0.
+Brief revision 1.1.2 · Roadmap baseline 1.1.0 · 2026-10-31 · Locked scope · Product baseline 0.6.0.
 
-**State:** In progress under continued development authority. A runtime has local Rust and real HTTPS/restart evidence. Offline installation, Debian service execution, B/C and reference hardware remain pending.
+**State:** In progress under continued development authority. A runtime passed Windows/Linux HTTPS/restart/isolation checks. Offline initialization/payload preparation have local checks. Installation, Debian service execution, B/C and reference hardware remain pending.
 
 ## Read only this packet
 
@@ -29,7 +29,7 @@ Runtime/status code, configuration example and a candidate service unit exist; o
 
 ## Sequential work slices
 
-1. A: offline install and service startup with local status page. Local runtime/TLS/restart checks pass; installation and target service execution remain open.
+1. A: offline install and service startup with local status page. Runtime/TLS/restart/isolation passed; initialization/development-payload tools are implemented. Installation and target service execution remain open.
 2. B: router/address enrollment and verified packet-boundary configuration.
 3. C: restarts, local diagnosis and prepared-media reinstall procedure.
 

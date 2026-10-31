@@ -2,7 +2,7 @@
 
 Brief revision 1.1.2 · Roadmap baseline 1.1.0 · 2026-10-30 · Product baseline 0.6.0.
 
-**State:** In progress, validating C under U22 after G0-local evidence. A/B passed Windows and Linux checks; A–C have 25 passing Windows integration tests. C Linux evidence is pending. Consume C01 v1.3.0.
+**State:** Complete as a provider under U22. A–C passed 25 Windows/26 Linux integration tests and concurrent load checks. Consume C01 v1.3.0. Consumer integration and release gates remain downstream.
 
 ## Read only this packet
 
@@ -45,6 +45,6 @@ SQLite WAL with synchronous=FULL, one bounded writer, transactional outbox and e
 
 ## Handoff
 
-Current evidence covers command/job/upload crashes, interrupted migrations with spilled WAL frames, fencing, retries, bounded/fair scheduling, disk floors, collection and real WAL-aware core restore. A finite concurrent workload measures interactive latency/background progress; results are in WORK_LEDGER. C needs Linux confirmation. M12 owns full-node backup/recovery and M10/consumers own integration; full AC07/AC15 remain pending.
+Evidence covers command/job/upload crashes, interrupted migrations with spilled WAL frames, fencing, retries, bounded/fair scheduling, disk floors, collection and real WAL-aware core restore. Windows/Linux checks and concurrent-workload results are in WORK_LEDGER. M12 owns full-node backup/recovery; consumers own integration. Full AC07/AC15 remain pending.
 
 Record completed slices, approved ADRs, contract/schema revisions, evidence and commit, remaining limitations and next slice in [WORK_LEDGER](../WORK_LEDGER.md). Existing scopes are approved. Every design, goal or feature change updates affected roadmap canon before completion; follow START_HERE. See [coverage](../COVERAGE.md) when changing source IDs.

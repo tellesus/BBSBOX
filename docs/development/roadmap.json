@@ -1052,7 +1052,8 @@
       "docs/archive/technical-plan-1.0.0.md",
       "spikes/m00/README.md",
       "spikes/m00/mls/README.md",
-      "crates/storage/README.md"
+      "crates/storage/README.md",
+      "crates/identity/README.md"
     ]
   },
   "implementation_updated": "2026-10-30",

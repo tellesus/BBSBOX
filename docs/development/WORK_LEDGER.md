@@ -1,6 +1,6 @@
 # Development work ledger
 
-Version 1.1.0 · 2026-10-25 · Locked roadmap; M00/M02 In progress, remaining modules Unstarted. Execution updated 2026-10-30.
+Version 1.1.0 · 2026-10-25 · Locked roadmap; M02 provider Complete; M00/M03 In progress. Other modules Unstarted. Execution updated 2026-10-30.
 
 Evidence log — not an independent source of scope authority. Current choices live in the canonical roadmap and user instructions.
 
@@ -10,8 +10,8 @@ Design review is complete and the first M00 prototype has real local implementat
 | --- | --- | --- | --- | --- |
 | [M00](modules/M00-foundation-spikes.md) | Approved | In progress | 2026-10-30: Rust/API/store and HTTPS browser checks pass; see run record below | G0-local passed; trusted-client study and phone checks at G1/G2 remain |
 | [M01](modules/M01-offline-appliance.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
-| [M02](modules/M02-storage-jobs.md) | Approved | In progress | A–C: 25 Windows tests; A/B Linux CI passed; see current record | Confirm C on Linux; consumers integrate the completed provider interfaces |
-| [M03](modules/M03-identity-access.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
+| [M02](modules/M02-storage-jobs.md) | Approved | Complete | A–C: 25 Windows/26 Linux integration tests; CI 41167864139 passed | Consumers own HTTP/module integration; M12 owns full-node backup activation |
+| [M03](modules/M03-identity-access.md) | Approved | In progress | A: local accounts/session tests pass; see current record | Confirm A on Linux; B: public identities/device credentials |
 | [M04](modules/M04-signed-events.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
 | [M12](modules/M12-maintenance-recovery.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
 | [M05](modules/M05-interface-themes.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
@@ -114,3 +114,13 @@ Core snapshot hooks use SQLite backup, a standalone database and verified indepe
 Windows normal-permission verification: 25 integration tests pass, format/clippy/roadmap validator pass. Added fixtures cover stream process death, finalized-file/failed-metadata cleanup, corrupt files/manifests, non-eviction of pending exports, disk-floor rollback/control headroom, schema-2 upgrade rollback and a real live-WAL restore preserving blobs/receipts/paused jobs. A separate process is killed after spilling uncommitted migration WAL frames; schema/rows roll back and reapplication succeeds. Linux additionally checks alias access and private snapshot permissions; its C result remains pending until CI. The restricted Windows tool runner denies temporary-file finalization; rerunning with normal permissions passes without changing the implementation.
 
 With real disk probes enabled, the finite load took 1,641 ms on this workstation at normal permissions: p50 71.104 ms, p95 77.235 ms, maximum 79.618 ms for 400 concurrent interactive writes while 200 jobs import 20,000 rows. The restricted-runner observation was slower (4,175 ms/p95 192.421 ms); neither is a reference-appliance limit. M02 awaits C Linux confirmation. Next provider consumer: M03 A local accounts/roles; full HTTP integration, node backup activation, appliance budgets and AC07/AC15 remain downstream work.
+
+## 2026-10-30 — M02 provider complete; M03 A local accounts
+
+The [C checkpoint CI](https://github.com/tellesus/BBSBOX/actions/runs/41167864139), commit 0f14169, passed all three Ubuntu jobs. Storage has 25 Windows/26 Linux integration tests, including the Unix alias/private-permission fixture; concurrent-load, static/browser, MLS and isolated-runtime regressions also passed. **M02 is Complete as a provider.** HTTP/feature integration and appliance/full-node recovery/release evidence remain with consumers; no gate advances merely from this provider status.
+
+Authority: current continued-development instruction/U22. Roadmap 1.1.0/product 0.6.0, C01 v1.3.0/C02 v1.1.0, M03 brief 1.1.1; sources R07/R13/R14/R17, P07/P22, AC01/AC11/AC12/AC14/AC15. M03 A implementation: [local account reference](../../crates/identity/README.md), identity migration 1, containing commit. There is no portable person/device proof or private-client implementation in A.
+
+Implemented atomic local SysOp bootstrap, normalized unique accounts, live Member/SysOp permissions, last-active-SysOp protection, active/role changes and local password reset/change. Password work uses RustCrypto Argon2 0.6 on a bounded authentication worker before writer submission; the writer fences pending verification against credential changes. Tokens are random; persisted sessions contain hashes. Origin/CSRF guards, host-only secure cookie headers, logout, retry cooldown and idle/absolute expiry are implemented. A fresh authentication-service boot ends browser sessions; this is independent of portable credential recovery. A member's password change requires their own current-password proof. Login/password operations never store bearer secrets or low-entropy password request hashes in generic receipts. Typed storage/writer adapters preserve module errors and rollback without changing existing APIs.
+
+Local Windows results: 14 account integration tests plus one hashing-admission unit test, and all 25 storage regressions pass (40 total); format/clippy/roadmap validator pass. Tests use real 19 MiB Argon2 hashes and SQLite. Covered account creation/normalization, salted credentials, unknown/disabled login, origin/CSRF/logout, role revocation, last SysOp, password-reset race, own-password proof, idle versus absolute expiry, wall-clock correction/restart, bounded attempts, corrupt/excessive hash parameters and typed receipt/service/panic recovery. Linux confirmation for A is pending until this commit's CI. HTTP routing and actual browser cookie enforcement belong to M05 integration; B/C and full M03 acceptance remain open. Next: B, independent public identifiers/root-authorized device credentials and introductions.

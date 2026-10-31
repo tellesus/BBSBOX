@@ -1,0 +1,33 @@
+# M03 A — local accounts and sessions
+
+Implementation reference for the [canonical M03 brief](../../docs/development/modules/M03-identity-access.md), [C01](../../docs/development/contracts/C01-storage-runtime.md) and [C02](../../docs/development/contracts/C02-identity-events.md). Authority remains the roadmap and user instructions.
+
+## Data and local authority
+
+Register `bbsbox_identity::migrations()` alongside every compiled module's migrations when starting the storage writer. Identity schema 1 owns `identity_accounts`, `identity_sessions` and `identity_settings`. `LocalAccountId` is a random node-local identifier; it is not `PersonId`. Usernames initially allow 1–32 ASCII letters/digits/underscore/hyphen and normalize to lowercase. Local account roles are Member and SysOp. Forum ownership/membership, couriers and portable root/device credentials are separate B/C work; this crate grants none of those powers through a local role.
+
+The local setup/CLI calls `bootstrap_sysop` in one transaction exactly once; it is never a public HTTP registration route. A live authenticated SysOp can create accounts, change local role/active status and reset a local password. The last active SysOp cannot be disabled/demoted. Role checks reload current session/account state inside the mutation transaction; retaining an older authorization object cannot preserve revoked powers. No-op role saves preserve the session. Actual access changes revoke target sessions.
+
+## Password work before writer submission
+
+One shared `Auth` instance per node process owns a password engine with two concurrent hashing slots and a bounded per-username login limiter. `verify_password` runs on a blocking authentication worker with an independent reader; it never runs on an async request thread or the database writer. Prepare a replacement password there too. Hashing admission rejects immediately when busy. Initial limits are ten attempts per normalized username in 60 seconds and 1,024 active limiter entries; unknown and known accounts share generic invalid-credential responses and hash work. Successful verification clears that username's attempt counter. Cooldown uses monotonic time and is process-local.
+
+Passwords accept Unicode/spaces, at least 15 characters and at most 1,024 UTF-8 bytes, without composition rules. RustCrypto Argon2 0.6 produces PHC Argon2id v19 hashes with unique random salts, 19 MiB/two passes/one lane/32-byte output. Fixed parameter validation rejects corrupt/unsupported or excessive-cost records before verification. These are initial defaults pending appliance measurements: [RustCrypto API](https://docs.rs/argon2/0.6.0/argon2/) and [OWASP password storage](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html). Owned password inputs use `Zeroizing<String>`; prepared hashes and login responses have no Debug/serialization implementation.
+
+Verification returns a private in-process proof. `complete_login` reloads the account/credential version inside the writer transaction, closing the verification/password-reset race. Return cookies only after commit. Local password reset and a member's current-password-authorized change increment that version and revoke sessions. They cannot recover E2E keys.
+
+Use `Database::write`/`Handle::submit_service` for typed service errors. A failed service transaction rolls back, and writer panics become typed storage errors. Login/password/session operations use a committed service transaction without persisting bearer secrets or low-entropy password request fingerprints in general command receipts. For nonsecret commands, `transaction_service` retains atomic durable receipts and module error types. HTTP consumers must handle secret-bearing operations accordingly.
+
+## Session transport contract
+
+Every login generates independent random 256-bit session and CSRF tokens; SQLite stores their SHA-256 hashes. `Login::cookie_headers` returns `__Host-bbsbox_session` with Secure, HttpOnly, Path=/, SameSite=Strict and a separate readable `__Host-bbsbox_csrf` cookie with the same scope/lifetime. The client copies the CSRF value into its request header. Cookies omit Domain; see [MDN cookie configuration](https://developer.mozilla.org/en-US/docs/Web/Security/Practical_implementation_guides/Cookies). Configure the actual local HTTPS origin at startup. Never derive trusted origin policy from an unchecked request Host header.
+
+Read handlers authenticate an existing session. Mutation handlers obtain `Mutation` with the session token, CSRF header and actual Origin header inside their state transaction; it rejects other origins and uses a constant-time CSRF-hash comparison. The cookie parser rejects duplicate session cookies. Login also requires the configured origin, closing login CSRF. Logout requires mutation authorization, revokes the row and clears both cookies. No secret goes into logs/URLs or a successful command receipt.
+
+Defaults: seven-day absolute/twelve-hour idle duration, 32 sessions per account. Monotonic time controls expiry; wall-clock corrections cannot revive/extend a session. `refresh_session` is a CSRF-guarded mutation for actual active use; read-only requests do not write activity state. The eventual UI must refresh during user activity. Absolute expiry still applies after refresh. A new `Auth` instance on service restart generates a new boot ID, intentionally ending old browser sessions; users log in again. This avoids interpreting persisted monotonic deadlines after restart and does not revoke portable credentials. Stale sessions are pruned on login, and role/password/active-state changes revoke immediately.
+
+## Verification and next work
+
+Run `cargo test --locked --offline --workspace`, `cargo fmt --check --all` and `cargo clippy --locked --offline --workspace --all-targets -- -D warnings` from the repository root (fetch locked dependencies once first). Windows uses the shell-local environment in `spikes/m00/tools/local-env.ps1`; storage file-finalization tests require normal file permissions.
+
+Real Argon2/SQLite tests cover bootstrap/normalization, salted hashes, hashed bearer storage, invalid/unknown/disabled login, origin/CSRF/cookie scope, logout, current-role checks, last-SysOp protection, password-reset races, user password change, idle/absolute expiry, restart, bounded attempts, corrupt hash parameters and typed transaction/writer recovery. HTTP routing/browser enforcement is not yet integrated; M05 owns actual UI journeys. B/C next supply public person/device/node/forum identifiers, credential authorization, contact cards and client-held encrypted recovery. No portable proof, recovery-key export or native private client is claimed implemented by A.

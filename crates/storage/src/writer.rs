@@ -50,18 +50,18 @@ struct Shared {
 pub struct Handle {
     shared: Arc<Shared>,
 }
-pub struct Pending<T> {
-    reply: oneshot::Receiver<Result<T>>,
+pub struct Pending<T, E = Error> {
+    reply: oneshot::Receiver<std::result::Result<T, E>>,
 }
-impl<T> Pending<T> {
-    pub async fn wait(self) -> Result<T> {
-        self.reply.await.map_err(|_| Error::WriterClosed)?
+impl<T, E: From<Error>> Pending<T, E> {
+    pub async fn wait(self) -> std::result::Result<T, E> {
+        self.reply.await.map_err(|_| E::from(Error::WriterClosed))?
     }
     /// Only for non-async callers. Async request handlers use wait().await.
-    pub fn blocking_wait(self) -> Result<T> {
+    pub fn blocking_wait(self) -> std::result::Result<T, E> {
         self.reply
             .blocking_recv()
-            .map_err(|_| Error::WriterClosed)?
+            .map_err(|_| E::from(Error::WriterClosed))?
     }
 }
 pub struct Writer {
@@ -253,6 +253,13 @@ impl Handle {
         priority: Priority,
         work: impl FnOnce(&mut Database) -> Result<T> + Send + 'static,
     ) -> Result<Pending<T>> {
+        self.submit_service(priority, work)
+    }
+    pub fn submit_service<T: Send + 'static, E: From<Error> + Send + 'static>(
+        &self,
+        priority: Priority,
+        work: impl FnOnce(&mut Database) -> std::result::Result<T, E> + Send + 'static,
+    ) -> Result<Pending<T, E>> {
         if self
             .shared
             .thread
@@ -271,7 +278,7 @@ impl Handle {
         let (reply, receiver) = oneshot::channel();
         let task: Task = Box::new(move |database| {
             let result = catch_unwind(AssertUnwindSafe(|| work(database)))
-                .unwrap_or(Err(Error::WorkPanicked));
+                .unwrap_or_else(|_| Err(E::from(Error::WorkPanicked)));
             let _ = reply.send(result); // A disconnected caller does not cancel accepted durable work.
         });
         match priority {

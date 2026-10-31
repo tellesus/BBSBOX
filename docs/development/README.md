@@ -2,7 +2,7 @@
 
 Version 1.1.0 · 2026-10-25 · Product baseline 0.6.0 · Scope approved under U19; canon clarified under U20. [Historical lock record](../decisions/ADR-0001-roadmap-lock.md).
 
-All named module scopes and T decisions are approved. M00 experiments and M02 A–C have local implementation evidence; G0-local passed. Current module/device/release gates are recorded in WORK_LEDGER. Read [START_HERE](START_HERE.md), one brief and its contracts. Use the live [decisions](DECISIONS.md), derived [coverage](COVERAGE.md) and [ledger](WORK_LEDGER.md) as needed. The [old technical plan](../archive/technical-plan-1.0.0.md) and [earlier review](../archive/review-2026-10-25.md) are historical archives.
+All named module scopes and T decisions are approved. G0-local passed; M02 provider is Complete; M00/M03 remain In progress. Current module/device/release evidence is in WORK_LEDGER. Read [START_HERE](START_HERE.md), one brief and its contracts. Use the live [decisions](DECISIONS.md), derived [coverage](COVERAGE.md) and [ledger](WORK_LEDGER.md) as needed. The [old technical plan](../archive/technical-plan-1.0.0.md) and [earlier review](../archive/review-2026-10-25.md) are historical archives.
 
 ## Canon and document ownership
 

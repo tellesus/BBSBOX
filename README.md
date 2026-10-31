@@ -5,7 +5,7 @@ An offline neighborhood community platform: independent local BBSes, modern cust
 **Start with the [canonical roadmap](docs/development/README.md). The roadmap and the user’s latest applicable instructions are the two sources of project canon; user instructions take precedence.** The first [M00 foundation prototype](spikes/m00/README.md) is available; the remaining community-platform work follows the roadmap.
 
 - [Start one module task](docs/development/START_HERE.md)
-- [Core storage foundation](crates/storage/README.md) and [local encryption experiments](spikes/m00/mls/README.md)
+- [Core storage](crates/storage/README.md), [local accounts](crates/identity/README.md) and [encryption experiments](spikes/m00/mls/README.md)
 - [Current product requirements](docs/development/PRODUCT_SPEC.md) and [technical decisions](docs/development/DECISIONS.md)
 - [Coverage](docs/development/COVERAGE.md) and [execution evidence](docs/development/WORK_LEDGER.md)
 - [Reference and archive guide](docs/archive/README.md)

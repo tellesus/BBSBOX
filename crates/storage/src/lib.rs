@@ -341,20 +341,31 @@ impl Database {
         expected_growth: u64,
         work: impl FnOnce(&Transaction<'_>) -> Result<Vec<u8>>,
     ) -> Result<Receipt> {
+        self.transaction_service(command, class, expected_growth, work)
+    }
+
+    pub fn transaction_service<E: From<Error>>(
+        &mut self,
+        command: Command<'_>,
+        class: disk::Class,
+        expected_growth: u64,
+        work: impl FnOnce(&Transaction<'_>) -> std::result::Result<Vec<u8>, E>,
+    ) -> std::result::Result<Receipt, E> {
         if !valid_key(command.namespace) || !valid_key(command.id) {
-            return Err(Error::InvalidCommandKey);
+            return Err(Error::InvalidCommandKey.into());
         }
         let directory = self.directory().to_owned();
         let digest = Sha256::digest(command.request);
         let tx = self
             .connection
-            .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
-        let old:Option<(Vec<u8>,Vec<u8>)>=tx.query_row("SELECT request_hash,response FROM core_command_receipts WHERE namespace=?1 AND command_id=?2",[command.namespace,command.id],|r|Ok((r.get(0)?,r.get(1)?))).optional()?;
+            .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
+            .map_err(Error::from)?;
+        let old:Option<(Vec<u8>,Vec<u8>)>=tx.query_row("SELECT request_hash,response FROM core_command_receipts WHERE namespace=?1 AND command_id=?2",[command.namespace,command.id],|r|Ok((r.get(0)?,r.get(1)?))).optional().map_err(Error::from)?;
         if let Some((old_digest, bytes)) = old {
             if old_digest.as_slice() != digest.as_slice() {
-                return Err(Error::ReusedCommandId);
+                return Err(Error::ReusedCommandId.into());
             }
-            tx.commit()?;
+            tx.commit().map_err(Error::from)?;
             return Ok(Receipt {
                 bytes,
                 replayed: true,
@@ -364,19 +375,39 @@ impl Database {
             .admit(self.space.as_ref(), &directory, class, expected_growth)?;
         let bytes = work(&tx)?;
         if bytes.len() > MAX_RECEIPT_BYTES {
-            return Err(Error::ReceiptTooLarge);
+            return Err(Error::ReceiptTooLarge.into());
         }
         tx.execute(
             "INSERT INTO core_command_receipts VALUES (?1,?2,?3,?4)",
             rusqlite::params![command.namespace, command.id, digest.as_slice(), bytes],
-        )?;
+        )
+        .map_err(Error::from)?;
         self.budget
             .admit(self.space.as_ref(), &directory, class, 0)?;
-        tx.commit()?;
+        tx.commit().map_err(Error::from)?;
         Ok(Receipt {
             bytes,
             replayed: false,
         })
+    }
+
+    /// Typed service transaction for operations such as login. Never place session secrets in command receipts.
+    pub fn write<T, E: From<Error>>(
+        &mut self,
+        class: disk::Class,
+        expected_growth: u64,
+        work: impl FnOnce(&Transaction<'_>) -> std::result::Result<T, E>,
+    ) -> std::result::Result<T, E> {
+        let guard = self.admission(class);
+        guard.check(expected_growth)?;
+        let tx = self
+            .connection
+            .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
+            .map_err(Error::from)?;
+        let result = work(&tx)?;
+        guard.check(0)?;
+        tx.commit().map_err(Error::from)?;
+        Ok(result)
     }
 }
 

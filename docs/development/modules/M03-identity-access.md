@@ -1,8 +1,8 @@
 # M03 — Identity, local accounts and permissions
 
-Version 1.1.0 · 2026-10-25 · Locked development baseline · Product baseline 0.6.0.
+Brief revision 1.1.1 · Roadmap baseline 1.1.0 · 2026-10-30 · Product baseline 0.6.0.
 
-**State:** Approved for implementation under U19; unstarted. Runtime and hardware evidence remains pending.
+**State:** In progress under U22. A has local account/session evidence; B/C and HTTP/device integration remain pending. Consume C01 v1.3.0/C02 v1.1.0.
 
 ## Read only this packet
 
@@ -23,9 +23,9 @@ Use local username/password sessions with Argon2id password hashes, secure same-
 
 ## Ownership and interfaces
 
-Planned crates/identity/ and client/identity/; accounts, sessions, roles, public certificates, device delegations, contact cards and encrypted client recovery exports. Core owns the public resolver/authorize API.
+crates/identity/ implements A: accounts, sessions, bootstrap and local roles. Public credentials/client recovery remain planned in B/C. Core owns the public resolver/authorize API. See the [implementation reference](../../../crates/identity/README.md).
 
-Paths above are planned implementation locations, not existing code. Consume the contracts in the reading packet; changes to them need affected-consumer updates. A disabled optional module retains its data and does not break unrelated local services.
+M05 owns HTTP/enrollment UI integration; A exposes authenticated SysOp account creation without a public bootstrap route. Consume listed contracts and update affected consumers together.
 
 ## Sequential work slices
 
@@ -42,6 +42,8 @@ Paths above are planned implementation locations, not existing code. Consume the
 ## Locked defaults and verification
 
 Local account/password sessions and separate root-authorized device credentials are selected. Recovery is an encrypted user-held kit containing the root and necessary client state; passwords alone recover no E2E keys. Use established authenticated encryption and password derivation libraries. Public QR/fingerprint introductions contain no secret. Every restore creates a new authorized writer incarnation; root loss with no kit creates a new identity. Device addition requires existing root authorization.
+
+A defaults: case-folded 1–32 ASCII letters/digits/underscore/hyphen usernames; passwords 15+ characters/1,024-byte maximum, Argon2id 19 MiB/two passes/one lane. Two password slots, ten attempts/username/minute, 1,024 limiter entries. Secure host-only session cookies use HttpOnly/SameSite=Strict plus origin/CSRF checks. Sessions use monotonic seven-day absolute/twelve-hour idle expiry, 32/account maximum, and end on restart. Role/password changes revoke sessions; preserve the last active SysOp. Never persist password/session secrets in receipts or plain request fingerprints.
 
 ## Handoff
 

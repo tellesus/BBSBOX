@@ -1,8 +1,8 @@
 # M04 — Signed event kernel and convergence
 
-Brief revision 1.1.1 · Roadmap baseline 1.1.0 · 2026-10-31 · Product baseline 0.6.0.
+Brief revision 1.1.2 · Roadmap baseline 1.1.0 · 2026-10-31 · Product baseline 0.6.0.
 
-**State:** In progress under U22 after M02/M03 provider completion. A has local codec/authority vectors; B/C remain pending. Consume C01 v1.3.0/C02 v1.4.0.
+**State:** In progress under U22 after M02/M03 provider completion. A passed local/Linux checks. B's durable inbox has local evidence; semantic integration and C remain pending. Consume C01 v1.3.0/C02 v1.4.0.
 
 ## Read only this packet
 
@@ -23,14 +23,14 @@ Implement C02 with deterministic CBOR/COSE/Ed25519 candidate libraries, fixed si
 
 ## Ownership and interfaces
 
-crates/event-codec/ implements A's pure signed-byte/authority boundaries; protocol/fixtures/ holds exact vectors. Planned crates/event-core/ owns B/C persistence, stream heads, staging, forks and integration outcomes. Features own reducers/relevance. See the [codec reference](../../../crates/event-codec/README.md).
+crates/event-codec/ implements A's pure signed-byte/authority boundaries; protocol/fixtures/ holds exact vectors. crates/event-core/ owns B/C persistence, staging, forks and integration outcomes. Features own reducers/relevance. See the [codec reference](../../../crates/event-codec/README.md) and [inbox reference](../../../crates/event-core/README.md).
 
 Codec authorization permits reduction; it does not imply persisted integration or credit. Consume listed contracts and update affected consumers together. Disabled modules retain data; unsupported events stay uncredited.
 
 ## Sequential work slices
 
 1. A: encoder/decoder/signature/authority vectors and size limits.
-2. B: durable staging, duplicate handling and fork isolation.
+2. B: durable staging, duplicate handling and fork isolation. Inbox retention/chain readiness is implemented; semantic dependency, reducer/result transactions and projection repair remain open.
 3. C: deterministic replay plus extension/version negotiation fixtures.
 
 ## Completion evidence

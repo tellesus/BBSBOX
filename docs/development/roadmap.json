@@ -1061,6 +1061,7 @@
       "crates/credentials/README.md",
       "client/identity/README.md",
       "crates/event-codec/README.md",
+      "crates/event-core/README.md",
       "docs/decisions/ADR-0002-wire-profiles.md"
     ]
   },

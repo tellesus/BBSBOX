@@ -1,0 +1,20 @@
+[package]
+name = "bbsbox-event-core"
+version = "0.1.0"
+edition = "2024"
+license = "AGPL-3.0-or-later"
+publish = false
+
+[dependencies]
+bbsbox-event-codec = { path = "../event-codec" }
+bbsbox-credentials = { path = "../credentials" }
+bbsbox-storage = { path = "../storage" }
+rusqlite = "0.41"
+sha2 = "0.10"
+
+[dev-dependencies]
+bbsbox-client-identity = { path = "../../client/identity" }
+bbsbox-identity = { path = "../identity" }
+tempfile = "3"
+coset = "0.4"
+ciborium = "0.2"

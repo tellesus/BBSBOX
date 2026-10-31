@@ -74,6 +74,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "bbsbox-event-core"
+version = "0.1.0"
+dependencies = [
+ "bbsbox-client-identity",
+ "bbsbox-credentials",
+ "bbsbox-event-codec",
+ "bbsbox-identity",
+ "bbsbox-storage",
+ "ciborium",
+ "coset",
+ "rusqlite",
+ "sha2 0.10.9",
+ "tempfile",
+]
+
+[[package]]
 name = "bbsbox-identity"
 version = "0.1.0"
 dependencies = [

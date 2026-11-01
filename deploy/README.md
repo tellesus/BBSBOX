@@ -66,4 +66,24 @@ Prepare Debian's nftables, dnsmasq-base, iproute2 and systemd dependencies befor
 
 Run `sudo python3 deploy/diagnose.py` from the matching source checkout on the Debian node. It reads service state, local routes, firewall chain policies, online-service masks, certificate chain/expiry and the current UTC clock. It reports attention when a required check fails and returns a failing exit status. It never requests a DNS lookup or contacts a server; its JSON includes selected public node details and local diagnostic results. It does not read private key contents. CI runs this tool inside the prepared network guest; its integration awaits that check.
 
-The certificate check warns when the leaf has less than a week left. Compare the displayed clock with a trusted local clock when investigating date-related certificate failures. Manual clock/renewal and prepared-media reinstall procedures remain the next M01 C work; this report alone does not establish full firewall, browser or device acceptance.
+The certificate check warns when the leaf has less than a week left. This report alone does not establish full firewall, browser or device acceptance.
+
+## Local clock and leaf renewal
+
+Compare `date --utc` with a trusted local clock before issuing certificates or investigating date-related verification failures. Set the node's clock locally with `sudo date --utc --set='YYYY-MM-DD HH:MM:SS'`, replacing the placeholder with the correct UTC time. Keep the machine's hardware clock set correctly for later boots. The deployed profile masks automatic time synchronization and performs no online clock request.
+
+[Local leaf renewal](renew_tls.py) uses the existing per-node CA and the currently advertised local names/addresses:
+
+```sh
+sudo python3 deploy/renew_tls.py --development
+sudo systemctl restart bbsbox.service
+sudo python3 deploy/diagnose.py
+```
+
+The tool generates a fresh one-year server key/certificate, verifies every local name, preserves the CA and node identity, and writes a complete protected pair in a new directory. It synchronizes the files/directories before atomically selecting both paths in the node configuration. The running process keeps its previous TLS context until restart. Existing certificate directories remain available for inspection. A local provisioning lock prevents concurrent renewals, and a changed configuration is refused before selection. No trust-store installation or network request occurs. Renewal under the same CA keeps the public enrollment fingerprint unchanged. An expired CA requires a separately planned CA replacement and visitor re-enrollment.
+
+Two real-certificate tests pass locally: repeat issuance changes the server key/serial, preserves CA bytes and serial-file state, verifies intended names and rejects a wrong IP/public or injected names. CI additionally renews inside the actual guest, checks the running process still serves the prior leaf, restarts it and checks the new certificate fingerprint plus node/CA continuity. Guest integration remains pending until that run passes.
+
+## Prepared-media reinstall check
+
+Use fresh developer OS media with the prepared dependencies, matching source and verified runtime payload. Retain the original node's storage/configuration/TLS media intact. Follow first installation on the fresh media and verify its local status page, node ID, CA fingerprint and service restart. It creates an independent test node; record that its node ID differs from the retained source. Running first installation against existing state must fail and leave that state unchanged; the portable preservation tests cover this refusal. The coordinated original-node backup/restore/activation path is M12's next module. Reference-hardware execution remains an acceptance item.

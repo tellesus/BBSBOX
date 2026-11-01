@@ -5,13 +5,12 @@ import json
 import os
 import re
 from pathlib import Path
-import secrets
 import shutil
 import subprocess
-import tempfile
 
 import enrollment
 import network_profile
+import local_tls
 
 ROOT = Path(__file__).resolve().parent
 MASK = ['NetworkManager.service', 'networking.service', 'systemd-resolved.service', 'systemd-timesyncd.service', 'apt-daily.timer', 'apt-daily.service', 'apt-daily-upgrade.timer', 'apt-daily-upgrade.service', 'systemd-sysupdate.timer', 'systemd-sysupdate.service', 'fwupd-refresh.timer', 'fwupd-refresh.service', 'avahi-daemon.service', 'avahi-daemon.socket', 'dnsmasq.service']
@@ -66,9 +65,21 @@ def preflight(root, profile):
 def write_new(root, relative, data, mode=0o644, gid=0):
     path = target(root, relative); path.parent.mkdir(parents=True, exist_ok=True, mode=0o755)
     with path.open('xb') as stream:
+        os.fchmod(stream.fileno(), mode); os.fchown(stream.fileno(), 0, gid)
         stream.write(data); stream.flush(); os.fsync(stream.fileno())
-    os.chmod(path, mode); os.chown(path, 0, gid)
     return path
+
+
+def dns_account(root):
+    def read(file, name):
+        return next((line.split(':') for line in (root/'etc'/file).read_text().splitlines() if line.split(':')[0]==name),None)
+    account=read('passwd','bbsbox-dns')
+    if account is None:
+        subprocess.run(['useradd','--root',str(root),'--system','--user-group','--no-create-home','--home-dir','/nonexistent','--shell','/usr/sbin/nologin','bbsbox-dns'],check=True,capture_output=True,timeout=20)
+        account=read('passwd','bbsbox-dns')
+    group=read('group','bbsbox-dns')
+    if not account or not group or int(account[2])==0 or int(account[3])==0 or account[3]!=group[2] or account[5]!='/nonexistent' or account[6]!='/usr/sbin/nologin':
+        raise ValueError('Existing DNS account does not match the dedicated unprivileged service')
 
 
 def configure(root, profile):
@@ -76,6 +87,7 @@ def configure(root, profile):
     root, installed, config, profile = preflight(root, profile)
     config_path = root/'etc/bbsbox/node.json'; gid = config_path.stat().st_gid
     marker = write_new(root, 'etc/bbsbox/.network-prepare-incomplete', b'Network preparation must finish before boot.\n', 0o600)
+    dns_account(root)
     # This guard remains if preparation is interrupted. Local services cannot start
     # with an incomplete mix of configuration/certificate/network files.
     write_new(root, 'etc/systemd/system/bbsbox.service.d/30-local-network.conf', b'[Unit]\nConditionPathExists=!/etc/bbsbox/.network-prepare-incomplete\nRequires=bbsbox-boundary.service\nAfter=bbsbox-boundary.service systemd-networkd.service\nStartLimitIntervalSec=0\n')
@@ -94,16 +106,10 @@ def configure(root, profile):
             raise ValueError('Existing local service configuration is preserved: '+unit)
         destination.symlink_to('/dev/null')
     addresses = json.loads(files['origins.json'])
-    with tempfile.TemporaryDirectory(prefix='leaf-', dir=root/'etc/bbsbox/network') as temporary:
-        work = Path(temporary); work.chmod(0o700)
-        (work/'request.cnf').write_text('[req]\ndistinguished_name=dn\nprompt=no\n[dn]\nCN='+profile['hostname']+'\n', encoding='ascii')
-        hosts = [address.split('/')[0] for interface in profile['interfaces'] for address in interface['addresses']]
-        (work/'leaf.ext').write_text('basicConstraints=critical,CA:FALSE\nkeyUsage=critical,digitalSignature,keyEncipherment\nextendedKeyUsage=serverAuth\nsubjectAltName=DNS:'+profile['hostname']+','+','.join('IP:'+host for host in hosts)+'\n', encoding='ascii')
-        def openssl(*args): return subprocess.run(['openssl', *args], cwd=work, check=True, capture_output=True, timeout=30)
-        openssl('req', '-config', 'request.cnf', '-new', '-newkey', 'rsa:3072', '-nodes', '-keyout', 'server-key.pem', '-out', 'server.csr')
-        openssl('x509', '-req', '-in', 'server.csr', '-CA', str(root/'etc/bbsbox/tls/ca.pem'), '-CAkey', str(root/'etc/bbsbox/tls/ca-key.pem'), '-set_serial', '0x'+secrets.token_hex(16), '-days', '365', '-sha256', '-extfile', 'leaf.ext', '-out', 'server.pem')
-        for flag, name in [('-verify_hostname', profile['hostname']), *(('-verify_ip',host) for host in hosts)]: openssl('verify', '-CAfile', str(root/'etc/bbsbox/tls/ca.pem'), flag, name, 'server.pem')
-        for name, mode in [('server.pem',0o644),('server-key.pem',0o640)]: write_new(root, 'etc/bbsbox/network/tls/'+name, (work/name).read_bytes(), mode, gid)
+    hosts = [address.split('/')[0] for interface in profile['interfaces'] for address in interface['addresses']]
+    leaf = local_tls.issue(root/'etc/bbsbox/tls/ca.pem', root/'etc/bbsbox/tls/ca-key.pem', [profile['hostname'], *hosts], root/'etc/bbsbox/network')
+    write_new(root, 'etc/bbsbox/network/tls/server.pem', leaf['certificate'], 0o644, gid)
+    write_new(root, 'etc/bbsbox/network/tls/server-key.pem', leaf['key'], 0o640, gid)
     config.update(addresses, certificate='/etc/bbsbox/network/tls/server.pem', certificate_key='/etc/bbsbox/network/tls/server-key.pem')
     prepared = write_new(root, 'etc/bbsbox/node.network.json', (json.dumps(config, indent=2)+'\n').encode(), 0o640, gid)
     enrollment.export(root/'etc/bbsbox/installation.json', prepared, root/'etc/bbsbox/tls/ca.pem', root/'etc/bbsbox/network/enrollment')

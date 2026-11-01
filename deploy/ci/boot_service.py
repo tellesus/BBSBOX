@@ -76,17 +76,17 @@ def network(pid):
         if any(route.get('gateway') or route.get('dst')=='default' for route in ip(family,'-j','route','show','table','all')):raise RuntimeError('Test OS has an external route')
 
 
-def service_identity(pid,root):
-    uid=int(enter(pid,root,['/usr/bin/id','-u','bbsbox']).stdout)
+def service_identity(pid,root,user='bbsbox',process_name='bbsbox-node',unit='bbsbox.service'):
+    uid=int(enter(pid,root,['/usr/bin/id','-u',user]).stdout)
     if uid==0:raise RuntimeError('Service must be unprivileged')
     for process in Path('/proc').iterdir():
         if not process.name.isdecimal():continue
         try:
-            if (process/'comm').read_text().strip()=='bbsbox-node' and same_root(int(process.name),root):
+            if (process/'comm').read_text().strip()==process_name and same_root(int(process.name),root):
                 cgroup=(process/'cgroup').read_text()
                 status=(process/'status').read_text()
                 actual=int(next(line for line in status.splitlines() if line.startswith('Uid:')).split()[1])
-                if 'bbsbox.service' in cgroup and actual==uid:return int(process.name)
+                if unit in cgroup and actual==uid:return int(process.name)
         except (OSError,StopIteration):continue
     raise RuntimeError('No unprivileged bbsbox process owned by the actual unit was observed')
 

@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 """Boot the prepared Debian network profile with an actual local client link and no WAN."""
 import argparse
+import hashlib
 import http.client
 import json
 import os
@@ -20,14 +21,16 @@ ROOT = Path(__file__).resolve().parents[2]
 def run(*args): return subprocess.run(args, check=True, capture_output=True, timeout=10)
 
 
-def fetch(root, hostname, address):
+def fetch(root, hostname, address, with_fingerprint=False):
     context = ssl.create_default_context(cafile=str(root/'etc/bbsbox/tls/ca.pem'))
     with socket.create_connection((address,8443),timeout=2) as plain:
         with context.wrap_socket(plain,server_hostname=hostname) as secure:
+            fingerprint=hashlib.sha256(secure.getpeercert(binary_form=True)).hexdigest()
             secure.sendall(f'GET /api/v1/node HTTP/1.1\r\nHost: {hostname}:8443\r\nConnection: close\r\n\r\n'.encode())
             response = http.client.HTTPResponse(secure); response.begin()
             assert response.status == 200
-            return json.loads(response.read(8192))
+            info=json.loads(response.read(8192))
+            return (info,fingerprint) if with_fingerprint else info
 
 
 def exercise(root, output):
@@ -66,6 +69,19 @@ def exercise(root, output):
                 else: raise RuntimeError('Prepared network service readiness timed out')
                 pid_fd=os.pidfd_open(pid)
                 assert info['node_id']==installed['node_id']; service.service_identity(pid,root)
+                if attempt==0:
+                    _,previous=fetch(root,installed['hostname'],'192.168.50.1',True)
+                    renewal=json.loads(service.enter(pid,root,['/usr/bin/python3','/src/deploy/renew_tls.py','--development']).stdout)
+                    assert renewal['ca_sha256']==installed['ca_sha256'] and not renewal['ca_replaced']
+                    assert fetch(root,installed['hostname'],'192.168.50.1',True)[1]==previous
+                    service.enter(pid,root,['/usr/bin/systemctl','restart','bbsbox.service'])
+                    for _ in range(100):
+                        try:
+                            current,fingerprint=fetch(root,installed['hostname'],'192.168.50.1',True);break
+                        except OSError:time.sleep(.1)
+                    else:raise RuntimeError('Runtime did not restart with renewed TLS')
+                    assert current['node_id']==installed['node_id'] and fingerprint==renewal['leaf_sha256'] and fingerprint!=previous
+                    (output/'renewal.json').write_text(json.dumps(renewal,indent=2)+'\n')
                 for version,address in [(4,'192.168.50.1'),(6,'fd42:bb50::1')]:
                     assert fetch(root,installed['hostname'],address)['node_id']==installed['node_id']
                     response,code,count=query(address,installed['hostname'],version)
@@ -73,6 +89,7 @@ def exercise(root, output):
                     _,code,count=query(address,'unconfigured.example',version); assert code==3 and count==0
                 for unit in ['bbsbox-boundary.service','bbsbox-dns.service','systemd-networkd.service']:
                     assert service.enter(pid,root,['/usr/bin/systemctl','is-active',unit]).stdout.strip()==b'active'
+                service.service_identity(pid,root,'bbsbox-dns','dnsmasq','bbsbox-dns.service')
                 for family in ['-4','-6']:
                     routes=json.loads(service.enter(pid,root,['/usr/sbin/ip',family,'-j','route','show','table','all']).stdout)
                     assert not any(route.get('gateway') or route.get('dst')=='default' for route in routes)
@@ -111,7 +128,7 @@ def exercise(root, output):
                 if subprocess.run(['ip','link','show','dev','bbs-visitor'],capture_output=True).returncode==0:
                     run('ip','link','delete','bbs-visitor')
         if process.returncode: raise RuntimeError('Prepared network OS shutdown failed')
-    report=dict(status='passed',cases=cases,scope='Actual Debian userspace/systemd with simulated local link; physical router/phone/full boot packet capture remains separate')
+    report=dict(status='passed',cases=cases,local_leaf_renewal_and_restart_verified=True,scope='Actual Debian userspace/systemd with simulated local link; physical router/phone/full boot packet capture remains separate')
     (output/'evidence.json').write_text(json.dumps(report,indent=2)+'\n'); print(json.dumps(report,indent=2))
 
 

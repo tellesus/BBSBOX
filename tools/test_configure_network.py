@@ -44,5 +44,11 @@ class InactiveTreeTests(unittest.TestCase):
     def test_current_root_is_never_a_preparation_target(self):
         with self.assertRaisesRegex(ValueError,'current OS root'):configure_network.preflight(Path('/'),self.profile)
 
+    def test_privileged_or_mismatched_existing_dns_accounts_are_refused(self):
+        for account in ['bbsbox-dns:x:0:12::/nonexistent:/usr/sbin/nologin','bbsbox-dns:x:12:13::/nonexistent:/usr/sbin/nologin']:
+            (self.root/'etc/passwd').write_text(account+'\n',encoding='utf-8')
+            (self.root/'etc/group').write_text('bbsbox-dns:x:12:\n',encoding='utf-8')
+            with self.assertRaises(ValueError):configure_network.dns_account(self.root)
+
 
 if __name__=='__main__':unittest.main()

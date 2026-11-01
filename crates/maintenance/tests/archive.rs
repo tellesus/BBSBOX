@@ -350,6 +350,22 @@ fn bounded_header_member_and_file_inventory_checks_fail_before_final_output() {
         .is_err()
     );
     assert!(!destination.exists());
+    assert!(matches!(
+        archive::seal(
+            &fixture.staged,
+            &destination,
+            &fixture.signer,
+            &fixture.key.to_public(),
+            0,
+            Limits {
+                max_member_bytes: 200_000,
+                max_total_bytes: 200_000,
+                ..Limits::default()
+            }
+        ),
+        Err(Error::LimitExceeded)
+    ));
+    assert!(!destination.exists());
     assert!(
         archive::seal(
             &fixture.staged,

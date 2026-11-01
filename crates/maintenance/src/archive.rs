@@ -101,6 +101,7 @@ pub fn inventory(root: &Path, limits: Limits) -> Result<Vec<FileRecord>> {
     let mut directories = vec![root.clone()];
     let mut visited = 0usize;
     let mut files = vec![];
+    let mut total = 0u64;
     while let Some(directory) = directories.pop() {
         for entry in fs::read_dir(directory)? {
             let entry = entry?;
@@ -126,7 +127,12 @@ pub fn inventory(root: &Path, limits: Limits) -> Result<Vec<FileRecord>> {
                 if files.len() >= limits.max_files {
                     return Err(Error::LimitExceeded);
                 }
-                let (size, sha256) = hash_file(&path, limits.max_member_bytes)?;
+                let remaining = limits
+                    .max_total_bytes
+                    .checked_sub(total)
+                    .ok_or(Error::LimitExceeded)?;
+                let (size, sha256) = hash_file(&path, limits.max_member_bytes.min(remaining))?;
+                total = total.checked_add(size).ok_or(Error::LimitExceeded)?;
                 files.push(FileRecord {
                     path: name,
                     size,

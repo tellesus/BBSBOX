@@ -99,10 +99,14 @@ jobs:
       - run: docker build -t bbsbox-install-fixture work/install-context
         env:
           DOCKER_BUILDKIT: '1'
+      - run: docker build --target prepared -t bbsbox-prepared-fixture work/install-context
+        env:
+          DOCKER_BUILDKIT: '1'
       - run: docker create --name bbsbox-install-export bbsbox-install-fixture
       - run: docker export bbsbox-install-export -o work/debian-root.tar
       - run: docker rm bbsbox-install-export
       - run: sudo python3 deploy/ci/prepare.py extract --archive work/debian-root.tar --output work/debian-root
+      - run: sudo python3 deploy/ci/reinstall.py --root work/debian-root
       - run: sudo python3 deploy/ci/boot_service.py --root work/debian-root
       - run: python3 -c "import json; p=json.load(open('deploy/network.example.json')); p['hostname']='auto'; json.dump(p,open('work/network-install.json','w'))"
       - run: sudo unshare --net -- bash -c 'ip link set lo up && python3 deploy/configure_network.py --root work/debian-root --profile work/network-install.json --development && python3 deploy/ci/boot_network.py --root work/debian-root'
@@ -112,6 +116,7 @@ jobs:
           name: debian-install-service-evidence
           path: |
             work/debian-service-evidence.json
+            work/reinstall-evidence.json
             work/debian-boot-*.log
             work/debian-network/**
       - run: cargo run --release --locked --offline --example writer_load > writer-load.json

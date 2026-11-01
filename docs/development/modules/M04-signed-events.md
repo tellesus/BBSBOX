@@ -1,6 +1,6 @@
 # M04 — Signed event kernel and convergence
 
-Brief revision 1.1.5 · Roadmap baseline 1.1.0 · 2026-10-31 · Product baseline 0.6.0.
+Brief revision 1.1.6 · Roadmap baseline 1.1.0 · 2026-10-31 · Product baseline 0.6.0.
 
 **State:** Complete as a provider under continued development authority after Windows/Linux A–C evidence. Feature/device integration remains downstream. Consume C01 v1.3.0/C02 v1.4.1.
 
@@ -31,7 +31,7 @@ Codec authorization permits reduction; it does not imply persisted integration o
 
 1. A: encoder/decoder/signature/authority vectors and size limits.
 2. B: durable staging, duplicate handling and fork isolation. Local evidence covers typed dependencies, reducer/result/provenance transactions, module-owned late-fork invalidation and atomic local authoring. Linux confirmation passed.
-3. C: deterministic replay plus extension/version negotiation fixtures. Local proof includes immutable edits/tombstones, concurrent replies/edits, fresh-generation publication fences and receipt-preserving rebuilds. Local proof includes immutable edits/tombstones, concurrent replies/edits, fresh-generation publication fences and receipt-preserving rebuilds.
+3. C: deterministic replay plus extension/version negotiation fixtures. Local proof includes immutable edits/tombstones, concurrent replies/edits, fresh-generation publication fences and receipt-preserving rebuilds.
 
 ## Completion evidence
 

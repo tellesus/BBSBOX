@@ -81,7 +81,7 @@
         "M03": "completed provider interfaces",
         "M04": "completed provider interfaces; CI 41245899257"
       },
-      "execution_status": "in_progress"
+      "execution_status": "complete"
     },
     {
       "id": "M02",
@@ -408,7 +408,7 @@
         "T14"
       ],
       "gate": "G1",
-      "execution_status": "unstarted"
+      "execution_status": "in_progress"
     },
     {
       "id": "M13",
@@ -1103,7 +1103,7 @@
       "deploy/README.md"
     ]
   },
-  "implementation_updated": "2026-10-31",
+  "implementation_updated": "2026-11-01",
   "phone_testing": {
     "public_access": "G1 integrated local-node alpha",
     "private_client": "G2 before private-client release",
@@ -1117,5 +1117,5 @@
       "scope": "Desktop/core and isolated-runtime evidence; G1/G2 device, appliance and private-client acceptance remain open"
     }
   },
-  "execution_revision": "1.1.1"
+  "execution_revision": "1.1.2"
 }

@@ -556,6 +556,8 @@ Document versions are independent of software/protocol versions. Patch revisions
 
 | 0.6.0 | 1.1.0 / execution 1.1.1 | 2026-10-31 | Continued development authority: M02–M04 providers complete; M01 now explicitly depends on them for its real node runtime and precedes M12. Scope/T decisions unchanged. C02 v1.4.1 clarifies reassessment/accepted receipts; provider/replay and appliance execution evidence remains in WORK_LEDGER. |
 
+| 0.6.0 | 1.1.0 / execution 1.1.2 | 2026-11-01 | M01 completes its software-provider interface with actual Debian offline install/network/renewal/reboot/capture and fresh-media evidence; M12 A begins. G1 physical router/radio/phone acceptance remains pending. No product/T decision changes. |
+
 Earlier decisions, source audits and CR-001–CR-003 are preserved in the [historical record](../archive/product-history-through-0.5.0.md). Historical statements never override current canon.
 
 ## 18. Actionable development lessons from Mastodon

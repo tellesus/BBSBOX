@@ -1,8 +1,8 @@
 # M12 — Offline updates, backup and continuity
 
-Brief revision 1.1.1 · Roadmap baseline 1.1.0 · 2026-11-01 · Locked scope · Product baseline 0.6.0.
+Brief revision 1.1.2 · Roadmap baseline 1.1.0 · 2026-11-01 · Locked scope · Product baseline 0.6.0.
 
-**State:** Approved for implementation under U19; unstarted. Runtime and hardware evidence remains pending.
+**State:** In progress under continued development authority. Completed M01–M04 providers enable A: drain/admission control, consistent protected backups and isolated recovery-blocked restore. No complete node backup/activation is claimed yet.
 
 ## Read only this packet
 
@@ -29,7 +29,7 @@ Paths above are planned implementation locations, not existing code. Consume the
 
 ## Sequential work slices
 
-1. A: consistent backup and isolated restore with node identity/history checks.
+1. A: consistent backup and isolated restore with node identity/history checks. First add a writer maintenance barrier that drains accepted mutations before checkpoints; then coordinate core/configuration/checkpoint inventory and protected exports.
 2. B: offline verified install/update and interrupted migration recovery.
 3. C: source-node-loss exercise, signing continuation policy and operator handover.
 

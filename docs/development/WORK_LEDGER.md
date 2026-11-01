@@ -1,6 +1,6 @@
 # Development work ledger
 
-Version 1.1.0 · 2026-10-25 · Locked roadmap; M02/M03/M04 providers Complete; M00/M01 In progress. Other modules Unstarted. Execution updated 2026-10-31.
+Version 1.1.0 · 2026-10-25 · Locked roadmap; M01–M04 software providers Complete; M00/M12 In progress. Other modules Unstarted. Execution updated 2026-11-01.
 
 Evidence log — not an independent source of scope authority. Current choices live in the canonical roadmap and user instructions.
 
@@ -9,11 +9,11 @@ Design review is complete and the first M00 prototype has real local implementat
 | Module | Scope | Execution state | Evidence / commit | Next action |
 | --- | --- | --- | --- | --- |
 | [M00](modules/M00-foundation-spikes.md) | Approved | In progress | 2026-10-30: Rust/API/store and HTTPS browser checks pass; see run record below | G0-local passed; trusted-client study and phone checks at G1/G2 remain |
-| [M01](modules/M01-offline-appliance.md) | Approved | In progress | Runtime Linux CI 41247429094 passed; 4 local Rust checks plus initialization/payload tools | Confirm initialization/payload Linux evidence; offline install/service execution, B/C remain |
+| [M01](modules/M01-offline-appliance.md) | Approved | Complete | A–C software: offline Debian install/network/renewal/reboot/capture plus two fresh-media installs; CI 41342863072 passed | M12 consumes the provider; physical router/radio/phone acceptance remains G1 |
 | [M02](modules/M02-storage-jobs.md) | Approved | Complete | A–C: 25 Windows/26 Linux integration tests; CI 41167864139 passed | Consumers own HTTP/module integration; M12 owns full-node backup activation |
 | [M03](modules/M03-identity-access.md) | Approved | Complete | A–C: 68 Windows/70 Linux workspace checks and independent vectors; CI 41172025063 passed | Consumers integrate current v2/legacy v1 profiles; native/HTTP/MLS gates remain downstream |
 | [M04](modules/M04-signed-events.md) | Approved | Complete | A–C: 15 codec/33 core tests, independent vectors, all 120 arrival orders; CI 41245899257 passed | Feature modules prove actual policies/views; M13/M15/M16 complete AC07 integration |
-| [M12](modules/M12-maintenance-recovery.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
+| [M12](modules/M12-maintenance-recovery.md) | Approved | In progress | A begins after completed M01–M04 providers; no complete node backup yet | Writer drain/admission barrier, then consistent protected backup/isolated restore |
 | [M05](modules/M05-interface-themes.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
 | [M06](modules/M06-boards-mail.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
 | [M07](modules/M07-directory-profiles.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
@@ -280,3 +280,9 @@ The fixture then stopped on exit 127 because the minimal image does not include 
 [Kernel-read correction CI](https://github.com/tellesus/BBSBOX/actions/runs/41342181589), commit a8f88de, passed all four Ubuntu jobs. The actual Debian network guest passed first/second boot, trusted IPv4/IPv6 local HTTPS/DNS, same-CA leaf renewal before/after explicit restart, stable node identity, strict runtime/DNS non-root process ownership, absent default routes, both forwarding values at zero, service masks and every local diagnostic check. The artifact's complete lifecycle captures contain 33/11 and 14/11 IPv4/IPv6 guest frames respectively, with no nonlocal destination or capture error. Existing provider/browser/MLS/fake-WAN checks remain green.
 
 All 26 portable Python tests were run together locally: 24 pass, with current-root/symlink platform checks deferred to Linux. Documentation is refreshed to remove obsolete pending wording for proven software checks and records the router/AP settings to verify at G1. The new prepared Docker stage contains dependencies/source/payload without initialized node state. Its fresh-media fixture will execute two offline first installs with no registry pulls, require three distinct source/fresh node IDs, and verify retained source state remains unchanged. That added reinstall fixture awaits containing-commit CI. M01 remains In progress, brief 1.1.11, until this software evidence is confirmed; physical router/radio/device acceptance remains at G1. Scope/contracts/baselines are unchanged. Next: confirm reinstall and publish the completed provider interface handoff before M12 maintenance integration.
+
+## 2026-11-01 — M01 software provider complete; M12 A begins
+
+[Fresh-media/lifecycle CI](https://github.com/tellesus/BBSBOX/actions/runs/41342863072), commit ed3f60f, passed all four Ubuntu jobs. The fresh-media report proves two new offline installations, three distinct source/fresh node IDs and unchanged retained database/configuration/public CA bytes. Complete actual Debian service/network/renewal/diagnostic/reboot/capture checks and previous core/browser/MLS/fake-WAN checks remain green. Physical reference-machine/router/radio and phone enrollment remain G1 evidence; no release gate/minimum hardware support claim is made.
+
+M01 is Complete as a software provider, brief 1.1.12, with unchanged product 0.6.0/roadmap 1.1.0 and C01 v1.3.0/C02 v1.4.1. Execution index/graph revision 1.1.2, START_HERE, product change history and ledger synchronize that handoff and start M12 A under continued development authority. A duplicated M04 replay sentence is removed (brief 1.1.6); its behavior is unchanged. M12 brief 1.1.2 begins the maintenance admission/drain barrier before coordinated core/configuration/checkpoint backup and isolated restore. No complete node backup, recovered signing activation or installed-game integration is claimed. Next: implement/test the barrier, then protect and sign consistent node snapshots while retaining recovery blocking.

@@ -1,6 +1,6 @@
 # M01 developer installation fixture
 
-Reference for [M01](../docs/development/modules/M01-offline-appliance.md); the canonical roadmap and user instructions own product scope. This fixture exercises first installation on an isolated Debian 13 amd64 developer target. M12 owns authenticated production releases/updates. The install/network/renewal/reboot software checks pass [Linux CI](https://github.com/tellesus/BBSBOX/actions/runs/41342181589). Physical router/radio/device acceptance remains at G1; the added fresh-media fixture awaits its own run.
+Reference for [M01](../docs/development/modules/M01-offline-appliance.md); the canonical roadmap and user instructions own product scope. This fixture exercises first installation on an isolated Debian 13 amd64 developer target. M12 owns authenticated production releases/updates. The install/network/renewal/reboot software checks pass [Linux CI](https://github.com/tellesus/BBSBOX/actions/runs/41342181589). Physical router/radio/device acceptance remains at G1; the fresh-media fixture also passes [CI](https://github.com/tellesus/BBSBOX/actions/runs/41342863072).
 
 ## Prepared inputs and first install
 
@@ -93,7 +93,7 @@ Two real-certificate tests pass locally: repeat issuance changes the server key/
 Use fresh developer OS media with the prepared dependencies, matching source and verified runtime payload. Retain the original node's storage/configuration/TLS media intact. Follow first installation on the fresh media and verify its local status page, node ID, CA fingerprint and service restart. It creates an independent test node; record that its node ID differs from the retained source. Running first installation against existing state must fail and leave that state unchanged; the portable preservation tests cover this refusal. The coordinated original-node backup/restore/activation path is M12's next module. Reference-hardware execution remains an acceptance item.
 
 
-The [fresh-media fixture](ci/reinstall.py) installs twice in separate fresh prepared OS layers with networking disabled and registry pulls forbidden. It requires two new node IDs distinct from the retained source and checks the source database/configuration/public CA bytes remain unchanged. The prepared Docker stage contains dependencies/source/payload but no initialized node; each run generates its own identity. This additional fixture awaits its containing commit's CI.
+The [fresh-media fixture](ci/reinstall.py) installs twice in separate fresh prepared OS layers with networking disabled and registry pulls forbidden. It requires two new node IDs distinct from the retained source and checks the source database/configuration/public CA bytes remain unchanged. The prepared Docker stage contains dependencies/source/payload but no initialized node; each run generates its own identity. The fresh-media fixture passes CI, with the retained source unchanged.
 
 ## Router/AP settings for the G1 hardware check
 

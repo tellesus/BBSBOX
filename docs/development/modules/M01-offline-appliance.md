@@ -1,8 +1,8 @@
 # M01 — Offline appliance and local access
 
-Brief revision 1.1.11 · Roadmap baseline 1.1.0 · 2026-11-01 · Locked scope · Product baseline 0.6.0.
+Brief revision 1.1.12 · Roadmap baseline 1.1.0 · 2026-11-01 · Locked scope · Product baseline 0.6.0.
 
-**State:** In progress under continued development authority. Runtime/initialization/payload and actual offline Debian install/service/reboot checks passed. The actual Debian install/network/renewal/diagnostic/reboot lifecycle and complete simulated-link capture pass. A fresh-media reinstall fixture awaits CI; physical router/device acceptance remains at G1.
+**State:** Complete as a software provider under continued development authority after Windows/Linux A–C evidence. Actual Debian install, isolated network/OS boot, renewal, diagnostics, capture and fresh-media checks pass. G1 physical router/radio/device acceptance remains pending; M12 consumes this interface next.
 
 ## Read only this packet
 
@@ -31,13 +31,13 @@ Runtime/status code, initialization/payload tools and a verified developer first
 
 1. A: offline install and service startup with local status page. Runtime/initialization/payload and actual Debian developer installation/service/OS reboot passed CI; physical reference-machine evidence remains open.
 2. B: router/address enrollment and verified packet-boundary configuration. Explicit aliases/multiple listeners pass locally. Generated network/DNS boundaries pass Linux CI, including zero WAN IP frames. Public connection-card/CA export passes local checks. Full host boot/LAN certificate setup passes CI; device enrollment remains at G1.
-3. C: restarts, local diagnosis and prepared-media reinstall procedure. Read-only diagnostics, local leaf renewal and clock/fresh-media reinstall instructions exist. Real renewal/restart, diagnostics and both complete boot captures pass. Fresh-media reinstall awaits CI; physical reference execution remains at G1.
+3. C: restarts, local diagnosis and prepared-media reinstall procedure. Read-only diagnostics, local leaf renewal and clock/fresh-media reinstall instructions exist. Real renewal/restart, diagnostics and both complete boot captures pass. Two fresh offline installs pass with distinct node IDs and unchanged retained source; physical reference execution remains at G1.
 
 ## Completion evidence
 
 - AC01 packet capture includes bootstrap/restart and both IP families.
 - Local UI remains reachable with no peers and no WAN.
-- A host follows the documented installation path on the reference machine.
+- The documented software installation path passes on the Debian 13 CI target. Physical reference-machine/router/device execution remains G1 acceptance.
 
 ## Locked defaults and verification
 

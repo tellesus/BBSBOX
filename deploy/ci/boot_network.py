@@ -14,6 +14,7 @@ import time
 
 import boot_service as service
 from network_boundary import query
+from link_capture import Capture
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -48,7 +49,7 @@ def exercise(root, output):
         run('ip','addr','add','192.168.50.2/24','dev','bbs-visitor')
         run('ip','-6','addr','add','fd42:bb50::2/64','dev','bbs-visitor','nodad')
         run('ip','link','set','bbs-visitor','up')
-        with (output/f'network-boot-{attempt}.log').open('wb') as stream:
+        with (output/f'network-boot-{attempt}.log').open('wb') as stream, Capture('bbs-visitor',output/f'boot-{attempt}.pcap') as capture:
             process = subprocess.Popen(['systemd-nspawn','--settings=no','--register=no','--private-users=no','--directory',str(root),'--boot','--private-network','--console=read-only','--resolv-conf=off','--link-journal=no',f'--machine=bbsbox-net-{attempt}-{os.getpid()}','systemd.log_target=console'],stdout=stream,stderr=subprocess.STDOUT,start_new_session=True)
             pid=None; pid_fd=None
             try:
@@ -95,7 +96,7 @@ def exercise(root, output):
                     assert not any(route.get('gateway') or route.get('dst')=='default' for route in routes)
                 for key in ['net.ipv4.ip_forward','net.ipv6.conf.all.forwarding']:
                     assert service.enter(pid,root,['/usr/sbin/sysctl','-n',key]).stdout.strip()==b'0'
-                for unit in ['systemd-timesyncd.service','apt-daily.service','systemd-resolved.service','dnsmasq.service']:
+                for unit in ['systemd-timesyncd.service','apt-daily.service','systemd-resolved.service','dnsmasq.service','nftables.service','systemd-network-generator.service']:
                     assert service.enter(pid,root,['/usr/bin/systemctl','is-enabled',unit],False).stdout.strip()==b'masked'
                 counters=service.enter(pid,root,['/usr/sbin/nft','-j','list','table','inet','bbsbox_boundary']).stdout
                 (output/f'boundary-{attempt}.json').write_bytes(counters)
@@ -128,7 +129,9 @@ def exercise(root, output):
                 if subprocess.run(['ip','link','show','dev','bbs-visitor'],capture_output=True).returncode==0:
                     run('ip','link','delete','bbs-visitor')
         if process.returncode: raise RuntimeError('Prepared network OS shutdown failed')
-    report=dict(status='passed',cases=cases,local_leaf_renewal_and_restart_verified=True,scope='Actual Debian userspace/systemd with simulated local link; physical router/phone/full boot packet capture remains separate')
+        assert capture.report['status']=='passed',capture.report
+        cases[-1]['boot_packet_capture']=capture.report
+    report=dict(status='passed',cases=cases,local_leaf_renewal_and_restart_verified=True,complete_boot_link_capture=True,scope='Actual Debian userspace/systemd with simulated local link; physical router/radio/phone acceptance remains separate')
     (output/'evidence.json').write_text(json.dumps(report,indent=2)+'\n'); print(json.dumps(report,indent=2))
 
 

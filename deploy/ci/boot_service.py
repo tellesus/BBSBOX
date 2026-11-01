@@ -79,16 +79,19 @@ def network(pid):
 def service_identity(pid,root,user='bbsbox',process_name='bbsbox-node',unit='bbsbox.service'):
     uid=int(enter(pid,root,['/usr/bin/id','-u',user]).stdout)
     if uid==0:raise RuntimeError('Service must be unprivileged')
+    observed=[]
     for process in Path('/proc').iterdir():
         if not process.name.isdecimal():continue
         try:
-            if (process/'comm').read_text().strip()==process_name and same_root(int(process.name),root):
+            if (process/'comm').read_text().strip()==process_name:
+                root_matches=same_root(int(process.name),root)
                 cgroup=(process/'cgroup').read_text()
                 status=(process/'status').read_text()
-                actual=int(next(line for line in status.splitlines() if line.startswith('Uid:')).split()[1])
-                if unit in cgroup and actual==uid:return int(process.name)
+                actual=[int(value) for value in next(line for line in status.splitlines() if line.startswith('Uid:')).split()[1:]]
+                if len(observed)<8:observed.append(dict(pid=int(process.name),uids=actual,root_matches=root_matches,in_unit=unit in cgroup))
+                if root_matches and unit in cgroup and actual==[uid]*4:return int(process.name)
         except (OSError,StopIteration):continue
-    raise RuntimeError('No unprivileged bbsbox process owned by the actual unit was observed')
+    raise RuntimeError(f'Expected {process_name} as {user} (uid {uid}) in {unit}; observed {observed}')
 
 
 def boot(root,output):

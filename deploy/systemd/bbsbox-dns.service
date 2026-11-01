@@ -7,7 +7,7 @@ StartLimitIntervalSec=0
 
 [Service]
 Type=exec
-ExecStart=/usr/sbin/dnsmasq --no-daemon --conf-file=/etc/bbsbox/network/dnsmasq.conf --pid-file= --user=bbsbox-dns --group=bbsbox-dns
+ExecStart=/usr/sbin/dnsmasq --keep-in-foreground --conf-file=/etc/bbsbox/network/dnsmasq.conf --pid-file= --log-facility=- --user=bbsbox-dns --group=bbsbox-dns
 Restart=on-failure
 RestartSec=2
 NoNewPrivileges=yes

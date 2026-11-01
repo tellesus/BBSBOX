@@ -49,7 +49,7 @@ def inspect():
             except (ValueError,TypeError):check['ok']=False
         checks['routes'+family]=check
     checks['local_dns_service']=command('systemctl','is-active','bbsbox-dns.service')
-    for unit in ['systemd-timesyncd.service','systemd-resolved.service','apt-daily.service','apt-daily-upgrade.service']:
+    for unit in ['systemd-timesyncd.service','systemd-resolved.service','apt-daily.service','apt-daily-upgrade.service','nftables.service','systemd-network-generator.service']:
         check=command('systemctl','is-enabled',unit)
         check['ok']=check['output'].strip()=='masked';checks[unit]=check
     report['status']='passed' if all(check['ok'] for check in checks.values()) else 'attention'

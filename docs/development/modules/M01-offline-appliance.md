@@ -1,8 +1,8 @@
 # M01 — Offline appliance and local access
 
-Brief revision 1.1.8 · Roadmap baseline 1.1.0 · 2026-10-31 · Locked scope · Product baseline 0.6.0.
+Brief revision 1.1.9 · Roadmap baseline 1.1.0 · 2026-10-31 · Locked scope · Product baseline 0.6.0.
 
-**State:** In progress under continued development authority. Runtime/initialization/payload and actual offline Debian install/service/reboot checks passed. B's simulated packet/DNS boundary passed; inactive-tree host preparation/boot is under test. Device enrollment, C and reference hardware remain pending.
+**State:** In progress under continued development authority. Runtime/initialization/payload and actual offline Debian install/service/reboot checks passed. B's simulated packet/DNS boundary passed; actual guest DNS/renewal reached checks, with DNS privilege-drop correction and complete boot capture under test. Device enrollment, C and reference hardware remain pending.
 
 ## Read only this packet
 

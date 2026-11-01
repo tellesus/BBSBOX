@@ -13,7 +13,7 @@ import network_profile
 import local_tls
 
 ROOT = Path(__file__).resolve().parent
-MASK = ['NetworkManager.service', 'networking.service', 'systemd-resolved.service', 'systemd-timesyncd.service', 'apt-daily.timer', 'apt-daily.service', 'apt-daily-upgrade.timer', 'apt-daily-upgrade.service', 'systemd-sysupdate.timer', 'systemd-sysupdate.service', 'fwupd-refresh.timer', 'fwupd-refresh.service', 'avahi-daemon.service', 'avahi-daemon.socket', 'dnsmasq.service']
+MASK = ['NetworkManager.service', 'networking.service', 'systemd-network-generator.service', 'nftables.service', 'systemd-resolved.service', 'systemd-timesyncd.service', 'apt-daily.timer', 'apt-daily.service', 'apt-daily-upgrade.timer', 'apt-daily-upgrade.service', 'systemd-sysupdate.timer', 'systemd-sysupdate.service', 'fwupd-refresh.timer', 'fwupd-refresh.service', 'avahi-daemon.service', 'avahi-daemon.socket', 'dnsmasq.service']
 
 
 def target(root, relative):

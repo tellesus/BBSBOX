@@ -1,8 +1,8 @@
 # M12 — Offline updates, backup and continuity
 
-Brief revision 1.1.2 · Roadmap baseline 1.1.0 · 2026-11-01 · Locked scope · Product baseline 0.6.0.
+Brief revision 1.1.3 · Roadmap baseline 1.1.0 · 2026-11-01 · Locked scope · Product baseline 0.6.0.
 
-**State:** In progress under continued development authority. Completed M01–M04 providers enable A: drain/admission control, consistent protected backups and isolated recovery-blocked restore. No complete node backup/activation is claimed yet.
+**State:** In progress under continued development authority. Completed M01–M04 providers enable A: drain/admission control, consistent protected backups and isolated recovery-blocked restore. The C01 v1.4.0 maintenance barrier passes local checks; full backup/activation remains open.
 
 ## Read only this packet
 

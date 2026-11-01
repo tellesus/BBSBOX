@@ -36,6 +36,7 @@ pub enum Error {
     Io(std::io::Error),
     WriterAlreadyRunning,
     QueueFull,
+    MaintenancePaused,
     WriterClosed,
     ReentrantWriter,
     WorkPanicked,
@@ -75,6 +76,7 @@ impl fmt::Display for Error {
             Self::Io(error) => write!(f, "storage I/O failed: {error}"),
             Self::WriterAlreadyRunning => f.write_str("a writer already owns this database"),
             Self::QueueFull => f.write_str("the bounded writer queue is full"),
+            Self::MaintenancePaused => f.write_str("writer admission is paused for maintenance"),
             Self::WriterClosed => f.write_str("the writer is closed"),
             Self::ReentrantWriter => f.write_str("writer work cannot submit more writer work"),
             Self::WorkPanicked => {
@@ -142,7 +144,7 @@ pub struct Receipt {
 
 /// This connection has one owner and is deliberately not shared across async request threads.
 /// Node modules access it through writer::Writer; direct opens are for bootstrap/tests.
-/// This crate is not yet integrated into the public HTTP prototype.
+/// The real node runtime consumes this worker; feature routes own HTTP authorization.
 pub struct Database {
     connection: Connection,
     clock: Arc<dyn clock::Clock>,

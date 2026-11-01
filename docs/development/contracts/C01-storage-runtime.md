@@ -1,6 +1,6 @@
 # C01 — Storage, runtime and module boundary
 
-Version 1.3.0 · Accepted for implementation · Owner M02; operations co-owner M12.
+Version 1.4.0 · Accepted for implementation · Owner M02; operations co-owner M12.
 
 ## Responsibilities and interface
 
@@ -8,13 +8,15 @@ Use one Rust node service with explicit internal modules and one local SQLite da
 
 Interfaces: scoped transactions/receipts, transactional enqueue, claim/finish, module queries, blob put/get and snapshots. Command namespaces bind authenticated actor/action/resource; canonical request bytes bind every argument. Changed-byte ID reuse fails; mutation and response commit together. Browser endpoints use versioned JSON/OpenAPI. Games never receive core database handles.
 
-Use a bounded writer worker with rusqlite off async request threads. Keep SQLite on a local filesystem. Default durable transactions use FULL synchronous behavior pending M00 measurements. HTTP success for a mutation follows durable commit; filesystem bytes must be finalized before their row becomes visible. Recover orphan temporary files safely after interruption.
+Use a bounded rusqlite writer off async threads and local-filesystem SQLite with FULL synchronous transactions. HTTP mutation success follows durable commit; filesystem bytes finalize before their row is visible. Recover orphan temporary files safely after interruption.
 
 ## Jobs and recovery
 
 Serve local interactive work ahead of incoming bulk processing. Give background queues bounded batches plus a minimum service share so sync cannot starve indefinitely. Retry with persistent progress; failures carry a typed reason and retry condition. A command ID deduplicates browser retries; a network event ID deduplicates synchronization. They are different identifiers.
 
-M02 defaults: 64 pending tasks plus one executing; at most eight interactive tasks before one pending background task. Reject saturation; accepted work survives disconnection. Bound callbacks; reject recursion. A process lock protects startup recovery; direct opens are bootstrap/tests. Fresh tokens and monotonic leases fence completion; retry dates use wall time. Restart retries unfinished claims, preserving paused/done jobs. External effects need durable idempotence/outboxes.
+M02 ordinary defaults: 64 pending tasks plus one executing; at most eight interactive tasks before one pending background task. Reject saturation; accepted work survives disconnection. Bound callbacks; reject recursion. A process lock protects startup recovery; direct opens are bootstrap/tests. Fresh tokens and monotonic leases fence completion; retry dates use wall time. Restart retries unfinished claims, preserving paused/done jobs. External effects need durable idempotence/outboxes.
+
+One reserved maintenance callback closes admission, drains both queues, then executes. New submissions return MaintenancePaused. Error/panic resumes admission before replying; disconnection/shutdown preserves accepted maintenance.
 
 Take a consistent SQLite backup through its backup API plus a manifest of referenced blobs, configuration, node secrets and counters. Protect required blobs from deletion while taking the snapshot. Client private keys are a separate client export; a server backup does not magically contain them. Do not copy only the main SQLite file while ignoring live WAL state.
 

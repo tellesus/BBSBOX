@@ -38,6 +38,8 @@ type Task = Box<dyn FnOnce(&mut Database) + Send + 'static>;
 struct Queues {
     interactive: VecDeque<Task>,
     background: VecDeque<Task>,
+    maintenance: Option<Task>,
+    maintenance_active: bool,
     stopping: bool,
 }
 struct Shared {
@@ -45,6 +47,15 @@ struct Shared {
     ready: Condvar,
     thread: OnceLock<ThreadId>,
     config: Config,
+}
+struct MaintenanceAdmission(Arc<Shared>);
+impl Drop for MaintenanceAdmission {
+    fn drop(&mut self) {
+        if let Ok(mut queues) = self.0.queues.lock() {
+            queues.maintenance_active = false;
+        }
+        self.0.ready.notify_one();
+    }
 }
 #[derive(Clone)]
 pub struct Handle {
@@ -155,6 +166,8 @@ impl Writer {
             queues: Mutex::new(Queues {
                 interactive: VecDeque::new(),
                 background: VecDeque::new(),
+                maintenance: None,
+                maintenance_active: false,
                 stopping: false,
             }),
             ready: Condvar::new(),
@@ -192,17 +205,19 @@ impl Writer {
                         let mut queues = shared.queues.lock().unwrap();
                         while queues.interactive.is_empty()
                             && queues.background.is_empty()
+                            && queues.maintenance.is_none()
                             && !queues.stopping
                         {
                             queues = shared.ready.wait(queues).unwrap();
                         }
-                        if queues.interactive.is_empty()
-                            && queues.background.is_empty()
-                            && queues.stopping
-                        {
-                            break;
-                        }
-                        if !queues.background.is_empty()
+                        if queues.interactive.is_empty() && queues.background.is_empty() {
+                            if let Some(maintenance) = queues.maintenance.take() {
+                                Some(maintenance)
+                            } else {
+                                debug_assert!(queues.stopping);
+                                break;
+                            }
+                        } else if !queues.background.is_empty()
                             && (queues.interactive.is_empty()
                                 || interactive_run >= config.interactive_burst)
                         {
@@ -271,6 +286,17 @@ impl Drop for Writer {
     }
 }
 impl Handle {
+    fn ensure_external(&self) -> Result<()> {
+        if self
+            .shared
+            .thread
+            .get()
+            .is_some_and(|id| *id == thread::current().id())
+        {
+            return Err(Error::ReentrantWriter);
+        }
+        Ok(())
+    }
     pub fn submit<T: Send + 'static>(
         &self,
         priority: Priority,
@@ -283,17 +309,13 @@ impl Handle {
         priority: Priority,
         work: impl FnOnce(&mut Database) -> std::result::Result<T, E> + Send + 'static,
     ) -> Result<Pending<T, E>> {
-        if self
-            .shared
-            .thread
-            .get()
-            .is_some_and(|id| *id == thread::current().id())
-        {
-            return Err(Error::ReentrantWriter);
-        }
+        self.ensure_external()?;
         let mut queues = self.shared.queues.lock().map_err(|_| Error::WriterClosed)?;
         if queues.stopping {
             return Err(Error::WriterClosed);
+        }
+        if queues.maintenance_active {
+            return Err(Error::MaintenancePaused);
         }
         if queues.interactive.len() + queues.background.len() >= self.shared.config.capacity {
             return Err(Error::QueueFull);
@@ -312,7 +334,48 @@ impl Handle {
         self.shared.ready.notify_one();
         Ok(Pending { reply: receiver })
     }
+
+    /// Atomically close admission, drain every accepted task, then run one reserved
+    /// callback. Admission resumes before its result is delivered, including on error/panic.
+    /// Dropping the reply does not cancel maintenance; shutdown drains it as accepted work.
+    pub fn maintenance<T: Send + 'static>(
+        &self,
+        work: impl FnOnce(&mut Database) -> Result<T> + Send + 'static,
+    ) -> Result<Pending<T>> {
+        self.maintenance_service(work)
+    }
+
+    pub fn maintenance_service<T: Send + 'static, E: From<Error> + Send + 'static>(
+        &self,
+        work: impl FnOnce(&mut Database) -> std::result::Result<T, E> + Send + 'static,
+    ) -> Result<Pending<T, E>> {
+        self.ensure_external()?;
+        let mut queues = self.shared.queues.lock().map_err(|_| Error::WriterClosed)?;
+        if queues.stopping {
+            return Err(Error::WriterClosed);
+        }
+        if queues.maintenance_active {
+            return Err(Error::MaintenancePaused);
+        }
+        let (reply, receiver) = oneshot::channel();
+        let shared = self.shared.clone();
+        queues.maintenance_active = true;
+        queues.maintenance = Some(Box::new(move |database| {
+            let admission = MaintenanceAdmission(shared);
+            let result = catch_unwind(AssertUnwindSafe(|| work(database)))
+                .unwrap_or_else(|_| Err(E::from(Error::WorkPanicked)));
+            drop(admission);
+            let _ = reply.send(result);
+        }));
+        drop(queues);
+        self.shared.ready.notify_one();
+        Ok(Pending { reply: receiver })
+    }
 }
+
+#[cfg(test)]
+#[path = "writer_maintenance_tests.rs"]
+mod maintenance_tests;
 
 #[cfg(all(test, unix))]
 mod tests {

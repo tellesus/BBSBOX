@@ -1,8 +1,8 @@
 # M02 — Durable storage and bounded jobs
 
-Brief revision 1.1.2 · Roadmap baseline 1.1.0 · 2026-10-30 · Product baseline 0.6.0.
+Brief revision 1.1.3 · Roadmap baseline 1.1.0 · 2026-10-30 · Product baseline 0.6.0.
 
-**State:** Complete as a provider under U22. A–C passed 25 Windows/26 Linux integration tests and concurrent load checks. Consume C01 v1.3.0. Consumer integration and release gates remain downstream.
+**State:** Complete as a provider under U22. A–C passed 25 Windows/26 Linux integration tests and concurrent load checks. Consume C01 v1.4.0. Consumer integration and release gates remain downstream.
 
 ## Read only this packet
 
@@ -25,7 +25,7 @@ Use SQLite WAL through rusqlite with a dedicated bounded writer and read connect
 
 crates/storage/ implements A–C: migrations/receipts, independent readers, bounded writer, fenced jobs/retries, content-addressed blobs, explicit references/collection, disk admission and core snapshot/restore hooks. Feature rows remain module-owned. See the [implementation runbook](../../../crates/storage/README.md).
 
-The library is not wired to HTTP or the prototype. Async handlers await writer replies; callbacks execute on its dedicated thread. Module SQL uses the existing transaction rather than managing its own. Consume C01 and update affected consumers together.
+The actual M01 runtime consumes the writer; community HTTP routes remain downstream. Async handlers await writer replies; callbacks execute on its dedicated thread. Module SQL uses the existing transaction rather than managing its own. Consume C01 and update affected consumers together.
 
 ## Sequential work slices
 

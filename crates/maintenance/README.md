@@ -1,0 +1,27 @@
+# M12 maintenance primitives
+
+Implementation reference, not scope authority. Follow the maintained [M12 brief](../../docs/development/modules/M12-maintenance-recovery.md) and current user instructions. This crate currently protects an already staged tree. Complete-node checkpoint coordination, operator commands, release verification and restored signing activation remain open.
+
+## Protected archive v1
+
+`archive::seal` inventories an immutable private staging tree, signs the inventory using the node key, and streams an uncompressed USTAR archive through age X25519 recipient encryption. The backup recipient is a separate operator key; its secret need not be present during encryption. Neither a person key nor a client recovery kit is exported through this API. Callers must first prepare a consistent snapshot and select its required configuration and secret files.
+
+Pinned dependencies are age 0.12.1 and tar 0.4.46 with default features disabled. The format follows [age v1.1.0](https://c2sp.org/age@v1.1.0); application signing uses [RFC 9864 Ed25519 algorithm -19](https://www.rfc-editor.org/rfc/rfc9864.html). Public conformance bytes are in [archive-inventory-v1.json](../../protocol/fixtures/archive-inventory-v1.json), independently verified by [Node tooling](../../tools/verify_archive_vectors.mjs). The fixture seed is public test material.
+
+The first tar entry is `inventory.cose`; subsequent regular files are exactly `files/<signed path>`, in inventory order. Headers use USTAR layout, with tar's binary numeric encoding for sizes beyond its octal field. No link, sparse, device, PAX or GNU extension entries are accepted. Source names are portable ASCII relative paths of at most 94 bytes, with no traversal, empty components or reserved device names. Empty directories are omitted. Every file has its size and SHA-256 hash recorded; export checks them again while streaming. Output uses a fresh destination and a private temporary file, finalized only after the encryption stream and file are synchronized. The staging tree and its ancestors must remain private and immutable throughout; this API does not provide filesystem isolation against an owner concurrently replacing paths.
+
+The signed payload is compact UTF-8 JSON with exact field order: `format`, `node`, `archive`, `created_at`, `incarnation`, `files`; file records use `path`, `size`, `sha256`. Identifiers/hashes use lowercase hexadecimal, incarnation is a 16-integer byte array, time is a signed 64-bit integer, and file sizes are unsigned 64-bit integers. Unknown fields, alternate serialization and unsorted/duplicate paths are rejected. COSE_Sign1 is an untagged canonical four-element array, protected headers are `{1:-19,4:public-key-bytes}`, unprotected headers are empty, and external AAD is `bbsbox.archive-inventory/v1`. The inventory ID is SHA-256 of the complete COSE bytes. The nonzero random archive ID and signer incarnation identify the export; they confer no event, courier-credit or release-signing authority.
+
+`archive::open` requires the expected NodeId and operator decryption key. It verifies the inventory before creating its fresh private output directory, then writes only listed regular files below `content/`. All sizes/hashes and the entire encrypted stream through its final authentication tag must verify. Parsing is bounded before generic CBOR/JSON/age processing; the age header is limited to 64 KiB with 1,024-byte lines. Extra members/data and truncated streams fail. On Unix, directories are private 0700 and files 0600, subject to a more restrictive umask.
+
+An output is complete only when `inventory.cose` exists and `.archive-incomplete` is absent. Interrupted or failed extraction is disposable staging and must never be activated. Opening an archive alone does not run database migrations or create a writer. M12's coordinator must validate the full snapshot contents and use M02's recovery-blocked fresh restore; continuation policy remains a separate prerequisite to activation.
+
+Default defensive ceilings: 50,128 files, 8 MiB signed JSON payload, 1 TiB per member and 8 TiB total content. These are parser limits, not supported appliance capacity claims. Callers may lower them. Export/import require available space for their bounded output plus a 32 MiB control reserve; concurrent disk consumption can still fail an operation. There is no compression or generic tar unpacking. Existing output is never replaced.
+
+## Verification and next integration
+
+`cargo test --locked --offline -p bbsbox-maintenance` covers a real SQLite/blob snapshot round trip across encryption chunks, canonical inventory vectors, wrong node/key, corruption, missing final tags, appended data, unsafe paths, links and duplicate entries. Unix CI additionally checks source symlinks and output modes. The independent vector tool checks exact bytes, node identity, signature/domain separation and the signed i64 boundary without rounding it through JavaScript numbers.
+
+Dependency metadata for all 99 newly locked registry packages has a license expression; available choices include MIT, Apache-2.0, BSD, Unicode-3.0 and Unlicense. Selecting and bundling actual matching notices/source is still part of M12 release work; the development archive primitive is not a completed release bundle.
+
+Next: coordinate the drained core snapshot with stable configuration/node secrets and declared game checkpoints, then add operator backup/isolated restore commands. Do not call a core-only or arbitrary staged-file archive a complete node backup.

@@ -1,8 +1,8 @@
 # M12 — Offline updates, backup and continuity
 
-Brief revision 1.1.3 · Roadmap baseline 1.1.0 · 2026-11-01 · Locked scope · Product baseline 0.6.0.
+Brief revision 1.1.4 · Roadmap baseline 1.1.0 · 2026-11-01 · Locked scope · Product baseline 0.6.0.
 
-**State:** In progress under continued development authority. Completed M01–M04 providers enable A: drain/admission control, consistent protected backups and isolated recovery-blocked restore. The C01 v1.4.0 maintenance barrier passes local checks; full backup/activation remains open.
+**State:** In progress under continued development authority. Completed M01–M04 providers enable A: drain/admission control, consistent protected backups and isolated recovery-blocked restore. The C01 v1.4.0 maintenance barrier passes local/Linux checks. Signed encrypted staged-file archives pass local checks; full backup/activation remains open.
 
 ## Read only this packet
 
@@ -23,9 +23,9 @@ Produce signed local release manifests, application/static assets and prepared d
 
 ## Ownership and interfaces
 
-Planned crates/maintenance/, deploy/releases/ and operator guides; release verification state, backup manifests, migration evidence and recovery/handover procedures.
+Current crates/maintenance/ archive primitives; planned deploy/releases/ and operator guides; release verification state, backup manifests, migration evidence and recovery/handover procedures.
 
-Paths above are planned implementation locations, not existing code. Consume the contracts in the reading packet; changes to them need affected-consumer updates. A disabled optional module retains its data and does not break unrelated local services.
+The [maintenance reference](../../../crates/maintenance/README.md) records current implementation details. Consume the contracts in the reading packet; changes to them need affected-consumer updates. A disabled optional module retains its data and does not break unrelated local services.
 
 ## Sequential work slices
 
@@ -42,6 +42,8 @@ Paths above are planned implementation locations, not existing code. Consume the
 ## Locked defaults and verification
 
 Use signed offline release bundles and snapshot manifests, encrypted removable backup media, and explicit operator restore/handover instructions. Default schedule: daily snapshot when configured backup media is available; keep seven daily and four weekly snapshots subject to capacity warnings. Do not erase the only good snapshot. Separate consistent checkpoints include game-worker databases. Lost post-snapshot writes remain explicitly unrecovered until reconciled; no universal zero-loss/exactly-once-after-data-loss promise.
+
+Implementation selection under continued development authority: age X25519 recipient encryption with a separate operator backup key; a node-signed, domain-separated inventory authenticates exact staged paths/sizes/hashes. Verify expected node identity and the complete encrypted stream before completing extraction. Full-node coordination and recovery blocking remain mandatory beyond archive verification.
 
 ## Handoff
 

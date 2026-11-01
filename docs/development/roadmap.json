@@ -1100,6 +1100,7 @@
       "crates/event-core/README.md",
       "docs/decisions/ADR-0002-wire-profiles.md",
       "crates/node-runtime/README.md",
+      "crates/maintenance/README.md",
       "deploy/README.md"
     ]
   },

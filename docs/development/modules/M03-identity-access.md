@@ -1,6 +1,6 @@
 # M03 — Identity, local accounts and permissions
 
-Brief revision 1.1.6 · Roadmap baseline 1.1.0 · 2026-10-31 · Product baseline 0.6.0.
+Brief revision 1.1.7 · Roadmap baseline 1.1.0 · 2026-11-01 · Product baseline 0.6.0.
 
 **State:** Complete as a provider under U22 after Windows/Linux A–C evidence. Consumer integration remains downstream. Consume C01 v1.4.0/C02 v1.4.1; new credential/link issuance uses profile v2, with immutable v1 verification.
 
@@ -28,6 +28,8 @@ Use local username/password sessions with Argon2id password hashes, secure same-
 crates/identity/ implements accounts, public resolution, destination linking and node signer lifecycle. crates/credentials/ verifies proofs; client/identity/ owns signing/recovery. Core supplies authorization services; features check resource authority. See [accounts](../../../crates/identity/README.md) and [credential profile](../../../crates/credentials/README.md).
 
 M05 owns HTTP/enrollment UI integration; A exposes authenticated SysOp account creation without a public bootstrap route. Consume listed contracts and update affected consumers together.
+
+M12 maintenance may load only an existing signer bound to the expected node. Missing/mismatched/corrupt source identity fails without replacement; restored storage remains recovery-blocked.
 
 ## Sequential work slices
 

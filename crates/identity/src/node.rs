@@ -16,6 +16,13 @@ pub struct NodeSigner {
 impl NodeSigner {
     /// Use on the storage writer at startup. Restored storage remains blocked until M12 activation.
     pub fn start(database: &mut Database) -> Result<Self> {
+        Self::load(database, None)
+    }
+    /// Maintenance must bind to an existing node; it must never initialize a replacement identity.
+    pub fn start_existing(database: &mut Database, expected_node: NodeId) -> Result<Self> {
+        Self::load(database, Some(expected_node))
+    }
+    fn load(database: &mut Database, expected_node: Option<NodeId>) -> Result<Self> {
         if database.recovery_required()? {
             return Err(bbsbox_storage::Error::RecoveryRequired.into());
         }
@@ -36,15 +43,22 @@ impl NodeSigner {
                 seed.copy_from_slice(&raw);
                 Some(public)
             } else {
+                if expected_node.is_some() {
+                    return Err(Error::InvalidNodeState);
+                }
                 OsRng.fill_bytes(seed.as_mut());
                 None
             };
             let key = SigningKey::from_bytes(&seed);
             let public = key.verifying_key().to_bytes();
+            let id = NodeId::from_public_key(&public)?;
             if expected
                 .as_ref()
                 .is_some_and(|expected| expected.as_slice() != public)
             {
+                return Err(Error::InvalidNodeState);
+            }
+            if expected_node.is_some_and(|expected| expected != id) {
                 return Err(Error::InvalidNodeState);
             }
             if expected.is_none() {
@@ -60,7 +74,7 @@ impl NodeSigner {
             Ok(Self {
                 key,
                 incarnation,
-                id: NodeId::from_public_key(&public)?,
+                id,
             })
         })
     }

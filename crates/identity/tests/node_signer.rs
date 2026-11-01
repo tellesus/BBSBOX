@@ -85,6 +85,61 @@ fn restored_core_includes_node_key_but_cannot_activate_a_signer_before_recovery(
         NodeSigner::start(&mut restored),
         Err(Error::Storage(bbsbox_storage::Error::RecoveryRequired))
     ));
+    assert!(matches!(
+        NodeSigner::start_existing(&mut restored, original.id()),
+        Err(Error::Storage(bbsbox_storage::Error::RecoveryRequired))
+    ));
+}
+
+#[test]
+fn maintenance_never_creates_or_replaces_a_missing_wrong_or_corrupt_node() {
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("node.sqlite");
+    let mut database = Database::open(&path, &migrations()).unwrap();
+    let wrong = bbsbox_credentials::NodeId::from_digest([1; 32]);
+    assert!(matches!(
+        NodeSigner::start_existing(&mut database, wrong),
+        Err(Error::InvalidNodeState)
+    ));
+    let reader = bbsbox_storage::open_reader(&path).unwrap();
+    assert_eq!(
+        reader
+            .query_row("SELECT count(*) FROM identity_node_identity", [], |r| r
+                .get::<_, i64>(0))
+            .unwrap(),
+        0
+    );
+    let original = NodeSigner::start(&mut database).unwrap();
+    assert!(matches!(
+        NodeSigner::start_existing(&mut database, wrong),
+        Err(Error::InvalidNodeState)
+    ));
+    let current = NodeSigner::start_existing(&mut database, original.id()).unwrap();
+    assert_eq!(current.public(), original.public());
+    assert_ne!(current.incarnation(), original.incarnation());
+    let raw = rusqlite::Connection::open(&path).unwrap();
+    raw.execute("UPDATE identity_node_identity SET seed=zeroblob(32)", [])
+        .unwrap();
+    assert!(matches!(
+        NodeSigner::start_existing(&mut database, original.id()),
+        Err(Error::InvalidNodeState)
+    ));
+    assert_eq!(
+        raw.query_row("SELECT seed FROM identity_node_identity", [], |r| r
+            .get::<_, Vec<u8>>(0))
+            .unwrap(),
+        vec![0; 32]
+    );
+    assert_eq!(
+        raw.query_row("SELECT public_key FROM identity_node_identity", [], |r| r
+            .get::<_, Vec<
+            u8,
+        >>(
+            0
+        ))
+        .unwrap(),
+        original.public()
+    );
 }
 #[cfg(unix)]
 #[test]

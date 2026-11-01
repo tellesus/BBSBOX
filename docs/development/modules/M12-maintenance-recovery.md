@@ -2,7 +2,7 @@
 
 Brief revision 1.1.4 · Roadmap baseline 1.1.0 · 2026-11-01 · Locked scope · Product baseline 0.6.0.
 
-**State:** In progress under continued development authority. Completed M01–M04 providers enable A: drain/admission control, consistent protected backups and isolated recovery-blocked restore. The C01 v1.4.0 maintenance barrier passes local/Linux checks. Signed encrypted staged-file archives pass local checks; full backup/activation remains open.
+**State:** In progress under continued development authority. Completed M01–M04 providers enable A: drain/admission control, consistent protected backups and isolated recovery-blocked restore. The C01 v1.4.0 maintenance barrier and signed encrypted staged-file archives pass local/Linux checks; full backup/activation remains open.
 
 ## Read only this packet
 

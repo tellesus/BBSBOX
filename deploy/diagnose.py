@@ -49,6 +49,8 @@ def inspect():
             except (ValueError,TypeError):check['ok']=False
         checks['routes'+family]=check
     checks['local_dns_service']=command('systemctl','is-active','bbsbox-dns.service')
+    for family,path in [('ipv4','/proc/sys/net/ipv4/ip_forward'),('ipv6','/proc/sys/net/ipv6/conf/all/forwarding')]:
+        check=command('cat',path);check['ok'] &= check['output'].strip()=='0';checks[family+'_forwarding_disabled']=check
     for unit in ['systemd-timesyncd.service','systemd-resolved.service','apt-daily.service','apt-daily-upgrade.service','nftables.service','systemd-network-generator.service']:
         check=command('systemctl','is-enabled',unit)
         check['ok']=check['output'].strip()=='masked';checks[unit]=check

@@ -95,7 +95,7 @@ def exercise(root, output):
                     routes=json.loads(service.enter(pid,root,['/usr/sbin/ip',family,'-j','route','show','table','all']).stdout)
                     assert not any(route.get('gateway') or route.get('dst')=='default' for route in routes)
                 for key in ['net.ipv4.ip_forward','net.ipv6.conf.all.forwarding']:
-                    assert service.enter(pid,root,['/usr/sbin/sysctl','-n',key]).stdout.strip()==b'0'
+                    assert service.enter(pid,root,['/usr/bin/cat','/proc/sys/'+key.replace('.','/')]).stdout.strip()==b'0'
                 for unit in ['systemd-timesyncd.service','apt-daily.service','systemd-resolved.service','dnsmasq.service','nftables.service','systemd-network-generator.service']:
                     assert service.enter(pid,root,['/usr/bin/systemctl','is-enabled',unit],False).stdout.strip()==b'masked'
                 counters=service.enter(pid,root,['/usr/sbin/nft','-j','list','table','inet','bbsbox_boundary']).stdout

@@ -1,6 +1,6 @@
 # M12 — Offline updates, backup and continuity
 
-Version 1.1.0 · 2026-10-25 · Locked development baseline · Product baseline 0.6.0.
+Brief revision 1.1.1 · Roadmap baseline 1.1.0 · 2026-11-01 · Locked scope · Product baseline 0.6.0.
 
 **State:** Approved for implementation under U19; unstarted. Runtime and hardware evidence remains pending.
 
@@ -37,7 +37,7 @@ Paths above are planned implementation locations, not existing code. Consume the
 
 - AC15 restores all installed core/game data and jobs consistently. Use receipt fixtures now; M16 owns real credit-ledger restore/replay checks later. Lost post-snapshot writes follow C01 recovery limits.
 - A server backup cannot be represented as recovery of absent client keys.
-- AC17 records source/build materials and the still-explicit license decision.
+- AC17 records source/build materials, the selected T12 licenses and matching notices/corresponding source.
 
 ## Locked defaults and verification
 

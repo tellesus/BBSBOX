@@ -1,8 +1,8 @@
 # M12 — Offline updates, backup and continuity
 
-Brief revision 1.1.9 · Roadmap baseline 1.1.0 · 2026-11-01 · Locked scope · Product baseline 0.6.0.
+Brief revision 1.1.10 · Roadmap baseline 1.1.0 · 2026-11-01 · Locked scope · Product baseline 0.6.0.
 
-**State:** In progress under continued development authority. Foundation/game-node backup/restore and worker checkpoints pass Linux checks. Release authentication, payload integrity/staging and compiled-profile reporting pass local checks; matching materials, installation, M11 integration and recovered activation remain open. C01 v1.4.0/C02 v1.4.1 are unchanged.
+**State:** In progress under continued development authority. Foundation/game-node backup/restore, worker checkpoints and release-payload/profile providers pass Linux checks. Material preparation fixtures pass locally; full offline rebuild, installation, M11 integration and recovered activation remain open. C01 v1.4.0/C02 v1.4.1 are unchanged.
 
 ## Read only this packet
 

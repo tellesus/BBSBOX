@@ -1,0 +1,62 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+"""Rebuild extracted, verified release materials inside a separately created empty network namespace."""
+import argparse
+import json
+import os
+from pathlib import Path
+import socket
+import subprocess
+import sys
+import time
+
+
+def rebuild(root, cargo, rustc, expected_profile, output):
+    if sys.platform != 'linux' or os.geteuid() != 0 or {name for _, name in socket.if_nameindex()} != {'lo'} or os.readlink('/proc/self/ns/net') == os.readlink('/proc/1/ns/net'):
+        raise ValueError('Rebuild fixture requires its own root-owned loopback-only network namespace')
+    root = root.resolve(strict=True)
+    cargo = cargo.resolve(strict=True)
+    rustc = rustc.resolve(strict=True)
+    if not (root/'source/Cargo.lock').is_file() or not (root/'vendor').is_dir() or (root/'.materials-incomplete').exists():
+        raise ValueError('Missing verified source/vendor extraction')
+    cache = root/'empty-cargo-home'
+    cache.mkdir(mode=0o700)
+    target = root/'rebuild-target'
+    if target.exists():
+        raise ValueError('Rebuild must use a fresh target directory')
+    environment = dict(os.environ, CARGO_HOME=str(cache), CARGO_TARGET_DIR=str(target), RUSTC=str(rustc), CARGO_PROFILE_DEV_DEBUG='0', CARGO_INCREMENTAL='0')
+    # Use direct pinned compiler binaries; changing Cargo's empty home must not trigger rustup fetches.
+    environment['PATH'] = str(rustc.parent) + os.pathsep + environment.get('PATH', '')
+    version = subprocess.check_output([str(rustc), '--version'], env=environment, text=True).strip()
+    if not version.startswith('rustc 1.99.1 '):
+        raise ValueError('Rebuild compiler differs from the pinned version')
+    command = [str(cargo), '--config', 'source.crates-io.replace-with="vendored-sources"', '--config', 'source.vendored-sources.directory='+json.dumps(str(root/'vendor')), 'build', '--frozen', '-p', 'bbsbox-node-runtime']
+    started = time.monotonic()
+    result = subprocess.run(command, cwd=root/'source', env=environment, capture_output=True, text=True, timeout=600)
+    if result.returncode:
+        raise RuntimeError('Offline material rebuild failed:\n'+result.stderr[-8000:])
+    binary = target/'debug/bbsbox-node'
+    profile = subprocess.run([str(binary), '--release-profile'], capture_output=True, text=True, check=True, timeout=20)
+    information = json.loads(profile.stdout)
+    with expected_profile.open('rb') as source:
+        expected = source.read(65537)
+    if len(expected) > 65536 or information != json.loads(expected) or information.get('format') != 'bbsbox.release-runtime/v1' or information.get('target') != 'debian13-amd64':
+        raise ValueError('Rebuilt executable does not report the expected target/profile')
+    report = dict(format='bbsbox.offline-material-rebuild/v1', compiler=version, elapsed_seconds=round(time.monotonic()-started, 2), empty_cargo_home=True, empty_target=True, network='isolated-loopback-only', compiled_profile_matches_candidate=True, compiled_profile=information)
+    with output.open('x', encoding='utf-8') as destination:
+        json.dump(report, destination, indent=2)
+        destination.write('\n')
+    return report
+
+
+def main():
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--root',type=Path,required=True)
+    parser.add_argument('--cargo',type=Path,required=True)
+    parser.add_argument('--rustc',type=Path,required=True)
+    parser.add_argument('--expected-profile',type=Path,required=True)
+    parser.add_argument('--output',type=Path,required=True)
+    args=parser.parse_args()
+    print(json.dumps(rebuild(args.root,args.cargo,args.rustc,args.expected_profile,args.output),indent=2))
+
+
+if __name__=='__main__': main()

@@ -1,8 +1,8 @@
 # M12 — Offline updates, backup and continuity
 
-Brief revision 1.1.10 · Roadmap baseline 1.1.0 · 2026-11-01 · Locked scope · Product baseline 0.6.0.
+Brief revision 1.1.11 · Roadmap baseline 1.1.0 · 2026-11-01 · Locked scope · Product baseline 0.6.0.
 
-**State:** In progress under continued development authority. Foundation/game-node backup/restore, worker checkpoints and release-payload/profile providers pass Linux checks. Material preparation fixtures pass locally; full offline rebuild, installation, M11 integration and recovered activation remain open. C01 v1.4.0/C02 v1.4.1 are unchanged.
+**State:** In progress under existing authority. Backup, release-payload/profile and source-material rebuild providers pass Linux checks. Separate durable release-control fixtures pass locally; installation, M11 integration and recovered activation remain open. Consume C01 v1.4.1/C02 v1.4.1.
 
 ## Read only this packet
 
@@ -23,7 +23,7 @@ Produce signed local release manifests, application/static assets and prepared d
 
 ## Ownership and interfaces
 
-Current crates/maintenance/ archive primitives; planned deploy/releases/ and operator guides; release verification state, backup manifests, migration evidence and recovery/handover procedures.
+Current crates/maintenance/ snapshot/release providers; planned deploy/releases/ and operator guides; separate operator release control, backup manifests, migration evidence and recovery/handover procedures.
 
 The [maintenance reference](../../../crates/maintenance/README.md) records current implementation details. Consume the contracts in the reading packet; changes to them need affected-consumer updates. A disabled optional module retains its data and does not break unrelated local services.
 

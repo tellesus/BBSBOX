@@ -1,8 +1,8 @@
 # M04 — Signed event kernel and convergence
 
-Brief revision 1.1.7 · Roadmap baseline 1.1.0 · 2026-10-31 · Product baseline 0.6.0.
+Brief revision 1.1.8 · Roadmap baseline 1.1.0 · 2026-11-01 · Product baseline 0.6.0.
 
-**State:** Complete as a provider under continued development authority after Windows/Linux A–C evidence. Feature/device integration remains downstream. Consume C01 v1.4.0/C02 v1.4.1.
+**State:** Complete as a provider under continued development authority after Windows/Linux A–C evidence. Feature/device integration remains downstream. Consume C01 v1.4.1/C02 v1.4.1.
 
 ## Read only this packet
 

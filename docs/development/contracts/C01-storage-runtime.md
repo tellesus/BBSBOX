@@ -1,10 +1,10 @@
 # C01 — Storage, runtime and module boundary
 
-Version 1.4.0 · Accepted for implementation · Owner M02; operations co-owner M12.
+Version 1.4.1 · Accepted for implementation · Owner M02; operations co-owner M12.
 
 ## Responsibilities and interface
 
-Use one Rust node service with explicit internal modules and one local SQLite database using WAL. Modules own prefixed tables and ordered migrations; only the owning service writes those tables. Cross-module operations call typed services within a shared transaction when atomicity matters. Read projections are replaceable; signed records, receipts, role decisions, and user data are durable. Large local files are content-addressed on disk with database metadata. This is not database-file replication.
+The Rust node service uses internal modules and one local SQLite database with WAL. Release authority/rollback control is separate root-owned operator state outside node snapshots. Modules own prefixed tables and ordered migrations; only the owning service writes those tables. Cross-module operations call typed services within a shared transaction when atomicity matters. Read projections are replaceable; signed records, receipts, role decisions, and user data are durable. Large local files are content-addressed on disk with database metadata. This is not database-file replication.
 
 Interfaces: scoped transactions/receipts, transactional enqueue, claim/finish, module queries, blob put/get and snapshots. Command namespaces bind authenticated actor/action/resource; canonical request bytes bind every argument. Changed-byte ID reuse fails; mutation and response commit together. Browser endpoints use versioned JSON/OpenAPI. Games never receive core database handles.
 

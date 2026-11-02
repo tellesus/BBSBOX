@@ -8,6 +8,7 @@ pub mod game_snapshot;
 pub mod inventory;
 pub mod release;
 pub mod release_payload;
+pub mod release_trust;
 pub mod snapshot;
 pub use age::secrecy as age_secret;
 pub use age::x25519::{Identity as BackupIdentity, Recipient as BackupRecipient};

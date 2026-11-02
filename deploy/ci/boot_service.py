@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import signal
 import ssl
+import stat
 import subprocess
 import sys
 import time
@@ -63,9 +64,25 @@ def maintenance(pid,root,node):
     assert (root/'etc/bbsbox/tls/ca-key.pem').read_bytes()==original_ca
     recovery=json.loads((target/'recovery.json').read_text())
     assert recovery['state']=='recovery-required' and recovery['post_snapshot_writes']=='not-reconciled'
-    # Check ownership inside the guest, whose service UID is independent of the CI host.
-    enter(pid,root,['/usr/bin/runuser','-u','bbsbox','--','/usr/bin/test','-O','/var/lib/bbsbox/node.sqlite'])
-    return dict(cold_backup=True,actual_root_ca_preserved=True,service_resumed_unprivileged=True,isolated_restore=True,recovery_required=True)
+    # Obtain IDs from this guest, then inspect only known files in its verified OS tree.
+    uid=int(enter(pid,root,['/usr/bin/id','-u','bbsbox']).stdout)
+    gid=int(enter(pid,root,['/usr/bin/id','-g','bbsbox']).stdout)
+    for suffix in ['', '-wal', '-shm', '-journal', '.writer.lock']:
+        try:metadata=Path(str(root/'var/lib/bbsbox/node.sqlite')+suffix).lstat()
+        except FileNotFoundError:
+            if suffix=='':raise
+            continue
+        assert stat.S_ISREG(metadata.st_mode) and metadata.st_uid==uid and metadata.st_gid==gid and stat.S_IMODE(metadata.st_mode)==0o600
+    failed=enter(pid,root,['/usr/bin/python3','/src/deploy/backup_development.py','--development','--output','/root/bbsbox-ci-invalid.age','--recipient','age1invalid'],check=False,timeout=120)
+    assert failed.returncode!=0 and not (root/'root/bbsbox-ci-invalid.age').exists()
+    assert enter(pid,root,['/usr/bin/systemctl','is-active','bbsbox.service']).stdout.strip()==b'active'
+    service_identity(pid,root)
+    enter(pid,root,['/usr/bin/systemctl','stop','bbsbox.service'])
+    inactive=json.loads(enter(pid,root,['/usr/bin/python3','/src/deploy/backup_development.py','--development','--output','/root/bbsbox-ci-inactive.age','--recipient',recipient],timeout=120).stdout)
+    assert inactive['service_resumed'] is False and inactive['node']==node
+    assert enter(pid,root,['/usr/bin/systemctl','is-active','bbsbox.service'],False).stdout.strip()==b'inactive'
+    enter(pid,root,['/usr/bin/systemctl','start','bbsbox.service'])
+    return dict(cold_backup=True,actual_root_ca_preserved=True,source_ownership_private=True,service_resumed_unprivileged=True,failed_backup_resumes_source=True,inactive_source_stays_inactive=True,isolated_restore=True,recovery_required=True)
 
 
 def probe(root):

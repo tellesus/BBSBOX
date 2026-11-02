@@ -186,7 +186,7 @@ fn encoded_limit(total: u64, count: usize, manifest: usize) -> Result<u64> {
         .and_then(|n| n.checked_add(HEADER_LIMIT as u64))
         .ok_or(Error::LimitExceeded)
 }
-fn space(path: &Path, bytes: u64) -> Result<()> {
+pub(crate) fn space(path: &Path, bytes: u64) -> Result<()> {
     let available = fs2::available_space(path)?;
     let needed = bytes
         .checked_add(CONTROL_FLOOR)

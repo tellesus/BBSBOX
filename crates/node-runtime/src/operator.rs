@@ -108,6 +108,18 @@ fn regular(path: &Path) -> Result<()> {
     }
     Ok(())
 }
+fn foundation_registry() -> Result<Vec<bbsbox_storage::Migration>> {
+    let registry = migrations();
+    if registry
+        .iter()
+        .any(|m| !matches!(m.module, "identity" | "events"))
+    {
+        return Err(
+            "This backup profile must be extended for the installed modules/checkpoints".into(),
+        );
+    }
+    Ok(registry)
+}
 fn configuration(config_path: &Path, config: &Config) -> Result<(PathBuf, Vec<String>)> {
     if config_path.file_name() != Some(std::ffi::OsStr::new("node.json")) {
         return Err("Use the installed node.json configuration".into());
@@ -155,6 +167,7 @@ pub fn backup(
     staging_parent: &Path,
 ) -> Result<serde_json::Value> {
     let config = Config::read(config_path)?;
+    let registry = foundation_registry()?;
     let (root, required) = configuration(config_path, &config)?;
     // The configuration owner serializes this with local certificate renewal.
     let lock_path = root.join(".tls-renewal.lock");
@@ -180,7 +193,7 @@ pub fn backup(
         return Err("Configuration changed; retry backup".into());
     }
     regular(&config.database)?;
-    bbsbox_storage::verify_exact_registry(&config.database, &migrations())?;
+    bbsbox_storage::verify_exact_registry(&config.database, &registry)?;
     if NodeSigner::inspect_existing(&config.database)? != expected {
         return Err("Source node does not match the expected identity".into());
     }
@@ -196,18 +209,12 @@ pub fn backup(
     let output = destination.to_path_buf();
     let recipient = recipient.clone();
     let created_at = i64::try_from(SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs())?;
-    let writer = Writer::start(&config.database, migrations(), WriterConfig::default())?;
+    let writer = Writer::start(&config.database, registry.clone(), WriterConfig::default())?;
     let result = writer
         .handle()
         .maintenance_service(move |database| {
             snapshot::capture(
-                database,
-                expected,
-                &root,
-                required,
-                &tree,
-                created_at,
-                &migrations(),
+                database, expected, &root, required, &tree, created_at, &registry,
             )?;
             let signer = NodeSigner::start_existing(database, expected)?;
             let signed = archive::seal(
@@ -240,6 +247,7 @@ pub fn restore(
     destination: &Path,
     staging_parent: &Path,
 ) -> Result<serde_json::Value> {
+    let registry = foundation_registry()?;
     let identity = read_key(identity_file)?;
     let stage = private_stage(staging_parent, "bbsbox-restore-")?;
     let opened = archive::open(
@@ -249,7 +257,7 @@ pub fn restore(
         &identity,
         Limits::default(),
     )?;
-    let restored = snapshot::restore(&opened, destination, &migrations())?;
+    let restored = snapshot::restore(&opened, destination, &registry)?;
     Ok(
         serde_json::json!({"format":"bbsbox.node-restore/v1","node":expected.to_string(),"inventory_sha256":hex_id(opened.inventory().id()),"state":"recovery-required","database":restored.database()}),
     )

@@ -45,7 +45,7 @@ Use signed offline release bundles and snapshot manifests, encrypted removable b
 
 Implementation selection under continued development authority: age X25519 recipient encryption with a separate operator backup key; a node-signed, domain-separated inventory authenticates exact staged paths/sizes/hashes. Verify expected node identity and the complete encrypted stream before completing extraction. Full-node coordination and recovery blocking remain mandatory beyond archive verification.
 
-First operator path: stop/drain the service for a cold maintenance window, serialize configuration against TLS renewal, require the exact existing node/schema, and stage database/blobs/configuration/server secrets privately as root. Repair only known source database/sidecar/lock ownership before resuming a previously active service. Restore into fresh isolated storage with persistent recovery blocking and staged configuration. The initial foundation profile permits no installed game checkpoints; M11 integration must extend coordination before game-enabled backup claims. Scheduling/retention and recovery continuation remain separate work.
+First operator path: stop/drain the service for a cold maintenance window, serialize configuration against TLS renewal, require the exact existing node/schema, and stage database/blobs/configuration/server secrets privately as root. Repair only known source database/sidecar/lock ownership before resuming a previously active service. Restore into fresh isolated storage with persistent recovery blocking and staged configuration. The current profile admits identity/events owners with no games; new owners/checkpoints require explicit backup integration. Scheduling/retention and recovery continuation remain separate work.
 
 ## Handoff
 

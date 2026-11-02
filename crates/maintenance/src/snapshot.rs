@@ -59,6 +59,7 @@ impl Descriptor {
         let mut total = 0u64;
         for file in &self.configuration {
             if !inventory::valid_path(&file.path)
+                || file.path.len() + "configuration/".len() > 94
                 || file.path.starts_with('.')
                 || previous.is_some_and(|p| p >= file.path.as_str())
                 || file.size > configuration_limits().max_member_bytes
@@ -187,13 +188,17 @@ pub fn capture(
     }
     let signer = NodeSigner::start_existing(database, expected)?;
     archive::private_directory(destination)?;
-    database.snapshot_core(destination.join("core"))?;
-    bbsbox_storage::verify_exact_registry(destination.join("core/core.sqlite"), migrations)?;
+    let configuration_bytes = descriptor.configuration.iter().map(|f| f.size).sum::<u64>();
+    archive::space(destination, configuration_bytes + bytes.len() as u64)?;
     copy_records(
         &configuration,
         &destination.join("configuration"),
         &descriptor.configuration,
     )?;
+    write_new(&destination.join("snapshot.json"), &bytes)?;
+    // Core admission now sees configuration/descriptor bytes already allocated on the same stage.
+    database.snapshot_core(destination.join("core"))?;
+    bbsbox_storage::verify_exact_registry(destination.join("core/core.sqlite"), migrations)?;
     // Detect additions/deletions as well as modified captured bytes while configuration is frozen.
     let after = archive::inventory_except(
         &configuration,
@@ -203,7 +208,6 @@ pub fn capture(
     if after != descriptor.configuration {
         return Err(Error::ChangedSource);
     }
-    write_new(&destination.join("snapshot.json"), &bytes)?;
     archive::sync_directory(destination)?;
     let signed = inventory::sign(
         archive::inventory(destination, Limits::default())?,

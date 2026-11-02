@@ -40,7 +40,10 @@ def leader(root):
 
 def enter(pid,root,arguments,check=True,timeout=20):
     if not private_process(pid,root):raise RuntimeError('Refusing to enter anything except this private test OS')
-    return subprocess.run(['nsenter','--target',str(pid),'--mount','--pid','--net','--root','--wd','--',*arguments],capture_output=True,check=check,timeout=timeout)
+    try:return subprocess.run(['nsenter','--target',str(pid),'--mount','--pid','--net','--root','--wd','--',*arguments],capture_output=True,check=check,timeout=timeout)
+    except subprocess.CalledProcessError as error:
+        print(error.stderr[-16384:].decode(errors='replace'),file=sys.stderr)
+        raise
 
 
 def maintenance(pid,root,node):

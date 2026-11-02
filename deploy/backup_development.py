@@ -29,7 +29,9 @@ def repair_ownership(database, uid, gid):
 
 
 def run(arguments, timeout=120):
-    return subprocess.run(arguments,check=True,capture_output=True,timeout=timeout)
+    try:return subprocess.run(arguments,check=True,capture_output=True,timeout=timeout)
+    except subprocess.CalledProcessError as error:
+        raise RuntimeError('Local maintenance command failed: '+error.stderr[-8192:].decode(errors='replace')) from error
 
 
 def prepare_stage(path):
@@ -66,7 +68,7 @@ def backup(destination, recipient):
     stage=Path('/var/lib/bbsbox-maintenance');prepare_stage(stage)
     executable=Path('/opt/bbsbox/current/bbsbox-node')
     regular(executable.resolve(),[0])
-    if not executable.resolve().is_relative_to(Path('/opt/bbsbox/releases')):raise ValueError('Expected an installed local release')
+    if not executable.resolve().is_relative_to(Path('/opt/bbsbox/development')):raise ValueError('Expected an installed development release')
     lock=os.open('/run/bbsbox-maintenance.lock',os.O_RDWR|os.O_CREAT|os.O_NOFOLLOW,0o600)
     try:
         metadata=os.fstat(lock)

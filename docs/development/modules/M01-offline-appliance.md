@@ -1,8 +1,8 @@
 # M01 — Offline appliance and local access
 
-Brief revision 1.1.13 · Roadmap baseline 1.1.0 · 2026-11-01 · Locked scope · Product baseline 0.6.0.
+Brief revision 1.1.14 · Roadmap baseline 1.1.0 · 2026-11-01 · Locked scope · Product baseline 0.6.0.
 
-**State:** Complete as a software provider under continued development authority after Windows/Linux A–C evidence. Actual Debian install, isolated network/OS boot, renewal, diagnostics, capture and fresh-media checks pass. G1 physical router/radio/device acceptance remains pending; M12 consumes this interface next.
+**State:** Complete as a software provider under continued development authority after Windows/Linux A–C evidence. Actual Debian install, isolated network/OS boot, renewal, diagnostics, capture and fresh-media checks pass. G1 physical router/radio/device acceptance remains pending; M12 consumes this interface; a side-effect-free compiled release profile supports its compatibility checks.
 
 ## Read only this packet
 

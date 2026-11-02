@@ -19,6 +19,10 @@ pub mod writer;
 
 const APPLICATION_ID: i32 = 0x42425358;
 const SCHEMA_VERSION: i32 = 3;
+/// Current on-disk schema, exposed for compiled release compatibility reporting.
+pub fn schema_version() -> u32 {
+    SCHEMA_VERSION as u32
+}
 const MAX_RECEIPT_BYTES: usize = 1024 * 1024;
 pub type Result<T> = std::result::Result<T, Error>;
 

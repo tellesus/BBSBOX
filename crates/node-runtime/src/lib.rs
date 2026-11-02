@@ -24,6 +24,31 @@ use std::{
 
 pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 pub mod operator;
+/// No filesystem, identity or listener is opened when reporting compiled compatibility.
+pub fn release_profile() -> bbsbox_maintenance::release_payload::RuntimeProfile {
+    let mut module_migrations = migrations()
+        .iter()
+        .map(bbsbox_maintenance::release::ModuleMigration::from)
+        .collect::<Vec<_>>();
+    module_migrations.sort_by(|a, b| (&a.module, a.version).cmp(&(&b.module, b.version)));
+    bbsbox_maintenance::release_payload::RuntimeProfile {
+        format: bbsbox_maintenance::release_payload::PROFILE.into(),
+        version: env!("CARGO_PKG_VERSION").into(),
+        target: if cfg!(all(
+            target_os = "linux",
+            target_arch = "x86_64",
+            target_env = "gnu"
+        )) {
+            "debian13-amd64".into()
+        } else {
+            format!("{}-{}", std::env::consts::OS, std::env::consts::ARCH)
+        },
+        core_schema: bbsbox_storage::schema_version(),
+        // Conservative direct-reader claim. Earlier schemas require migration, not rollback reads.
+        readable_core_schemas: vec![bbsbox_storage::schema_version()],
+        module_migrations,
+    }
+}
 const MAX_CONFIG: u64 = 65536;
 #[derive(Clone, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]

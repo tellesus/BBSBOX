@@ -2,6 +2,13 @@
 #[tokio::main]
 async fn main() -> bbsbox_node_runtime::Result<()> {
     let args = std::env::args_os().skip(1).collect::<Vec<_>>();
+    if args.len() == 1 && args[0] == "--release-profile" {
+        println!(
+            "{}",
+            serde_json::to_string(&bbsbox_node_runtime::release_profile())?
+        );
+        return Ok(());
+    }
     if args
         .first()
         .is_some_and(|s| matches!(s.to_str(), Some("backup" | "restore" | "backup-keygen")))

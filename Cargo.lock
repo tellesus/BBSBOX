@@ -344,6 +344,8 @@ dependencies = [
  "bbsbox-identity",
  "bbsbox-maintenance",
  "bbsbox-storage",
+ "hex",
+ "rand_core",
  "rustls",
  "serde",
  "serde_json",

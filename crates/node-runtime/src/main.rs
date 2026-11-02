@@ -11,6 +11,18 @@ async fn main() -> bbsbox_node_runtime::Result<()> {
     }
     if args
         .first()
+        .and_then(|s| s.to_str())
+        .is_some_and(|s| s.starts_with("release-"))
+    {
+        let result = tokio::task::spawn_blocking(move || {
+            bbsbox_node_runtime::release_operator::command(&args)
+        })
+        .await??;
+        println!("{}", serde_json::to_string(&result)?);
+        return Ok(());
+    }
+    if args
+        .first()
         .is_some_and(|s| matches!(s.to_str(), Some("backup" | "restore" | "backup-keygen")))
     {
         let result =

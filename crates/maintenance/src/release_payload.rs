@@ -65,16 +65,18 @@ fn read_manifest(root: &Path) -> Result<Vec<u8>> {
     }
     Ok(bytes)
 }
-fn check_files(root: &Path, signed: &SignedRelease) -> Result<()> {
+fn check_files(root: &Path, signed: &SignedRelease, manifest_present: bool) -> Result<()> {
     let manifest = signed.manifest();
-    let expected_files = manifest
+    let mut expected_files = manifest
         .files
         .iter()
         .map(|f| f.path.as_str())
-        .chain([MANIFEST])
         .collect::<BTreeSet<_>>();
-    if expected_files.len() != manifest.files.len() + 1 {
+    if expected_files.contains(MANIFEST) {
         return Err("release cannot inventory its own manifest".into());
+    }
+    if manifest_present {
+        expected_files.insert(MANIFEST);
     }
     let mut expected_directories = BTreeSet::new();
     for name in &expected_files {
@@ -132,7 +134,7 @@ fn check_files(root: &Path, signed: &SignedRelease) -> Result<()> {
     {
         return Err("release binary must be ELF64 little-endian amd64".into());
     }
-    if read_manifest(root)? != signed.encoded() {
+    if manifest_present && read_manifest(root)? != signed.encoded() {
         return Err("release manifest changed during verification".into());
     }
     Ok(())
@@ -143,8 +145,32 @@ fn check_files(root: &Path, signed: &SignedRelease) -> Result<()> {
 pub fn verify(root: &Path, expected_key: &[u8; 32]) -> Result<SignedRelease> {
     let root = directory(root)?;
     let signed = release::verify_manifest(&read_manifest(&root)?, expected_key)?;
-    check_files(&root, &signed)?;
+    check_files(&root, &signed, true)?;
     Ok(signed)
+}
+
+/// Producer preflight before publishing the signature file; does not inspect material semantics.
+pub fn verify_unsigned(root: &Path, signed: &SignedRelease) -> Result<()> {
+    check_files(&directory(root)?, signed, false)
+}
+
+/// Inventory a producer-controlled unsigned directory before adding its manifest.
+pub fn inventory_unsigned(root: &Path) -> Result<Vec<crate::inventory::FileRecord>> {
+    let root = directory(root)?;
+    match fs::symlink_metadata(root.join(MANIFEST)) {
+        Ok(_) => return Err("release manifest already exists".into()),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => (),
+        Err(error) => return Err(error.into()),
+    }
+    Ok(archive::inventory(
+        &root,
+        crate::Limits {
+            max_files: 128,
+            max_manifest: release::MAX_MANIFEST,
+            max_member_bytes: 2 * 1024 * 1024 * 1024,
+            max_total_bytes: 4 * 1024 * 1024 * 1024,
+        },
+    )?)
 }
 
 /// Copy into a fresh private directory, rechecking every copied byte and exact inventory.

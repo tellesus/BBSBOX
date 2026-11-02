@@ -24,6 +24,7 @@ use std::{
 
 pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 pub mod operator;
+pub mod release_operator;
 /// No filesystem, identity or listener is opened when reporting compiled compatibility.
 pub fn release_profile() -> bbsbox_maintenance::release_payload::RuntimeProfile {
     let mut module_migrations = migrations()

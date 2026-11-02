@@ -9,10 +9,15 @@ import subprocess
 import sys
 import time
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]/'tools'))
+import release_materials as materials
 
-def rebuild(root, cargo, rustc, expected_profile, output):
+
+def rebuild(root, material_directory, source_commit, cargo, rustc, expected_profile, output):
     if sys.platform != 'linux' or os.geteuid() != 0 or {name for _, name in socket.if_nameindex()} != {'lo'} or os.readlink('/proc/self/ns/net') == os.readlink('/proc/1/ns/net'):
         raise ValueError('Rebuild fixture requires its own root-owned loopback-only network namespace')
+    # Verify/copy into a fresh private root in this namespace before compiling those exact inputs.
+    material_report = materials.extract(material_directory, source_commit, root)
     root = root.resolve(strict=True)
     cargo = cargo.resolve(strict=True)
     rustc = rustc.resolve(strict=True)
@@ -41,7 +46,7 @@ def rebuild(root, cargo, rustc, expected_profile, output):
         expected = source.read(65537)
     if len(expected) > 65536 or information != json.loads(expected) or information.get('format') != 'bbsbox.release-runtime/v1' or information.get('target') != 'debian13-amd64':
         raise ValueError('Rebuilt executable does not report the expected target/profile')
-    report = dict(format='bbsbox.offline-material-rebuild/v1', compiler=version, elapsed_seconds=round(time.monotonic()-started, 2), empty_cargo_home=True, empty_target=True, network='isolated-loopback-only', compiled_profile_matches_candidate=True, compiled_profile=information)
+    report = dict(format='bbsbox.offline-material-rebuild/v1', compiler=version, elapsed_seconds=round(time.monotonic()-started, 2), source_commit=source_commit, materials_sha256=material_report['sha256'], binary_sha256=materials.file_digest(binary), empty_cargo_home=True, empty_target=True, network='isolated-loopback-only', compiled_profile_matches_candidate=True, compiled_profile=information)
     with output.open('x', encoding='utf-8') as destination:
         json.dump(report, destination, indent=2)
         destination.write('\n')
@@ -51,12 +56,14 @@ def rebuild(root, cargo, rustc, expected_profile, output):
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--root',type=Path,required=True)
+    parser.add_argument('--materials',type=Path,required=True)
+    parser.add_argument('--source-commit',required=True)
     parser.add_argument('--cargo',type=Path,required=True)
     parser.add_argument('--rustc',type=Path,required=True)
     parser.add_argument('--expected-profile',type=Path,required=True)
     parser.add_argument('--output',type=Path,required=True)
     args=parser.parse_args()
-    print(json.dumps(rebuild(args.root,args.cargo,args.rustc,args.expected_profile,args.output),indent=2))
+    print(json.dumps(rebuild(args.root,args.materials,args.source_commit,args.cargo,args.rustc,args.expected_profile,args.output),indent=2))
 
 
 if __name__=='__main__': main()

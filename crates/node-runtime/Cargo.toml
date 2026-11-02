@@ -17,6 +17,8 @@ bbsbox-maintenance = { path = "../maintenance" }
 bbsbox-credentials = { path = "../credentials" }
 tempfile = "3"
 zeroize = "1"
+hex = "0.4"
+rand_core = { version = "0.6", features = ["getrandom"] }
 axum = "0.8"
 axum-server = { version = "0.8", features = ["tls-rustls-no-provider"] }
 rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }

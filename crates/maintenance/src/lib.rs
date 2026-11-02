@@ -3,6 +3,7 @@
 use std::{fmt, io};
 
 pub mod archive;
+pub mod checkpoints;
 pub mod inventory;
 pub mod snapshot;
 pub use age::secrecy as age_secret;
@@ -23,6 +24,11 @@ pub enum Error {
     Encryption,
     Decryption,
     IncompleteSnapshot,
+    CheckpointUnavailable,
+    CheckpointResumeFailed {
+        request: [u8; 16],
+        games: Vec<String>,
+    },
 }
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -40,6 +46,12 @@ impl fmt::Display for Error {
             Self::Decryption => f.write_str("backup decryption failed"),
             Self::IncompleteSnapshot => {
                 f.write_str("snapshot contents are incomplete or unsupported")
+            }
+            Self::CheckpointUnavailable => {
+                f.write_str("an installed worker could not provide its checkpoint")
+            }
+            Self::CheckpointResumeFailed { .. } => {
+                f.write_str("a checkpoint worker needs attention before resuming")
             }
         }
     }

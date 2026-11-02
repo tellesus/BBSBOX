@@ -1,8 +1,8 @@
 # M12 — Offline updates, backup and continuity
 
-Brief revision 1.1.5 · Roadmap baseline 1.1.0 · 2026-11-01 · Locked scope · Product baseline 0.6.0.
+Brief revision 1.1.6 · Roadmap baseline 1.1.0 · 2026-11-01 · Locked scope · Product baseline 0.6.0.
 
-**State:** In progress under continued development authority. C01 v1.4.0 maintenance/barrier and encrypted archives pass local/Linux checks. Current foundation-node capture/operator backup and isolated restore pass local checks; actual guest integration awaits CI. Game checkpoints, releases and recovered activation remain open.
+**State:** In progress under continued development authority. Foundation-node backup/isolated restore pass actual Debian lifecycle checks. Worker checkpoint collection passes local provider fixtures; full game-node snapshot/restore, releases and recovered activation remain open. C01 v1.4.0/C02 v1.4.1 are unchanged.
 
 ## Read only this packet
 

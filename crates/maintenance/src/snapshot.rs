@@ -101,7 +101,11 @@ fn write_new(path: &Path, data: &[u8]) -> Result<()> {
     file.sync_all()?;
     Ok(())
 }
-fn copy_records(source: &Path, destination: &Path, records: &[FileRecord]) -> Result<()> {
+pub(crate) fn copy_records(
+    source: &Path,
+    destination: &Path,
+    records: &[FileRecord],
+) -> Result<()> {
     archive::private_directory(destination)?;
     let mut directories = vec![destination.to_path_buf()];
     for record in records {

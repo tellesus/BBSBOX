@@ -2,6 +2,8 @@
 
 Implementation reference for the [canonical storage brief](../../docs/development/modules/M02-storage-jobs.md) and [C01](../../docs/development/contracts/C01-storage-runtime.md). Product authority remains the roadmap and user instructions.
 
+Maintenance uses `verify_exact_registry(path, migrations)` for read-only preflight. Missing storage, unknown/changed SQL hashes, absent/pending migrations and invalid registries fail without creating a database or applying an upgrade. This complements normal startup migrations; it grants no writer or recovery-activation authority.
+
 The first core crate owns a SQLite WAL/FULL writer connection. `Database::transaction` records a scoped command's request fingerprint, module mutation and response receipt in one transaction. A matching retry returns the durable response without rerunning work; reusing an ID with different request bytes fails. Namespaces must bind the authenticated actor/action/resource context, and callers own the canonical request encoding. There is no HTTP authentication or game database access in this crate.
 
 The migration registry validates contiguous, unique module versions and records SQL hashes. All missing migrations run in one transaction; failing SQL rolls back the module/core bootstrap. Altered or removed applied migrations, schema downgrades and foreign databases fail explicitly. Keep migrations registered when a module is disabled. The reader helper opens an independent read-only connection; tests verify committed state stays readable during a write.

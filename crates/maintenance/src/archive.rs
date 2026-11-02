@@ -35,19 +35,23 @@ fn output(path: &Path) -> Result<PathBuf> {
         Err(error) => Err(error.into()),
     }
 }
-fn private_directory(path: &Path) -> Result<()> {
+pub(crate) fn private_directory(path: &Path) -> Result<()> {
     #[cfg(unix)]
     {
         use std::os::unix::fs::DirBuilderExt;
         let mut builder = fs::DirBuilder::new();
         builder.mode(0o700);
         builder.create(path)?;
+        use std::os::unix::fs::PermissionsExt;
+        if fs::metadata(path)?.permissions().mode() & 0o077 != 0 {
+            return Err(Error::UnsafePath);
+        }
     }
     #[cfg(not(unix))]
     fs::create_dir(path)?;
     Ok(())
 }
-fn private_file(path: &Path) -> Result<File> {
+pub(crate) fn private_file(path: &Path) -> Result<File> {
     let mut options = OpenOptions::new();
     options.write(true).create_new(true);
     #[cfg(unix)]
@@ -55,16 +59,24 @@ fn private_file(path: &Path) -> Result<File> {
         use std::os::unix::fs::OpenOptionsExt;
         options.mode(0o600);
     }
-    Ok(options.open(path)?)
+    let file = options.open(path)?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        if file.metadata()?.permissions().mode() & 0o077 != 0 {
+            return Err(Error::UnsafePath);
+        }
+    }
+    Ok(file)
 }
-fn sync_directory(path: &Path) -> Result<()> {
+pub(crate) fn sync_directory(path: &Path) -> Result<()> {
     #[cfg(unix)]
     File::open(path)?.sync_all()?;
     #[cfg(not(unix))]
     let _ = path;
     Ok(())
 }
-fn hash_file(path: &Path, maximum: u64) -> Result<(u64, String)> {
+pub(crate) fn hash_file(path: &Path, maximum: u64) -> Result<(u64, String)> {
     let metadata = fs::symlink_metadata(path)?;
     if !metadata.is_file() || metadata.file_type().is_symlink() {
         return Err(Error::UnsafePath);
@@ -93,6 +105,13 @@ fn hash_file(path: &Path, maximum: u64) -> Result<(u64, String)> {
     Ok((count, hex::encode(hash.finalize())))
 }
 pub fn inventory(root: &Path, limits: Limits) -> Result<Vec<FileRecord>> {
+    inventory_except(root, limits, &[])
+}
+pub(crate) fn inventory_except(
+    root: &Path,
+    limits: Limits,
+    excluded: &[&str],
+) -> Result<Vec<FileRecord>> {
     limits.validate()?;
     if fs::symlink_metadata(root)?.file_type().is_symlink() {
         return Err(Error::UnsafePath);
@@ -120,6 +139,12 @@ pub fn inventory(root: &Path, limits: Limits) -> Result<Vec<FileRecord>> {
                 .join("/");
             if !inventory::valid_path(&name) || metadata.file_type().is_symlink() {
                 return Err(Error::UnsafePath);
+            }
+            if excluded.contains(&name.as_str()) {
+                if !metadata.is_file() {
+                    return Err(Error::UnsafePath);
+                }
+                continue;
             }
             if metadata.is_dir() {
                 directories.push(path);

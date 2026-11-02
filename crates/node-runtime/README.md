@@ -1,6 +1,6 @@
-# M01 A — local node runtime
+# Local node runtime and maintenance commands
 
-Implementation reference for [M01](../../docs/development/modules/M01-offline-appliance.md) and [C01](../../docs/development/contracts/C01-storage-runtime.md). Product canon remains the roadmap and current user instructions. This is A's runtime checkpoint; Debian installation, network provisioning and M01 B/C remain pending.
+Implementation reference for [M01](../../docs/development/modules/M01-offline-appliance.md) and [C01](../../docs/development/contracts/C01-storage-runtime.md). Product canon remains the roadmap and current user instructions. M01 is complete as a software provider; [deployment evidence](../../deploy/README.md) covers actual Debian installation, network provisioning and B/C lifecycle checks. Physical router/radio/phone acceptance remains G1.
 
 `bbsbox-node --config <node.json>` starts the real M02 single writer with M03 identity and M04 event migrations, activates the node signer, and serves bundled status assets plus `/api/v1/node` over TLS. Node identity survives restart; restored recovery-marked storage cannot activate. The runtime retains the signing capability privately. Its read-only public status exposes format/name/node ID/software version/readiness, with no private state or account provisioning endpoint. M05 owns the community shell/authentication routes.
 
@@ -35,13 +35,13 @@ The existing independently tested M00 syscall auditor requires actual listener/a
 
 The primary `origin` and up to eight optional `additional_origins` must be unique bare HTTPS origins on the listening port. Existing configuration without either additional field remains valid. Requests must match one exact configured authority; conflicting Host/URI addresses are rejected even when both are configured aliases. TLS material must cover each advertised address and parse before storage/listener startup. The bundled status page uses self-hosted CSS/JavaScript, text-only DOM assignment, dark colors on black and a restrictive content policy. The server performs no DNS lookup, time synchronization, ACME request, update fetch or telemetry. M05 must enforce origin/session policy on its eventual account routes; address aliases alone grant no account access.
 
-[The systemd unit](../../deploy/systemd/bbsbox.service) defines the intended `/opt/bbsbox/current`, `/etc/bbsbox` and `/var/lib/bbsbox` layout, unprivileged user, private state and a 20-second service stop bound around the runtime's 10-second connection drain. Install/user creation/TLS ownership and actual unit execution remain the next A slice; this checked-in unit alone is not an installed or verified appliance. M12 supplies signed release/update and coordinated backup activation. Its full integration depends on M01 completion.
+[The systemd unit](../../deploy/systemd/bbsbox.service) uses the `/opt/bbsbox/current`, `/etc/bbsbox` and `/var/lib/bbsbox` layout, unprivileged user, private state and a 20-second service stop bound around the runtime's 10-second connection drain. Install/user creation/TLS ownership and actual unit execution/restarts/reboots pass the Debian fixture. M12 owns signed release/update and coordinated recovery activation.
 
-[The developer install fixture](../../deploy/README.md) now implements that first-install layout and candidate Debian boot test. Its actual service execution must pass CI before being recorded as evidence; network provisioning and physical appliance acceptance remain pending.
+[The developer install fixture](../../deploy/README.md) implements first install, actual service/network boot, local renewal/diagnostics and fresh-media reinstall. Its software checks pass CI; physical appliance acceptance remains pending.
 
-The selected first appliance target is [Debian 13 trixie amd64](https://www.debian.org/releases/trixie/), the verified stable family as of 2026-10-31. Service directives follow the official [systemd service](https://www.freedesktop.org/software/systemd/man/latest/systemd.service.html) and [execution environment](https://www.freedesktop.org/software/systemd/man/latest/systemd.exec.html) documentation; the actual target version still needs execution evidence. Neither this reference nor a test CA is a release trust root.
+The selected first appliance target is [Debian 13 trixie amd64](https://www.debian.org/releases/trixie/), verified as of 2026-10-31 and exercised by the Debian fixture. Service directives follow the official [systemd service](https://www.freedesktop.org/software/systemd/man/latest/systemd.service.html) and [execution environment](https://www.freedesktop.org/software/systemd/man/latest/systemd.exec.html) documentation. Neither this reference nor a test CA is a release trust root.
 
-Four Rust tests cover bounded config validation, literal/local addressing, exact status surface, real registered migrations, offline initialization, restart identity and exclusive writer ownership. The real-process HTTPS smoke complements those checks. M01 remains In progress until offline installation/service execution, full-host network boundaries, local address enrollment and recovery/reinstall procedures pass.
+Four base Rust tests cover bounded config validation, literal/local addressing, exact status surface, real registered migrations, offline initialization, restart identity and exclusive writer ownership. The real-process HTTPS smoke and Debian lifecycle checks complement them. M01 software completion does not grant G1 physical device acceptance or M12 recovery activation.
 
 ## Prepared development payload
 
@@ -55,3 +55,17 @@ python3 tools/runtime_bundle.py verify work/runtime-bundle
 [The builder/verifier](../../tools/runtime_bundle.py) copies the ELF64 amd64 executable, candidate unit, config example and license notices into a fresh destination. A bounded canonical manifest lists exact bytes/SHA-256 values and the source commit/dirty flag; it is written last and existing destinations are refused. Verification rejects incomplete/changed/unlisted files, path escapes, duplicates, symlinked members, unknown formats and wrong executable targets. It performs no download, install or service activation.
 
 This format is explicitly a development payload, supplying integrity/target checks for local install tests. M12 owns authenticated signed releases, installed trust roots, dependency/source packaging and updates. No production release or completed appliance installation is implied by preparing this payload. CI checks a real Linux binary; portable unit fixtures use a labeled synthetic ELF header and never execute it.
+
+## Local maintenance commands
+
+The same installed binary exposes local `backup-keygen`, `backup` and `restore` commands. Each rejects unknown/duplicate/missing options and opens no HTTP listener. These consume [M12 snapshot/archive primitives](../maintenance/README.md), not a separate migration registry.
+
+```sh
+bbsbox-node backup-keygen --output /private/operator-backup.key
+bbsbox-node backup --config /etc/bbsbox/node.json --node node:EXPECTED_DIGEST --recipient age1RECIPIENT --output /media/backup/node.age --staging /private/local-staging
+bbsbox-node restore --archive /media/backup/node.age --node node:EXPECTED_DIGEST --identity-file /private/operator-backup.key --output /private/isolated-restore --staging /private/local-staging
+```
+
+Replace example identities/paths with real values. Key generation writes a fresh private file and prints only its public recipient. Keep the operator identity separately from removable backup media. Backup requires a stopped/drained source service and serializes against TLS renewal. Read-only preflight rejects missing/mismatched identity or registry before writer startup, preventing accidental initialization or schema upgrades. Current scope is the foundation node with no installed games. The [Debian helper](../../deploy/backup_development.py) handles service stop/resume, root-owned CA staging and known source-file ownership; prefer it on the installed development node.
+
+Restore writes a fresh isolated copy; configuration remains staged and the database keeps its persistent recovery block. It never installs files, removes recovery markers, resumes signing, or activates a second copy of the source. Local tests exercise real providers, wrong/live/missing sources, configuration lock exclusion, output preservation and private temporary-stage cleanup. Actual guest service integration needs the containing checkpoint's CI evidence. Recovery reconciliation/activation and production release trust remain M12 work.

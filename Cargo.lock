@@ -337,8 +337,10 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "axum-server",
+ "bbsbox-credentials",
  "bbsbox-event-core",
  "bbsbox-identity",
+ "bbsbox-maintenance",
  "bbsbox-storage",
  "rustls",
  "serde",
@@ -346,6 +348,7 @@ dependencies = [
  "tempfile",
  "tokio",
  "tower",
+ "zeroize",
 ]
 
 [[package]]

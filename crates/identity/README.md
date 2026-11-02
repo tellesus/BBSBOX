@@ -44,6 +44,8 @@ Links preserve local accounts and roles. Username equality across nodes never me
 
 Maintenance uses `NodeSigner::start_existing(database, expected_node)` when it must sign for an established source. A missing, mismatched or corrupt node fails without initializing/replacing its identity. A matching source retains its key and receives a fresh incarnation; the same recovery marker still blocks startup. This does not provide restore activation or bypass the writer lock.
 
+`NodeSigner::inspect_existing(path)` checks the stored public/seed relationship through a read-only connection and returns only NodeId. It neither creates identity nor obtains signing authority. It can inspect a recovery-blocked isolated restore while leaving its marker intact.
+
 The node seed is part of the private core snapshot. Client roots remain only in the client/user-held kit. Unix live database/sidecar permissions are 0600, and core snapshots already use private directories/files. Complete node backups still require M12's configuration/game coordination. Tests cover cold restart with stable node identity/fresh incarnation, stale-context denial, corrupt-state rejection and real core restore refusing to start a signer. Scoped event counters and actual restored-node reactivation remain M04/M12 integration.
 
 New credentials/link proofs use v2 with explicit COSE Ed25519 (-19). The verifier retains immutable v1 (-8) records; accepted v1 link receipts retry against their stored original bytes. No migration rewrites signed data.

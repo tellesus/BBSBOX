@@ -95,6 +95,18 @@ Use fresh developer OS media with the prepared dependencies, matching source and
 
 The [fresh-media fixture](ci/reinstall.py) installs twice in separate fresh prepared OS layers with networking disabled and registry pulls forbidden. It requires two new node IDs distinct from the retained source and checks the source database/configuration/public CA bytes remain unchanged. The prepared Docker stage contains dependencies/source/payload but no initialized node; each run generates its own identity. The fresh-media fixture passes CI, with the retained source unchanged.
 
+## Development backup and isolated restore
+
+The [cold-backup helper](backup_development.py) uses the same installed runtime and migration registry. Generate the operator backup identity in a separate private location with `bbsbox-node backup-keygen --output /private/operator-backup.key`; it prints only the public `age1...` recipient. Keep the secret separately from backup media. On the Debian development node:
+
+```sh
+sudo python3 deploy/backup_development.py --development --recipient age1RECIPIENT --output /media/backup/node.age
+```
+
+Replace the recipient/path with real values. The helper serializes local maintenance, stops/drains an active service, captures the current node's database/blobs/configuration/server keys into root-private local staging, encrypts/signs the export, repairs only known source SQLite/lock ownership, and resumes a previously active service. It refuses existing output and output inside live node storage/configuration. Backup serialization also excludes concurrent leaf renewal; the CA/backup keys remain separate. This first profile covers the foundation node with no installed games; actual game checkpoints must join the coordinator later.
+
+Use `bbsbox-node restore --archive /media/backup/node.age --node node:EXPECTED_DIGEST --identity-file /private/operator-backup.key --output /private/isolated-restore --staging /private/local-staging` to verify/decrypt into a fresh isolated directory. It preserves source identity and writes `data/`, staged `configuration/` and a recovery report. It neither replaces live configuration nor starts a writer. The persistent database recovery marker remains until M12's reconciliation/continuation procedure is implemented. Client-held root recovery remains separate. Local provider/command tests pass; actual Debian service ownership/resume/CA/restore assertions await this checkpoint's CI. Signed production releases, scheduling/retention and recovered activation remain open.
+
 ## Router/AP settings for the G1 hardware check
 
 Use an isolated local SSID bridged to the node's client interface. For the current example profile:

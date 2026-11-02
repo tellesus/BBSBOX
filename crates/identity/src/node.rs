@@ -14,6 +14,30 @@ pub struct NodeSigner {
     id: NodeId,
 }
 impl NodeSigner {
+    /// Read-only source/snapshot inspection. This grants no signing or restore-activation authority.
+    pub fn inspect_existing(path: impl AsRef<std::path::Path>) -> Result<NodeId> {
+        let connection = bbsbox_storage::open_reader(path)?;
+        let (public, raw): (Vec<u8>, Vec<u8>) = connection
+            .query_row(
+                "SELECT public_key,seed FROM identity_node_identity WHERE id=1",
+                [],
+                |r| Ok((r.get(0)?, r.get(1)?)),
+            )
+            .optional()?
+            .ok_or(Error::InvalidNodeState)?;
+        let raw = Zeroizing::new(raw);
+        let seed: Zeroizing<[u8; 32]> = Zeroizing::new(
+            raw.as_slice()
+                .try_into()
+                .map_err(|_| Error::InvalidNodeState)?,
+        );
+        let key = SigningKey::from_bytes(&seed);
+        let derived = key.verifying_key().to_bytes();
+        if public.as_slice() != derived {
+            return Err(Error::InvalidNodeState);
+        }
+        Ok(NodeId::from_public_key(&derived)?)
+    }
     /// Use on the storage writer at startup. Restored storage remains blocked until M12 activation.
     pub fn start(database: &mut Database) -> Result<Self> {
         Self::load(database, None)

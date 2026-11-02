@@ -38,9 +38,31 @@ def leader(root):
     return None
 
 
-def enter(pid,root,arguments,check=True):
+def enter(pid,root,arguments,check=True,timeout=20):
     if not private_process(pid,root):raise RuntimeError('Refusing to enter anything except this private test OS')
-    return subprocess.run(['nsenter','--target',str(pid),'--mount','--pid','--net','--root','--wd','--',*arguments],capture_output=True,check=check,timeout=20)
+    return subprocess.run(['nsenter','--target',str(pid),'--mount','--pid','--net','--root','--wd','--',*arguments],capture_output=True,check=check,timeout=timeout)
+
+
+def maintenance(pid,root,node):
+    binary='/opt/bbsbox/current/bbsbox-node'
+    recipient=json.loads(enter(pid,root,[binary,'backup-keygen','--output','/root/bbsbox-ci-backup.key']).stdout)['recipient']
+    original_ca=(root/'etc/bbsbox/tls/ca-key.pem').read_bytes()
+    result=json.loads(enter(pid,root,['/usr/bin/python3','/src/deploy/backup_development.py','--development','--output','/root/bbsbox-ci-backup.age','--recipient',recipient],timeout=120).stdout)
+    assert result['node']==node and result['service_resumed'] and result['scope']=='foundation-node'
+    assert enter(pid,root,['/usr/bin/systemctl','is-active','bbsbox.service']).stdout.strip()==b'active'
+    service_identity(pid,root)
+    restored=json.loads(enter(pid,root,[binary,'restore','--archive','/root/bbsbox-ci-backup.age','--node',node,'--identity-file','/root/bbsbox-ci-backup.key','--output','/root/bbsbox-ci-restored','--staging','/var/lib/bbsbox-maintenance'],timeout=120).stdout)
+    assert restored['state']=='recovery-required' and restored['node']==node
+    target=root/'root/bbsbox-ci-restored'
+    assert (target/'data/node.sqlite.recovery-required').is_file()
+    assert not (target/'.restore-incomplete').exists()
+    assert (target/'configuration/tls/ca-key.pem').read_bytes()==original_ca
+    assert (root/'etc/bbsbox/tls/ca-key.pem').read_bytes()==original_ca
+    recovery=json.loads((target/'recovery.json').read_text())
+    assert recovery['state']=='recovery-required' and recovery['post_snapshot_writes']=='not-reconciled'
+    # Check ownership inside the guest, whose service UID is independent of the CI host.
+    enter(pid,root,['/usr/bin/runuser','-u','bbsbox','--','/usr/bin/test','-O','/var/lib/bbsbox/node.sqlite'])
+    return dict(cold_backup=True,actual_root_ca_preserved=True,service_resumed_unprivileged=True,isolated_restore=True,recovery_required=True)
 
 
 def probe(root):
@@ -116,12 +138,13 @@ def boot(root,output):
                 pid,restarted=wait_ready(process,root)
                 assert restarted['node_id']==info['node_id'] and service_identity(pid,root)!=first_pid
                 if attempt==0:
+                    maintenance_result=maintenance(pid,root,info['node_id'])
                     enter(pid,root,['/usr/bin/systemctl','stop','bbsbox.service'])
                     config_path=root/'etc/bbsbox/node.json';config=json.loads(config_path.read_text());config.update(bind='[::1]:8443',origin='https://[::1]:8443')
                     config_path.write_text(json.dumps(config)+'\n')
                     enter(pid,root,['/usr/bin/systemctl','start','bbsbox.service'])
                     pid,ipv6=wait_ready(process,root);assert ipv6['node_id']==info['node_id'];service_identity(pid,root)
-                cases.append(dict(boot=attempt+1,actual_unit=True,unprivileged=True,https=True,restart_identity_preserved=True,isolated_loopback_only=True))
+                cases.append(dict(boot=attempt+1,actual_unit=True,unprivileged=True,https=True,restart_identity_preserved=True,isolated_loopback_only=True,maintenance=maintenance_result if attempt==0 else None))
             except Exception:
                 pid=pid or leader(root)
                 if pid and private_process(pid,root):

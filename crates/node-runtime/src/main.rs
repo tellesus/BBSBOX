@@ -2,6 +2,16 @@
 #[tokio::main]
 async fn main() -> bbsbox_node_runtime::Result<()> {
     let args = std::env::args_os().skip(1).collect::<Vec<_>>();
+    if args
+        .first()
+        .is_some_and(|s| matches!(s.to_str(), Some("backup" | "restore" | "backup-keygen")))
+    {
+        let result =
+            tokio::task::spawn_blocking(move || bbsbox_node_runtime::operator::command(&args))
+                .await??;
+        println!("{}", serde_json::to_string(&result)?);
+        return Ok(());
+    }
     let initialize = args.len() == 3 && args[2] == "--initialize";
     if !(args.len() == 2 || initialize) || args[0] != "--config" {
         return Err("Usage: bbsbox-node --config <node.json> [--initialize]".into());

@@ -96,6 +96,7 @@ fn maintenance_never_creates_or_replaces_a_missing_wrong_or_corrupt_node() {
     let directory = tempfile::tempdir().unwrap();
     let path = directory.path().join("node.sqlite");
     let mut database = Database::open(&path, &migrations()).unwrap();
+    assert!(NodeSigner::inspect_existing(&path).is_err());
     let wrong = bbsbox_credentials::NodeId::from_digest([1; 32]);
     assert!(matches!(
         NodeSigner::start_existing(&mut database, wrong),
@@ -110,6 +111,7 @@ fn maintenance_never_creates_or_replaces_a_missing_wrong_or_corrupt_node() {
         0
     );
     let original = NodeSigner::start(&mut database).unwrap();
+    assert_eq!(NodeSigner::inspect_existing(&path).unwrap(), original.id());
     assert!(matches!(
         NodeSigner::start_existing(&mut database, wrong),
         Err(Error::InvalidNodeState)
@@ -120,6 +122,7 @@ fn maintenance_never_creates_or_replaces_a_missing_wrong_or_corrupt_node() {
     let raw = rusqlite::Connection::open(&path).unwrap();
     raw.execute("UPDATE identity_node_identity SET seed=zeroblob(32)", [])
         .unwrap();
+    assert!(NodeSigner::inspect_existing(&path).is_err());
     assert!(matches!(
         NodeSigner::start_existing(&mut database, original.id()),
         Err(Error::InvalidNodeState)

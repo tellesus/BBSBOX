@@ -1,6 +1,6 @@
 # M01 — Offline appliance and local access
 
-Brief revision 1.1.12 · Roadmap baseline 1.1.0 · 2026-11-01 · Locked scope · Product baseline 0.6.0.
+Brief revision 1.1.13 · Roadmap baseline 1.1.0 · 2026-11-01 · Locked scope · Product baseline 0.6.0.
 
 **State:** Complete as a software provider under continued development authority after Windows/Linux A–C evidence. Actual Debian install, isolated network/OS boot, renewal, diagnostics, capture and fresh-media checks pass. G1 physical router/radio/device acceptance remains pending; M12 consumes this interface next.
 
@@ -24,6 +24,8 @@ Use a Debian stable base, systemd service, Rust binary/static assets, local DNS/
 ## Ownership and interfaces
 
 deploy/ and crates/node-runtime/ own installation config, local address/certificate state, service manifests and local-only diagnostics. Runtime registers real M02–M04 providers and owns no member keys. See the [runtime reference](../../../crates/node-runtime/README.md).
+
+M12 consumes the same installed binary/registry for local backup/key generation/isolated restore. Its helper handles a service maintenance window and root-owned configuration secrets; restoration does not activate service/signing. M01 provider completion is unchanged.
 
 Runtime/status code, initialization/payload tools and a verified developer first-install/service fixture exist. B adds explicit dual-stack listeners/local DNS-IP origins and prepared interface/subnet firewall/DNS files. Inactive-tree host/network/LAN certificates and actual boot fixtures pass CI; device enrollment remains a G1 check. Consume the contracts in the reading packet; changes need affected-consumer updates. Disabled optional modules retain data and preserve unrelated services. See the [install fixture](../../../deploy/README.md).
 

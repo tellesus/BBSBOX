@@ -464,3 +464,50 @@ pub fn open_reader(path: impl AsRef<Path>) -> Result<Connection> {
     configure(&connection, false)?;
     Ok(connection)
 }
+
+/// Maintenance preflight: require an exact installed registry without migrating or creating storage.
+pub fn verify_exact_registry(path: impl AsRef<Path>, migrations: &[Migration]) -> Result<()> {
+    let mut expected = BTreeMap::new();
+    for migration in migrations {
+        if !valid_key(migration.module)
+            || migration.version == 0
+            || expected
+                .insert(
+                    (migration.module.to_string(), migration.version),
+                    Sha256::digest(migration.sql.as_bytes()).to_vec(),
+                )
+                .is_some()
+        {
+            return Err(Error::InvalidMigration);
+        }
+    }
+    let mut highest = BTreeMap::new();
+    for (module, version) in expected.keys() {
+        let previous = highest.entry(module).or_insert(0);
+        if *version != *previous + 1 {
+            return Err(Error::InvalidMigration);
+        }
+        *previous = *version;
+    }
+    let connection = open_reader(path)?;
+    let mut query = connection
+        .prepare("SELECT module,version,digest FROM core_migrations ORDER BY module,version")?;
+    let mut count = 0usize;
+    for row in query.query_map([], |r| {
+        Ok((
+            r.get::<_, String>(0)?,
+            r.get::<_, u32>(1)?,
+            r.get::<_, Vec<u8>>(2)?,
+        ))
+    })? {
+        let (module, version, digest) = row?;
+        if expected.get(&(module, version)) != Some(&digest) {
+            return Err(Error::ChangedOrUnknownMigration);
+        }
+        count += 1;
+    }
+    if count != expected.len() {
+        return Err(Error::ChangedOrUnknownMigration);
+    }
+    Ok(())
+}

@@ -1,6 +1,6 @@
 # M12 maintenance primitives
 
-Implementation reference, not scope authority. Follow the maintained [M12 brief](../../docs/development/modules/M12-maintenance-recovery.md) and current user instructions. This crate currently protects an already staged tree. Complete-node checkpoint coordination, operator commands, release verification and restored signing activation remain open.
+Implementation reference, not scope authority. Follow the maintained [M12 brief](../../docs/development/modules/M12-maintenance-recovery.md) and current user instructions. This crate protects staged files and coordinates current foundation-node storage/configuration snapshots and isolated restore. Installed-game checkpoints, release verification, scheduling/retention and restored signing activation remain open.
 
 ## Protected archive v1
 
@@ -24,4 +24,12 @@ Default defensive ceilings: 50,128 files, 8 MiB signed JSON payload, 1 TiB per m
 
 Dependency metadata for all 99 newly locked registry packages has a license expression; available choices include MIT, Apache-2.0, BSD, Unicode-3.0 and Unlicense. Selecting and bundling actual matching notices/source is still part of M12 release work; the development archive primitive is not a completed release bundle.
 
-Next: coordinate the drained core snapshot with stable configuration/node secrets and declared game checkpoints, then add operator backup/isolated restore commands. Do not call a core-only or arbitrary staged-file archive a complete node backup.
+## Foundation-node capture and isolated restore
+
+`snapshot::capture` runs inside a drained C01 maintenance callback while the caller holds configuration exclusion. It requires the existing expected node, captures a real SQLite/blob snapshot, checks the exact registered migration SQL hashes and copies bounded configuration/server secrets. Configuration is inventoried before and after copying; changed bytes/additions/deletions fail. The transient renewal lock is excluded before reads, including on Windows. Required configuration includes installation/node records, CA/key and caller-declared active certificate/key paths. Private staging must remain immutable through encryption.
+
+The canonical `snapshot.json` descriptor uses `bbsbox.foundation-node-snapshot/v1`, node identity, snapshot time, sorted configuration file size/hash records, sorted required paths and an empty `game_checkpoints` list. This profile covers the current runtime with no installed games; it rejects claimed game checkpoints. Configuration allows at most 120 files, 1 MiB per file and 8 MiB total; paths must also fit the outer inventory's bound after prefixing. A signed arbitrary tree or core-only copy never qualifies. Game checkpoints need coordinated integration before a games-enabled node can claim a complete backup.
+
+Restore rechecks every authenticated staged file, core/blob integrity, exact compiled module registry, inner node-key consistency and all required configuration. It rejects extra members even when they carry a valid node signature. Output is a fresh private directory with `data/` and `configuration/`; the M02 database recovery marker is written before its data, and `.restore-incomplete` remains until copying/verifying/synchronizing finishes. `recovery.json` records the source inventory/time and unreconciled post-snapshot writes. Configuration is staged, never installed. Read-only identity inspection works without activating a signer; both signer startup and the writer still reject recovery-marked storage.
+
+The [runtime operator commands](../node-runtime/README.md#local-maintenance-commands) consume this layer using the actual compiled migration registry. The [Debian helper](../../deploy/backup_development.py) stops/drains the real service, retains a private root-owned staging area for CA secrets, then restores only known SQLite/lock file ownership and resumes a previously active service. Actual guest integration is recorded in the work ledger when CI confirms it. Next: installed-game checkpoint coordination, recovery continuation policy, offline release/update trust and retention automation.

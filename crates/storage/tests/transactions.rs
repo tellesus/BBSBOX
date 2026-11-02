@@ -12,6 +12,52 @@ fn migrations() -> [Migration; 1] {
         sql: "CREATE TABLE fixture_counter(value INTEGER NOT NULL); INSERT INTO fixture_counter VALUES(0);",
     }]
 }
+
+#[test]
+fn exact_registry_inspection_never_initializes_or_applies_pending_migrations() {
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("node.sqlite");
+    assert!(bbsbox_storage::verify_exact_registry(&path, &migrations()).is_err());
+    assert!(!path.exists());
+    drop(Database::open(&path, &migrations()).unwrap());
+    bbsbox_storage::verify_exact_registry(&path, &migrations()).unwrap();
+    let mut pending = migrations().to_vec();
+    pending.push(Migration {
+        module: "fixture",
+        version: 2,
+        sql: "CREATE TABLE must_not_be_created(value TEXT);",
+    });
+    assert!(matches!(
+        bbsbox_storage::verify_exact_registry(&path, &pending),
+        Err(Error::ChangedOrUnknownMigration)
+    ));
+    assert!(matches!(
+        bbsbox_storage::verify_exact_registry(&path, &[]),
+        Err(Error::ChangedOrUnknownMigration)
+    ));
+    let changed = [Migration {
+        module: "fixture",
+        version: 1,
+        sql: "CREATE TABLE changed(value TEXT);",
+    }];
+    assert!(matches!(
+        bbsbox_storage::verify_exact_registry(&path, &changed),
+        Err(Error::ChangedOrUnknownMigration)
+    ));
+    assert!(matches!(
+        bbsbox_storage::verify_exact_registry(&path, &[pending[1].clone()]),
+        Err(Error::InvalidMigration)
+    ));
+    let reader = open_reader(&path).unwrap();
+    assert_eq!(
+        reader
+            .query_row("SELECT count(*) FROM core_migrations", [], |r| r
+                .get::<_, i64>(0))
+            .unwrap(),
+        1
+    );
+    assert_eq!(reader.query_row("SELECT count(*) FROM sqlite_schema WHERE name IN ('must_not_be_created','changed')",[],|r|r.get::<_,i64>(0)).unwrap(),0);
+}
 fn increment(
     db: &mut Database,
     scope: &str,

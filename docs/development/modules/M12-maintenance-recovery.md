@@ -1,8 +1,8 @@
 # M12 — Offline updates, backup and continuity
 
-Brief revision 1.1.4 · Roadmap baseline 1.1.0 · 2026-11-01 · Locked scope · Product baseline 0.6.0.
+Brief revision 1.1.5 · Roadmap baseline 1.1.0 · 2026-11-01 · Locked scope · Product baseline 0.6.0.
 
-**State:** In progress under continued development authority. Completed M01–M04 providers enable A: drain/admission control, consistent protected backups and isolated recovery-blocked restore. The C01 v1.4.0 maintenance barrier and signed encrypted staged-file archives pass local/Linux checks; full backup/activation remains open.
+**State:** In progress under continued development authority. C01 v1.4.0 maintenance/barrier and encrypted archives pass local/Linux checks. Current foundation-node capture/operator backup and isolated restore pass local checks; actual guest integration awaits CI. Game checkpoints, releases and recovered activation remain open.
 
 ## Read only this packet
 
@@ -44,6 +44,8 @@ The [maintenance reference](../../../crates/maintenance/README.md) records curre
 Use signed offline release bundles and snapshot manifests, encrypted removable backup media, and explicit operator restore/handover instructions. Default schedule: daily snapshot when configured backup media is available; keep seven daily and four weekly snapshots subject to capacity warnings. Do not erase the only good snapshot. Separate consistent checkpoints include game-worker databases. Lost post-snapshot writes remain explicitly unrecovered until reconciled; no universal zero-loss/exactly-once-after-data-loss promise.
 
 Implementation selection under continued development authority: age X25519 recipient encryption with a separate operator backup key; a node-signed, domain-separated inventory authenticates exact staged paths/sizes/hashes. Verify expected node identity and the complete encrypted stream before completing extraction. Full-node coordination and recovery blocking remain mandatory beyond archive verification.
+
+First operator path: stop/drain the service for a cold maintenance window, serialize configuration against TLS renewal, require the exact existing node/schema, and stage database/blobs/configuration/server secrets privately as root. Repair only known source database/sidecar/lock ownership before resuming a previously active service. Restore into fresh isolated storage with persistent recovery blocking and staged configuration. The initial foundation profile permits no installed game checkpoints; M11 integration must extend coordination before game-enabled backup claims. Scheduling/retention and recovery continuation remain separate work.
 
 ## Handoff
 

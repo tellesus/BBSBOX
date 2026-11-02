@@ -1,6 +1,6 @@
 # M03 — Identity, local accounts and permissions
 
-Brief revision 1.1.7 · Roadmap baseline 1.1.0 · 2026-11-01 · Product baseline 0.6.0.
+Brief revision 1.1.8 · Roadmap baseline 1.1.0 · 2026-11-01 · Product baseline 0.6.0.
 
 **State:** Complete as a provider under U22 after Windows/Linux A–C evidence. Consumer integration remains downstream. Consume C01 v1.4.0/C02 v1.4.1; new credential/link issuance uses profile v2, with immutable v1 verification.
 
@@ -30,6 +30,8 @@ crates/identity/ implements accounts, public resolution, destination linking and
 M05 owns HTTP/enrollment UI integration; A exposes authenticated SysOp account creation without a public bootstrap route. Consume listed contracts and update affected consumers together.
 
 M12 maintenance may load only an existing signer bound to the expected node. Missing/mismatched/corrupt source identity fails without replacement; restored storage remains recovery-blocked.
+
+Read-only node inspection checks the stored seed/public relationship and returns NodeId without creating a signer; inspecting isolated recovery storage never activates it.
 
 ## Sequential work slices
 

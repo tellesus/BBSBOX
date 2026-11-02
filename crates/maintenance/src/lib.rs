@@ -4,6 +4,8 @@ use std::{fmt, io};
 
 pub mod archive;
 pub mod inventory;
+pub mod snapshot;
+pub use age::secrecy as age_secret;
 pub use age::x25519::{Identity as BackupIdentity, Recipient as BackupRecipient};
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -20,6 +22,7 @@ pub enum Error {
     ChangedSource,
     Encryption,
     Decryption,
+    IncompleteSnapshot,
 }
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -35,6 +38,9 @@ impl fmt::Display for Error {
             Self::ChangedSource => f.write_str("staged backup files changed during export"),
             Self::Encryption => f.write_str("backup encryption failed"),
             Self::Decryption => f.write_str("backup decryption failed"),
+            Self::IncompleteSnapshot => {
+                f.write_str("snapshot contents are incomplete or unsupported")
+            }
         }
     }
 }

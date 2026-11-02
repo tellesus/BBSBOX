@@ -23,6 +23,7 @@ use std::{
 };
 
 pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
+pub mod operator;
 const MAX_CONFIG: u64 = 65536;
 #[derive(Clone, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]

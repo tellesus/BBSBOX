@@ -1,8 +1,8 @@
 # M12 — Offline updates, backup and continuity
 
-Brief revision 1.1.7 · Roadmap baseline 1.1.0 · 2026-11-01 · Locked scope · Product baseline 0.6.0.
+Brief revision 1.1.8 · Roadmap baseline 1.1.0 · 2026-11-01 · Locked scope · Product baseline 0.6.0.
 
-**State:** In progress under continued development authority. Foundation backup/restore and worker checkpoints pass Linux checks. Combined game-node snapshot/restore passes local provider fixtures; actual M11 integration, releases and recovered activation remain open. C01 v1.4.0/C02 v1.4.1 are unchanged.
+**State:** In progress under continued development authority. Foundation/game-node backup/restore and worker checkpoints pass Linux checks. Release-manifest authentication passes local and independent vectors; payload verification, installation, actual M11 integration and recovered activation remain open. C01 v1.4.0/C02 v1.4.1 are unchanged.
 
 ## Read only this packet
 
@@ -32,6 +32,8 @@ The [maintenance reference](../../../crates/maintenance/README.md) records curre
 1. A: consistent backup and isolated restore with node identity/history checks. First add a writer maintenance barrier that drains accepted mutations before checkpoints; then coordinate core/configuration/checkpoint inventory and protected exports.
 2. B: offline verified install/update and interrupted migration recovery.
 3. C: source-node-loss exercise, signing continuation policy and operator handover.
+
+B implementation order: authenticate bounded manifests with a separate release authority; verify complete payload/source/dependency materials and compiled compatibility; then persist anti-rollback/key-rotation state and exercise offline installation/update/interruption recovery. A valid signature alone does not authorize installation.
 
 ## Completion evidence
 

@@ -1,9 +1,9 @@
 name: Foundation experiment
 on:
   push:
-    paths: ['spikes/m00/**', 'crates/**', 'client/**', 'protocol/**', 'deploy/**', 'Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', '.github/workflows/foundation.yml', 'tools/validate_roadmap.py', 'tools/verify_credentials.mjs', 'tools/verify_event_vectors.mjs', 'tools/verify_archive_vectors.mjs', 'tools/runtime_smoke.py', 'tools/runtime_bundle.py', 'tools/test_runtime_bundle.py', 'tools/test_install_development.py', 'tools/test_backup_development.py', 'tools/test_network_profile.py', 'tools/test_enrollment.py', 'tools/test_configure_network.py', 'tools/test_local_tls.py', 'tools/test_link_capture.py', 'docs/**']
+    paths: ['spikes/m00/**', 'crates/**', 'client/**', 'protocol/**', 'deploy/**', 'Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', '.github/workflows/foundation.yml', 'tools/validate_roadmap.py', 'tools/verify_credentials.mjs', 'tools/verify_event_vectors.mjs', 'tools/verify_archive_vectors.mjs', 'tools/verify_release_vectors.mjs', 'tools/runtime_smoke.py', 'tools/runtime_bundle.py', 'tools/test_runtime_bundle.py', 'tools/test_install_development.py', 'tools/test_backup_development.py', 'tools/test_network_profile.py', 'tools/test_enrollment.py', 'tools/test_configure_network.py', 'tools/test_local_tls.py', 'tools/test_link_capture.py', 'docs/**']
   pull_request:
-    paths: ['spikes/m00/**', 'crates/**', 'client/**', 'protocol/**', 'deploy/**', 'Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', '.github/workflows/foundation.yml', 'tools/validate_roadmap.py', 'tools/verify_credentials.mjs', 'tools/verify_event_vectors.mjs', 'tools/verify_archive_vectors.mjs', 'tools/runtime_smoke.py', 'tools/runtime_bundle.py', 'tools/test_runtime_bundle.py', 'tools/test_install_development.py', 'tools/test_backup_development.py', 'tools/test_network_profile.py', 'tools/test_enrollment.py', 'tools/test_configure_network.py', 'tools/test_local_tls.py', 'tools/test_link_capture.py', 'docs/**']
+    paths: ['spikes/m00/**', 'crates/**', 'client/**', 'protocol/**', 'deploy/**', 'Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', '.github/workflows/foundation.yml', 'tools/validate_roadmap.py', 'tools/verify_credentials.mjs', 'tools/verify_event_vectors.mjs', 'tools/verify_archive_vectors.mjs', 'tools/verify_release_vectors.mjs', 'tools/runtime_smoke.py', 'tools/runtime_bundle.py', 'tools/test_runtime_bundle.py', 'tools/test_install_development.py', 'tools/test_backup_development.py', 'tools/test_network_profile.py', 'tools/test_enrollment.py', 'tools/test_configure_network.py', 'tools/test_local_tls.py', 'tools/test_link_capture.py', 'docs/**']
 permissions:
   contents: read
 jobs:
@@ -47,6 +47,7 @@ jobs:
       - run: node ../../tools/verify_credentials.mjs
       - run: node ../../tools/verify_event_vectors.mjs
       - run: node ../../tools/verify_archive_vectors.mjs
+      - run: node ../../tools/verify_release_vectors.mjs
       - run: python3 tools/init_tls.py
       - run: npx playwright install --with-deps chromium && npm test
         working-directory: spikes/m00/web

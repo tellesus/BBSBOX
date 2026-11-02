@@ -115,7 +115,7 @@ impl Inventory {
         Ok(())
     }
 }
-fn unsigned(payload: Vec<u8>, public: &[u8; 32]) -> CoseSign1 {
+pub(crate) fn unsigned(payload: Vec<u8>, public: &[u8; 32]) -> CoseSign1 {
     CoseSign1Builder::new()
         .protected(
             HeaderBuilder::new()
@@ -191,7 +191,7 @@ fn bytes<'a>(input: &'a [u8], at: &mut usize, limit: usize) -> Result<&'a [u8]> 
     *at = end;
     Ok(result)
 }
-fn preflight(encoded: &[u8], limits: Limits) -> Result<[u8; 32]> {
+pub(crate) fn preflight(encoded: &[u8], limits: Limits) -> Result<[u8; 32]> {
     limits.validate()?;
     if encoded.len() > limits.max_manifest + 128 || encoded.first() != Some(&0x84) {
         return Err(Error::InvalidArchive);

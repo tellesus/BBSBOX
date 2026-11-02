@@ -6,6 +6,7 @@ pub mod archive;
 pub mod checkpoints;
 pub mod game_snapshot;
 pub mod inventory;
+pub mod release;
 pub mod snapshot;
 pub use age::secrecy as age_secret;
 pub use age::x25519::{Identity as BackupIdentity, Recipient as BackupRecipient};

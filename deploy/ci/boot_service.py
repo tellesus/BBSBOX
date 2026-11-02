@@ -159,6 +159,10 @@ def boot(root,output):
                 assert restarted['node_id']==info['node_id'] and service_identity(pid,root)!=first_pid
                 if attempt==0:
                     maintenance_result=maintenance(pid,root,info['node_id'])
+                    # Independent maintenance scenarios deliberately used five successful starts.
+                    # Keep the production crash-loop limit; reset only this fixture's test counter.
+                    assert int(enter(pid,root,['/usr/bin/systemctl','show','bbsbox.service','-p','StartLimitBurst','--value']).stdout)==5
+                    enter(pid,root,['/usr/bin/systemctl','reset-failed','bbsbox.service'])
                     enter(pid,root,['/usr/bin/systemctl','stop','bbsbox.service'])
                     config_path=root/'etc/bbsbox/node.json';config=json.loads(config_path.read_text());config.update(bind='[::1]:8443',origin='https://[::1]:8443')
                     config_path.write_text(json.dumps(config)+'\n')

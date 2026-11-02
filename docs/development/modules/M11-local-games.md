@@ -1,6 +1,6 @@
 # M11 — Game host and local multiplayer example
 
-Brief revision 1.1.1 · Roadmap baseline 1.1.0 · 2026-11-01 · Locked scope · Product baseline 0.6.0.
+Brief revision 1.1.2 · Roadmap baseline 1.1.0 · 2026-11-01 · Locked scope · Product baseline 0.6.0.
 
 **State:** Approved for implementation under U19; unstarted. Runtime and hardware evidence remains pending.
 
@@ -25,7 +25,7 @@ Use locally installed HTML/TypeScript game assets and an isolated worker with JS
 
 Planned crates/game-host/, games/demo/; game manifests, launch/session registry and demo game state. Each game owns schema migrations and idempotent command handling.
 
-M12's [worker checkpoint provider](../../../crates/maintenance/README.md#worker-checkpoint-provider) has separate-SQLite fixtures. M11 must supply real installed/disabled-worker registrations and bounded, request-fenced IPC before games-enabled node backup integration; the current CLI foundation profile rejects games. This prerequisite does not start M11 launch/multiplayer implementation.
+M12's [game-node snapshot provider](../../../crates/maintenance/README.md#game-node-snapshot-profile) has separate-SQLite fixtures. M11 supplies real installed/disabled-worker registrations, exact package version/schema requirements and bounded request-fenced IPC, then integrates backup/restore/engine validation. The current CLI foundation profile rejects games. This prerequisite does not start M11 launch/multiplayer implementation.
 
 Paths above are planned implementation locations, not existing code. Consume the contracts in the reading packet; changes to them need affected-consumer updates. A disabled optional module retains its data and does not break unrelated local services.
 

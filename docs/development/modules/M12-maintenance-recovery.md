@@ -1,8 +1,8 @@
 # M12 — Offline updates, backup and continuity
 
-Brief revision 1.1.6 · Roadmap baseline 1.1.0 · 2026-11-01 · Locked scope · Product baseline 0.6.0.
+Brief revision 1.1.7 · Roadmap baseline 1.1.0 · 2026-11-01 · Locked scope · Product baseline 0.6.0.
 
-**State:** In progress under continued development authority. Foundation-node backup/isolated restore pass actual Debian lifecycle checks. Worker checkpoint collection passes local provider fixtures; full game-node snapshot/restore, releases and recovered activation remain open. C01 v1.4.0/C02 v1.4.1 are unchanged.
+**State:** In progress under continued development authority. Foundation backup/restore and worker checkpoints pass Linux checks. Combined game-node snapshot/restore passes local provider fixtures; actual M11 integration, releases and recovered activation remain open. C01 v1.4.0/C02 v1.4.1 are unchanged.
 
 ## Read only this packet
 
@@ -45,7 +45,7 @@ Use signed offline release bundles and snapshot manifests, encrypted removable b
 
 Implementation selection under continued development authority: age X25519 recipient encryption with a separate operator backup key; a node-signed, domain-separated inventory authenticates exact staged paths/sizes/hashes. Verify expected node identity and the complete encrypted stream before completing extraction. Full-node coordination and recovery blocking remain mandatory beyond archive verification.
 
-First operator path: stop/drain the service for a cold maintenance window, serialize configuration against TLS renewal, require the exact existing node/schema, and stage database/blobs/configuration/server secrets privately as root. Repair only known source database/sidecar/lock ownership before resuming a previously active service. Restore into fresh isolated storage with persistent recovery blocking and staged configuration. The current profile admits identity/events owners with no games; new owners/checkpoints require explicit backup integration. Scheduling/retention and recovery continuation remain separate work.
+First operator path: stop/drain the service, exclude TLS renewal, require the existing node/schema, and stage core/configuration/server secrets privately as root. Repair known source SQLite/lock ownership before resuming a previously active service. Restore into fresh isolated storage with persistent recovery blocking. The foundation CLI admits identity/events owners only. The game-node provider additionally requires every registered checkpoint and exact installed game version/schema; M11 integrates its actual adapters. Scheduling/retention and recovery continuation remain open.
 
 ## Handoff
 

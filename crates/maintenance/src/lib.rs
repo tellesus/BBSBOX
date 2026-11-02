@@ -4,6 +4,7 @@ use std::{fmt, io};
 
 pub mod archive;
 pub mod checkpoints;
+pub mod game_snapshot;
 pub mod inventory;
 pub mod snapshot;
 pub use age::secrecy as age_secret;
@@ -29,6 +30,9 @@ pub enum Error {
         request: [u8; 16],
         games: Vec<String>,
     },
+    UnsupportedCheckpoint {
+        game_id: String,
+    },
 }
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -53,6 +57,10 @@ impl fmt::Display for Error {
             Self::CheckpointResumeFailed { .. } => {
                 f.write_str("a checkpoint worker needs attention before resuming")
             }
+            Self::UnsupportedCheckpoint { game_id } => write!(
+                f,
+                "installed game version/schema does not match checkpoint: {game_id}"
+            ),
         }
     }
 }

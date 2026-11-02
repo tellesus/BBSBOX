@@ -16,6 +16,19 @@ use std::{
 };
 
 const FORMAT: &str = "bbsbox.foundation-node-snapshot/v1";
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Profile {
+    Foundation,
+    Games,
+}
+impl Profile {
+    pub(crate) fn format(self) -> &'static str {
+        match self {
+            Self::Foundation => FORMAT,
+            Self::Games => "bbsbox.node-snapshot/v1",
+        }
+    }
+}
 const REQUIRED: &[&str] = &[
     "installation.json",
     "node.json",
@@ -40,15 +53,15 @@ pub struct Descriptor {
     pub created_at: i64,
     pub configuration: Vec<FileRecord>,
     pub required_configuration: Vec<String>,
-    // This profile is for the current foundation runtime, with no game workers installed.
-    // M11 must integrate real worker checkpoints before this profile can include games.
+    // The foundation profile requires no games; the game profile binds an explicit checkpoint set.
     pub game_checkpoints: Vec<String>,
 }
 impl Descriptor {
-    fn validate(&self, expected: NodeId) -> Result<()> {
-        if self.format != FORMAT
+    fn validate(&self, expected: NodeId, profile: Profile) -> Result<()> {
+        if self.format != profile.format()
             || self.node != expected.to_string()
-            || !self.game_checkpoints.is_empty()
+            || (profile == Profile::Foundation && !self.game_checkpoints.is_empty())
+            || (profile == Profile::Games && self.game_checkpoints.is_empty())
             || self.configuration.is_empty()
             || self.configuration.len() > 120
             || self.required_configuration.len() > 120
@@ -185,7 +198,7 @@ pub fn capture(
         required_configuration,
         game_checkpoints: vec![],
     };
-    descriptor.validate(expected)?;
+    descriptor.validate(expected, Profile::Foundation)?;
     let bytes = serde_json::to_vec(&descriptor).map_err(|_| Error::IncompleteSnapshot)?;
     if bytes.len() > DESCRIPTOR_LIMIT {
         return Err(Error::LimitExceeded);
@@ -230,6 +243,24 @@ pub fn verify(
     signed: &SignedInventory,
     migrations: &[Migration],
 ) -> Result<Descriptor> {
+    let (descriptor, expected) = verify_parts(root, signed, migrations, Profile::Foundation)?;
+    let actual: BTreeSet<_> = signed
+        .inventory()
+        .files
+        .iter()
+        .map(|f| f.path.clone())
+        .collect();
+    if expected != actual {
+        return Err(Error::IncompleteSnapshot);
+    }
+    Ok(descriptor)
+}
+pub(crate) fn verify_parts(
+    root: &Path,
+    signed: &SignedInventory,
+    migrations: &[Migration],
+    profile: Profile,
+) -> Result<(Descriptor, BTreeSet<String>)> {
     if archive::inventory(root, Limits::default())? != signed.inventory().files {
         return Err(Error::ChangedSource);
     }
@@ -242,7 +273,7 @@ pub fn verify(
     }
     let descriptor: Descriptor =
         serde_json::from_slice(&bytes).map_err(|_| Error::IncompleteSnapshot)?;
-    descriptor.validate(signed.node())?;
+    descriptor.validate(signed.node(), profile)?;
     if serde_json::to_vec(&descriptor).map_err(|_| Error::IncompleteSnapshot)? != bytes
         || descriptor.created_at != signed.inventory().created_at
     {
@@ -274,16 +305,7 @@ pub fn verify(
         }
         expected.insert(path);
     }
-    let actual: BTreeSet<_> = signed
-        .inventory()
-        .files
-        .iter()
-        .map(|f| f.path.clone())
-        .collect();
-    if expected != actual {
-        return Err(Error::IncompleteSnapshot);
-    }
-    Ok(descriptor)
+    Ok((descriptor, expected))
 }
 
 pub struct RestoredSnapshot {
@@ -309,6 +331,23 @@ pub fn restore(
 ) -> Result<RestoredSnapshot> {
     let source = opened.content();
     let descriptor = verify(&source, opened.inventory(), migrations)?;
+    let restored = restore_base(
+        &source,
+        &descriptor,
+        opened.inventory(),
+        destination,
+        migrations,
+    )?;
+    finish_restore(destination)?;
+    Ok(restored)
+}
+pub(crate) fn restore_base(
+    source: &Path,
+    descriptor: &Descriptor,
+    signed: &SignedInventory,
+    destination: &Path,
+    migrations: &[Migration],
+) -> Result<RestoredSnapshot> {
     archive::private_directory(destination)?;
     write_new(
         &destination.join(".restore-incomplete"),
@@ -322,17 +361,27 @@ pub fn restore(
         &destination.join("configuration"),
         &descriptor.configuration,
     )?;
-    write_new(&destination.join("recovery.json"),&serde_json::to_vec(&serde_json::json!({
-        "format":"bbsbox.isolated-node-restore/v1","node":descriptor.node,
-        "inventory_sha256":hex::encode(opened.inventory().id()),"snapshot_time":descriptor.created_at,
-        "state":"recovery-required","post_snapshot_writes":"not-reconciled"
-    })).map_err(|_|Error::IncompleteSnapshot)?)?;
+    write_new(
+        &destination.join("recovery.json"),
+        &serde_json::to_vec(&serde_json::json!({
+            "format":"bbsbox.isolated-node-restore/v1","node":descriptor.node,
+            "inventory_sha256":hex::encode(signed.id()),"snapshot_time":descriptor.created_at,
+            "state":"recovery-required","post_snapshot_writes":"not-reconciled"
+        }))
+        .map_err(|_| Error::IncompleteSnapshot)?,
+    )?;
     // Verify copied node identity/registry without opening a writer or applying any migrations.
     bbsbox_storage::verify_exact_registry(&database, migrations)?;
-    if NodeSigner::inspect_existing(&database)? != opened.inventory().node() {
+    if NodeSigner::inspect_existing(&database)? != signed.node() {
         return Err(Error::WrongNode);
     }
     archive::sync_directory(destination)?;
+    Ok(RestoredSnapshot {
+        directory: destination.to_path_buf(),
+        database,
+    })
+}
+pub(crate) fn finish_restore(destination: &Path) -> Result<()> {
     fs::remove_file(destination.join(".restore-incomplete"))?;
     archive::sync_directory(destination)?;
     archive::sync_directory(
@@ -341,8 +390,5 @@ pub fn restore(
             .filter(|p| !p.as_os_str().is_empty())
             .unwrap_or(Path::new(".")),
     )?;
-    Ok(RestoredSnapshot {
-        directory: destination.to_path_buf(),
-        database,
-    })
+    Ok(())
 }

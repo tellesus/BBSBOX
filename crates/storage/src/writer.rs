@@ -79,7 +79,7 @@ pub struct Writer {
     handle: Handle,
     worker: Option<JoinHandle<Result<()>>>,
 }
-struct WriterLock {
+pub(crate) struct WriterLock {
     file: File,
     locked: bool,
 }
@@ -97,7 +97,7 @@ impl Drop for WriterLock {
         let _ = self.release();
     }
 }
-fn lock(path: &Path) -> Result<(WriterLock, PathBuf)> {
+pub(crate) fn lock(path: &Path) -> Result<(WriterLock, PathBuf)> {
     let path = if path.exists() {
         path.canonicalize()?
     } else {

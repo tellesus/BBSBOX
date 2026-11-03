@@ -92,6 +92,50 @@ fn restored_core_includes_node_key_but_cannot_activate_a_signer_before_recovery(
 }
 
 #[test]
+fn cold_recovery_prepares_a_fresh_bound_signer_without_releasing_writer_admission() {
+    use bbsbox_storage::{
+        recovery::Recovery,
+        writer::{Config, Writer},
+    };
+    let directory = tempfile::tempdir().unwrap();
+    let source = directory.path().join("node.sqlite");
+    let mut database = Database::open(&source, &migrations()).unwrap();
+    let original = NodeSigner::start(&mut database).unwrap();
+    let backup = directory.path().join("snapshot");
+    database.snapshot_core(&backup).unwrap();
+    drop(database);
+    let restored = snapshot::restore_core(&backup, directory.path().join("restored")).unwrap();
+    let mut recovery = Recovery::open(&restored, &migrations()).unwrap();
+    let wrong = bbsbox_credentials::NodeId::from_digest([1; 32]);
+    assert!(NodeSigner::prepare_recovery(&mut recovery, wrong).is_err());
+    let prepared = NodeSigner::prepare_recovery(&mut recovery, original.id()).unwrap();
+    assert_eq!(prepared.id(), original.id());
+    assert_eq!(prepared.public(), original.public());
+    assert_ne!(prepared.incarnation(), original.incarnation());
+    assert!(matches!(
+        prepared.sign_current(original.incarnation(), b"old signer context"),
+        Err(Error::StaleSigner)
+    ));
+    assert!(matches!(
+        Writer::start(&restored, migrations(), Config::default()),
+        Err(bbsbox_storage::Error::WriterAlreadyRunning)
+    ));
+    let message = b"fixture recovery decision, not a complete M12 authorization";
+    let signature = prepared
+        .sign_current(prepared.incarnation(), message)
+        .unwrap();
+    VerifyingKey::from_bytes(&prepared.public())
+        .unwrap()
+        .verify_strict(message, &Signature::from_bytes(&signature))
+        .unwrap();
+    drop(recovery);
+    assert!(matches!(
+        Writer::start(&restored, migrations(), Config::default()),
+        Err(bbsbox_storage::Error::RecoveryRequired)
+    ));
+}
+
+#[test]
 fn maintenance_never_creates_or_replaces_a_missing_wrong_or_corrupt_node() {
     let directory = tempfile::tempdir().unwrap();
     let path = directory.path().join("node.sqlite");

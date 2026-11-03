@@ -1,6 +1,6 @@
 # C01 — Storage, runtime and module boundary
 
-Version 1.4.1 · Accepted for implementation · Owner M02; operations co-owner M12.
+Version 1.5.0 · Accepted for implementation · Owner M02; operations co-owner M12.
 
 ## Responsibilities and interface
 
@@ -8,7 +8,7 @@ The Rust node service uses internal modules and one local SQLite database with W
 
 Interfaces: scoped transactions/receipts, transactional enqueue, claim/finish, module queries, blob put/get and snapshots. Command namespaces bind authenticated actor/action/resource; canonical request bytes bind every argument. Changed-byte ID reuse fails; mutation and response commit together. Browser endpoints use versioned JSON/OpenAPI. Games never receive core database handles.
 
-Use a bounded rusqlite writer off async threads and local-filesystem SQLite with FULL synchronous transactions. HTTP mutation success follows durable commit; filesystem bytes finalize before their row is visible. Recover orphan temporary files safely after interruption.
+Use a bounded rusqlite writer off async threads, local-filesystem SQLite and FULL synchronization. HTTP mutation success follows durable commit; filesystem bytes finalize before their row is visible. Recover orphan temporary files safely after interruption.
 
 ## Jobs and recovery
 
@@ -20,7 +20,7 @@ One reserved maintenance callback closes admission, drains both queues, then exe
 
 Take a consistent SQLite backup through its backup API plus a manifest of referenced blobs, configuration, node secrets and counters. Protect required blobs from deletion while taking the snapshot. Client private keys are a separate client export; a server backup does not magically contain them. Do not copy only the main SQLite file while ignoring live WAL state.
 
-M02 supplies core-only snapshot/restore hooks; restored writers remain recovery-blocked until M03/M12 activation. Blob references protect pending exports/dependencies; collection removes only explicitly unreferenced bytes. Configurable content/control free-space floors default to 256/32 MiB; default blob maximum is 64 MiB. Admission checks cannot reserve space against other processes; actual I/O failures remain recoverable.
+M02 supplies core-only snapshot/restore hooks; M03/M12 activation holds the process lock until its authorized decision is durable before unblocking restored writers. Blob references protect pending exports/dependencies; collection removes only explicitly unreferenced bytes. Configurable content/control free-space floors default to 256/32 MiB; default blob maximum is 64 MiB. Admission checks cannot reserve space against other processes; actual I/O failures remain recoverable.
 
 ## Module lifecycle
 

@@ -14,6 +14,7 @@ pub mod blobs;
 pub mod clock;
 pub mod disk;
 pub mod jobs;
+pub mod recovery;
 pub mod snapshot;
 pub mod writer;
 
@@ -54,6 +55,8 @@ pub enum Error {
     CorruptBlob,
     InvalidSnapshot,
     RecoveryRequired,
+    RecoveryNotPending,
+    InvalidRecoveryDecision,
 }
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -104,6 +107,10 @@ impl fmt::Display for Error {
             Self::InvalidSnapshot => f.write_str("snapshot is incomplete, corrupt or unsupported"),
             Self::RecoveryRequired => {
                 f.write_str("restored storage requires recovery before starting a writer")
+            }
+            Self::RecoveryNotPending => f.write_str("no restored-storage recovery is pending"),
+            Self::InvalidRecoveryDecision => {
+                f.write_str("recovery decision is missing, changed or unsupported")
             }
         }
     }

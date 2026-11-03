@@ -54,3 +54,12 @@ Eight C tests plus a process-killed migration test bring Windows coverage to 25 
 ## Integration boundary
 
 The actual M01 runtime consumes this writer and registered identity/event migrations; community HTTP routes remain with their feature owners. M00 prototype databases retain their disposable schema. M12 owns full-node coordinated backup/activation; installed game consumers and physical capacity/release acceptance remain downstream. The maintenance extension implements C01 v1.4.0 without changing core schema 3 or snapshot v1.
+
+
+## Cold restored-storage recovery exclusion
+
+`recovery::Recovery::open` requires an existing recovery-marked database and the exact compiled migration registry. It rejects linked database/ancestor paths and never initializes a database or applies migrations. It holds the same process lock as the normal writer through cold reconciliation and completion; another writer/recovery attempt cannot enter. Dropping the guard retains persistent recovery blocking. Database handles close before explicit lock release, including failure paths.
+
+M03/M12 own source disposition, identity/continuity, known recovery horizon, module validation and the actual authorization record. They may reconcile through the guard's database and must save a protected decision first. `finish_after_decision` requires nonempty bounded record bytes (at most 64 KiB), their exact nonzero SHA-256 commitment, and a regular record file distinct from the database/marker. It admits control space, synchronizes the record and its directory, closes database handles, then removes/synchronizes the recovery marker while retaining the process lock. Invalid/missing/changed records leave writers blocked. Record-format/authorization validation is the caller's responsibility; this primitive itself starts no writer or signer.
+
+Three portable cases cover writer/competing-recovery exclusion, durable-record completion, abandoned/changed decisions, no implicit initialization/migration and decision alias refusal. Unix adds linked-file refusal. M12's complete continuation/installed activation integration remains open; the new primitive's Linux confirmation awaits its containing commit. Core schema/snapshot formats remain unchanged under C01 v1.5.0.

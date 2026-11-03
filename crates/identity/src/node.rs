@@ -50,6 +50,21 @@ impl NodeSigner {
         if database.recovery_required()? {
             return Err(bbsbox_storage::Error::RecoveryRequired.into());
         }
+        Self::load_state(database, expected_node)
+    }
+    /// M12 may prepare a fresh node-only signer while holding cold recovery exclusion.
+    /// This does not release the persistent marker or authorize service/event publication.
+    pub fn prepare_recovery(
+        recovery: &mut bbsbox_storage::recovery::Recovery,
+        expected_node: NodeId,
+    ) -> Result<Self> {
+        let database = recovery.database();
+        if !database.recovery_required()? {
+            return Err(Error::InvalidNodeState);
+        }
+        Self::load_state(database, Some(expected_node))
+    }
+    fn load_state(database: &mut Database, expected_node: Option<NodeId>) -> Result<Self> {
         database.write(Class::Control, 65536, |tx| {
             let known: Option<(Vec<u8>, Vec<u8>)> = tx
                 .query_row(

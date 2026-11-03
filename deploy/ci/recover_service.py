@@ -12,6 +12,7 @@ import sys
 import tempfile
 
 import boot_service
+import backup_schedule_cases
 import prepare
 
 ROOT=Path(__file__).resolve().parents[2]
@@ -81,7 +82,8 @@ def exercise(source,fixture,verifier,root,output):
         state=json.loads(boot_service.enter(pid,guest,[operator,'release-control-state','--directory','/var/lib/bbsbox-maintenance/release-control']).stdout)['state']
         assert checked['expected_node']==node and node==installed['node_id'] and state['highest_sequence']==6 and state['pending'] is None
         assert bytes(state['trusted_key']).hex()==authority['public_key']
-        return dict(independent_release_authority=True,verified_recovered_selection=True,highest_sequence=6)
+        scheduled=backup_schedule_cases.exercise(pid,guest,node)
+        return dict(independent_release_authority=True,verified_recovered_selection=True,highest_sequence=6,scheduled_backup=scheduled)
     boot_service.boot(root,output/'boot.json',signed=True,maintenance_check=verify_boot)
     assert [candidate.materials.file_digest(path) for path in original_paths]==original and not boot_service.leader(source)
     recovered.update(source_remained_stopped_and_unchanged=True,operator_media_not_exported=True,original_ca_and_node_preserved=True,known_older_registry_migrated=True,actual_debian_service_reboot=True)

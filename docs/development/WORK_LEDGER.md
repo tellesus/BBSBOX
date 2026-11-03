@@ -481,3 +481,12 @@ Local actual-binary snapshot/registry/closed-data checks, four fresh-install pre
 The compatible reader passed all four jobs and 203 Rust tests at commit 484694b. The verified checkpoint is on main. [Compatible reader CI](https://github.com/tellesus/BBSBOX/actions/runs/41713118141)
 
 The fresh recovery run passed the independent jobs and reached extraction of the signed Debian image. GitHub ended the storage job at that step without an available log. The replacement-appliance test had not started. This follow-up releases build-only copies after retaining their evidence, removes exported OS tar files after extraction and reports available disk space before appliance tests. The exact failure cause is unconfirmed. [Fresh recovery attempt](https://github.com/tellesus/BBSBOX/actions/runs/41714336338)
+
+
+## 2026-11-03 — M12 C: configured-media scheduling and guarded retention
+
+The scheduler registers a writable mounted local filesystem and binds its private media directory to the installed node and public age recipient. It uses a stable private copy of the operator tools and a systemd service and timer. Hourly checks allow a daily snapshot when media becomes available. UTC days and ISO weeks provide deterministic retention buckets. The existing signed cold-backup path owns the service stop, snapshot and resume.
+
+The root catalogue binds each sealed archive to its size, ciphertext hash, inventory and media set. The retention worker verifies files through an anchored directory descriptor. It keeps seven daily and four weekly points and requires two intact retained copies before unlinking any expired indexed archive. Missing media, pressure and clock corrections preserve existing archives. Damaged, linked and unindexed files remain untouched. The initial filesystem selection uses ext4, XFS, Btrfs and F2FS. These are implementation selections under continued development authority.
+
+Portable calendar and mount parser checks pass. Linux CI adds actual prune tests, an unmounted-path preservation case and a real backup service and timer in the recovered appliance. It decrypts the scheduled archive, confirms same-day deduplication and checks that detaching media leaves the bare mountpoint untouched. M12 brief 1.1.21 and the deployment and maintenance references track the pending Debian evidence. The product and on-wire formats remain unchanged. M11 owns actual game checkpoint integration. Physical acceptance stays at G1.

@@ -191,3 +191,22 @@ Use `--source retired` and a handover reason for a planned move. The explicit so
 The replacement keeps the saved node ID, CA and neighborhood name. It issues a fresh loopback leaf under the saved CA and starts on localhost. Reapply the local network profile for the replacement hardware before opening visitor access; the original archive retains the previous generated network settings. Compare the new connection card with the saved CA fingerprint and node ID. The new appliance has explicitly bootstrapped release control outside the restored data. Newer writes remain unreconciled, and client key recovery uses the clients’ own exports.
 
 The Debian fixture takes an older snapshot from a stopped source and uses the independently rotated release key to select a newer signed assembly. It checks wrong-node and below-floor refusal, preserves the original CA and data, applies real SQL, boots/reboots with trusted HTTPS, and reprovisions the local network. These installed source-loss assertions await their containing-commit CI result.
+
+
+## Daily backups on configured media
+
+Mount writable local backup media outside the node's application, configuration and data. The first scheduler accepts ext4, XFS, Btrfs and F2FS. Supply the operator's public age recipient and keep its private identity on separate media.
+
+```sh
+sudo python3 deploy/backup_schedule.py configure --mount /media/bbsbox-backup --recipient age1PUBLIC_RECIPIENT
+sudo python3 deploy/backup_schedule.py run
+sudo python3 deploy/backup_schedule.py install-timer
+sudo systemctl daemon-reload
+sudo systemctl enable --now bbsbox-backup.timer
+```
+
+The timer checks hourly and captures one backup per UTC day when the registered media is available. Setup registers one media directory and installs a private copy of the timer helpers. Repeating the same timer installation preserves its files. A detached drive is skipped until a later check. The service reports low space and retains the existing archives when a new snapshot cannot be admitted. The signed backup helper still handles service drain, protected capture and resumption.
+
+Retention keeps the latest intact archive in each of the seven most recent backed-up days and the four most recent backed-up ISO weeks. A single archive can fill both slots. The appliance keeps receipts outside node snapshots and checks stored ciphertext against them before removing expired files. It preserves damaged, unindexed and linked entries. Pruning requires at least two intact retained archives. A copy of the encrypted media without its appliance receipts remains usable for recovery and stays outside automatic pruning.
+
+CI is configured to start the real backup service and timer on the recovered appliance, decrypt the resulting archive, check the same-day skip and detach the test mount. Separate filesystem tests check retention across calendar boundaries and preservation of the sole intact archive. The Debian timer and filesystem assertions await the containing run.

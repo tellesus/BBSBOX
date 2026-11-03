@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+[Unit]
+Description=BBSBOX backup to configured local media
+ConditionPathExists=/var/lib/bbsbox-maintenance/backup-schedule/config.json
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 @HELPER@ run
+UMask=0077
+TimeoutStartSec=30min

@@ -4,6 +4,7 @@ use std::{fmt, io};
 
 pub mod archive;
 pub mod checkpoints;
+pub mod continuation;
 pub mod game_snapshot;
 pub mod inventory;
 pub mod release;
@@ -28,6 +29,7 @@ pub enum Error {
     Encryption,
     Decryption,
     IncompleteSnapshot,
+    InvalidContinuation,
     CheckpointUnavailable,
     CheckpointResumeFailed {
         request: [u8; 16],
@@ -40,19 +42,22 @@ pub enum Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Storage(error) => write!(f, "backup storage: {error}"),
-            Self::Identity(error) => write!(f, "backup identity: {error}"),
-            Self::Io(error) => write!(f, "backup I/O: {error}"),
+            Self::Storage(error) => write!(f, "maintenance storage: {error}"),
+            Self::Identity(error) => write!(f, "maintenance identity: {error}"),
+            Self::Io(error) => write!(f, "maintenance I/O: {error}"),
             Self::InvalidArchive => f.write_str("invalid or incomplete backup archive"),
-            Self::InvalidSignature => f.write_str("invalid backup inventory signature"),
-            Self::WrongNode => f.write_str("backup belongs to another node"),
-            Self::UnsafePath => f.write_str("backup path is unsafe or unsupported"),
-            Self::LimitExceeded => f.write_str("backup exceeds configured limits"),
+            Self::InvalidSignature => f.write_str("invalid maintenance signature"),
+            Self::WrongNode => f.write_str("maintenance record belongs to another node"),
+            Self::UnsafePath => f.write_str("maintenance path is unsafe or unsupported"),
+            Self::LimitExceeded => f.write_str("maintenance data exceeds configured limits"),
             Self::ChangedSource => f.write_str("staged backup files changed during export"),
             Self::Encryption => f.write_str("backup encryption failed"),
             Self::Decryption => f.write_str("backup decryption failed"),
             Self::IncompleteSnapshot => {
                 f.write_str("snapshot contents are incomplete or unsupported")
+            }
+            Self::InvalidContinuation => {
+                f.write_str("recovery decision or authorization is invalid or unsupported")
             }
             Self::CheckpointUnavailable => {
                 f.write_str("an installed worker could not provide its checkpoint")

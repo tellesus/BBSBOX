@@ -115,7 +115,10 @@ class Prepared:
             target=layout.config/relative
             if stat.S_ISDIR(source.lstat().st_mode):
                 accessible=relative in self.leaf.parents or relative==self.leaf
-                target.mkdir(mode=0o750 if accessible else 0o700);os.chown(target,0,gid if accessible else 0)
+                target.mkdir(mode=0o700)
+                if accessible:
+                    os.chown(target, 0, gid)
+                    target.chmod(0o750)
             else:
                 mode,group=(0o644,gid) if relative in [Path('tls/ca.pem'),self.leaf/'server.pem'] else ((0o640,gid) if relative==self.leaf/'server-key.pem' else (0o600,0))
                 copy_new(source,target,mode,0,group)

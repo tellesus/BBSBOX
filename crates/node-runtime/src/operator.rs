@@ -399,6 +399,7 @@ pub fn command_with_registry(
     let names: &[&str] = match command {
         "backup-keygen" => &["--output"],
         "backup-public" => &["--identity-file"],
+        "backup-check-recipient" => &["--recipient"],
         "migrate-existing" => &["--database", "--node"],
         "backup" => &["--config", "--node", "--recipient", "--output", "--staging"],
         "restore" => &[
@@ -443,6 +444,19 @@ pub fn command_with_registry(
             serde_json::json!({"format":"bbsbox.backup-recipient/v1","recipient":read_key(path("--identity-file"))?.to_public().to_string()}),
         );
     }
+    let recipient = || -> Result<BackupRecipient> {
+        options["--recipient"]
+            .to_str()
+            .ok_or("Invalid backup recipient")?
+            .parse()
+            .map_err(|_| "Invalid backup recipient".into())
+    };
+    if command == "backup-check-recipient" {
+        return Ok(serde_json::json!({
+            "format": "bbsbox.backup-recipient/v1",
+            "recipient": recipient()?.to_string(),
+        }));
+    }
     let expected = options["--node"]
         .to_str()
         .ok_or("Invalid node identity")?
@@ -451,15 +465,10 @@ pub fn command_with_registry(
         return migrate_existing(path("--database"), expected, registry);
     }
     if command == "backup" {
-        let recipient = options["--recipient"]
-            .to_str()
-            .ok_or("Invalid recipient")?
-            .parse()
-            .map_err(|_| "Invalid backup recipient")?;
         backup_with_registry(
             path("--config"),
             expected,
-            &recipient,
+            &recipient()?,
             path("--output"),
             path("--staging"),
             registry,

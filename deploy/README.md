@@ -195,7 +195,7 @@ The Debian fixture takes an older snapshot from a stopped source and uses the in
 
 ## Daily backups on configured media
 
-Mount writable local backup media outside the node's application, configuration and data. The first scheduler accepts ext4, XFS, Btrfs and F2FS. Supply the operator's public age recipient and keep its private identity on separate media.
+Mount writable local backup media outside the node's application, configuration and data. The first scheduler accepts ext4, XFS, Btrfs and F2FS. Setup validates the operator's public age recipient before registering the media. Keep its private identity on separate media and use it when testing a restore.
 
 ```sh
 sudo python3 deploy/backup_schedule.py configure --mount /media/bbsbox-backup --recipient age1PUBLIC_RECIPIENT

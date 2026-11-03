@@ -29,6 +29,7 @@ pub async fn run(
                     | "restore"
                     | "backup-keygen"
                     | "backup-public"
+                    | "backup-check-recipient"
                     | "restore-and-authorize"
                     | "restore-compatible"
                     | "migrate-existing"

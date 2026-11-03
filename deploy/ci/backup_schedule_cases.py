@@ -4,6 +4,8 @@
 import json
 import os
 from pathlib import Path
+import subprocess
+import sys
 
 import boot_service
 
@@ -53,6 +55,17 @@ def exercise(pid, root, node):
     key = "/root/schedule-key"
     recipient = json.loads(enter(binary, "backup-keygen", "--output", key))["recipient"]
     helper = ("/usr/bin/python3", "/root/schedule-source/deploy/backup_schedule.py")
+    wrong_checksum = recipient[:-1] + ("q" if recipient[-1] != "q" else "p")
+    invalid = boot_service.enter(
+        pid,
+        root,
+        [*helper, "configure", "--mount", MEDIA, "--recipient", wrong_checksum],
+        check=False,
+    )
+    assert (
+        invalid.returncode and not (root / STATE.lstrip("/") / "config.json").exists()
+    )
+    assert not any(media.iterdir())
     configured = json.loads(
         enter(*helper, "configure", "--mount", MEDIA, "--recipient", recipient)
     )
@@ -60,7 +73,19 @@ def exercise(pid, root, node):
     assert json.loads(enter(*helper, "install-timer"))["status"] == "timer-installed"
     assert json.loads(enter(*helper, "install-timer"))["status"] == "timer-installed"
     enter("/usr/bin/systemctl", "daemon-reload")
-    enter("/usr/bin/systemctl", "start", "bbsbox-backup.service", timeout=120)
+    try:
+        enter("/usr/bin/systemctl", "start", "bbsbox-backup.service", timeout=120)
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+        journal = enter(
+            "/usr/bin/journalctl",
+            "--no-pager",
+            "-u",
+            "bbsbox-backup.service",
+            "-n",
+            "40",
+        )
+        print(journal.decode(errors="replace"), file=sys.stderr)
+        raise
     paths = list((root / STATE.lstrip("/") / "receipts").glob("*.json"))
     assert len(paths) == 1
     receipt = json.loads(paths[0].read_text())

@@ -21,6 +21,7 @@ ROOT = Path(__file__).resolve().parent
 STATE = Path("/var/lib/bbsbox-maintenance/backup-schedule")
 REGISTRATION = Path("/etc/bbsbox/installation.json")
 OPERATOR = Path("/opt/bbsbox/maintenance/bbsbox-operator")
+RUNTIME = Path("/opt/bbsbox/current/bbsbox-node")
 UNIT_ROOT = Path("/etc/systemd/system")
 CONTROL_RESERVE = 32 * 1024 * 1024
 LOCAL_FILESYSTEMS = {"ext4", "xfs", "btrfs", "f2fs"}
@@ -152,6 +153,11 @@ def configure(mount, recipient):
             "Attach writable local POSIX backup media at the specified mount"
         )
     install.candidate.command([OPERATOR, "release-control-boot"])
+    checked = install.candidate.command(
+        [RUNTIME, "backup-check-recipient", "--recipient", recipient]
+    )
+    if checked != dict(format="bbsbox.backup-recipient/v1", recipient=recipient):
+        raise ValueError("Use the operator’s canonical age X25519 public recipient")
     install.backup.prepare_stage(STATE)
     with schedule_lock():
         config = STATE / "config.json"

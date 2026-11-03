@@ -294,4 +294,20 @@ fn maintenance_options_are_exact_and_keygen_does_not_print_the_secret() {
     assert!(result.stderr.is_empty());
     let bytes = fs::read(path).unwrap();
     assert!(bytes.starts_with(b"AGE-SECRET-KEY-"));
+
+    let generated: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+    let recipient = generated["recipient"].as_str().unwrap();
+    let check = |recipient: &str| {
+        std::process::Command::new(env!("CARGO_BIN_EXE_bbsbox-node"))
+            .args(["backup-check-recipient", "--recipient", recipient])
+            .output()
+            .unwrap()
+    };
+    let accepted = check(recipient);
+    assert!(accepted.status.success());
+    let checked: serde_json::Value = serde_json::from_slice(&accepted.stdout).unwrap();
+    assert_eq!(checked["recipient"], recipient);
+    let (prefix, last) = recipient.split_at(recipient.len() - 1);
+    let wrong = format!("{prefix}{}", if last == "q" { "p" } else { "q" });
+    assert!(!check(&wrong).status.success());
 }

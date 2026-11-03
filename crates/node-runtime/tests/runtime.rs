@@ -110,6 +110,52 @@ async fn lifecycle_uses_real_registered_storage_and_preserves_identity_with_one_
         3
     );
 }
+
+#[tokio::test]
+async fn compiled_registry_drives_both_runtime_migrations_and_its_release_profile() {
+    let directory = tempfile::tempdir().unwrap();
+    let config = config(directory.path());
+    let original = Runtime::start(&config).await.unwrap();
+    let node = original.info().node_id.clone();
+    original.shutdown().await.unwrap();
+    let mut registry = bbsbox_node_runtime::migrations();
+    registry.push(bbsbox_storage::Migration{module:"events",version:4,sql:"CREATE TABLE events_assembly_fixture(value INTEGER NOT NULL); INSERT INTO events_assembly_fixture VALUES(23);"});
+    let profile = bbsbox_node_runtime::release_profile_for_registry(&registry);
+    let upgraded = Runtime::start_with_registry(&config, registry)
+        .await
+        .unwrap();
+    assert_eq!(upgraded.info().node_id, node);
+    upgraded.shutdown().await.unwrap();
+    let reader = bbsbox_storage::open_reader(&config.database).unwrap();
+    assert_eq!(
+        reader
+            .query_row("SELECT value FROM events_assembly_fixture", [], |r| r
+                .get::<_, i64>(0))
+            .unwrap(),
+        23
+    );
+    let actual: Vec<u8> = reader
+        .query_row(
+            "SELECT digest FROM core_migrations WHERE module='events' AND version=4",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert_eq!(
+        hex::encode(actual),
+        profile
+            .module_migrations
+            .iter()
+            .find(|m| m.module == "events" && m.version == 4)
+            .unwrap()
+            .sha256
+    );
+    drop(reader);
+    assert!(
+        Runtime::start(&config).await.is_err(),
+        "old assembly must refuse the newer applied registry"
+    );
+}
 #[tokio::test]
 async fn status_surface_uses_exact_authority_and_exposes_no_private_state_or_mutation_route() {
     let temp = tempfile::tempdir().unwrap();

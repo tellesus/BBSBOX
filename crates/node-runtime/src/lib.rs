@@ -23,11 +23,18 @@ use std::{
 };
 
 pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
+pub mod cli;
 pub mod operator;
 pub mod release_operator;
 /// No filesystem, identity or listener is opened when reporting compiled compatibility.
 pub fn release_profile() -> bbsbox_maintenance::release_payload::RuntimeProfile {
-    let mut module_migrations = migrations()
+    release_profile_for_registry(&migrations())
+}
+/// Trusted first-party assembly uses one compiled registry for reporting and execution.
+pub fn release_profile_for_registry(
+    registry: &[Migration],
+) -> bbsbox_maintenance::release_payload::RuntimeProfile {
+    let mut module_migrations = registry
         .iter()
         .map(bbsbox_maintenance::release::ModuleMigration::from)
         .collect::<Vec<_>>();
@@ -183,8 +190,11 @@ pub struct Runtime {
 }
 impl Runtime {
     pub async fn start(config: &Config) -> Result<Self> {
+        Self::start_with_registry(config, migrations()).await
+    }
+    pub async fn start_with_registry(config: &Config, registry: Vec<Migration>) -> Result<Self> {
         config.validate()?;
-        let writer = Writer::start(&config.database, migrations(), WriterConfig::default())?;
+        let writer = Writer::start(&config.database, registry, WriterConfig::default())?;
         let signer = writer
             .handle()
             .submit_service(Priority::Interactive, NodeSigner::start)?
@@ -288,6 +298,9 @@ async fn stop_signal() -> Result<()> {
     Ok(())
 }
 pub async fn serve(config: Config) -> Result<()> {
+    serve_with_registry(config, migrations()).await
+}
+pub async fn serve_with_registry(config: Config, registry: Vec<Migration>) -> Result<()> {
     config.validate()?;
     rustls::crypto::ring::default_provider()
         .install_default()
@@ -308,7 +321,7 @@ pub async fn serve(config: Config) -> Result<()> {
         prepared.push(axum_server::from_tcp_rustls(listener, tls.clone())?.handle(handle.clone()));
         handles.push(handle);
     }
-    let runtime = Runtime::start(&config).await?;
+    let runtime = Runtime::start_with_registry(&config, registry).await?;
     let router = app(&config, runtime.info().clone())?;
     let mut servers = tokio::task::JoinSet::new();
     for server in prepared {

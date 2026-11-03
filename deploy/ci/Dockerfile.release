@@ -8,5 +8,8 @@ COPY bundle/ bundle/
 COPY bootstrap/ bootstrap/
 COPY public-key.txt public-key.txt
 COPY next-manifest.cose next-manifest.cose
+COPY upgrade_rejecting/ upgrade_rejecting/
+COPY upgrade_successor/ upgrade_successor/
+COPY upgrade_interrupted/ upgrade_interrupted/
 RUN --network=none SYSTEMD_OFFLINE=1 python3 -c "from pathlib import Path; import sys; sys.path.insert(0,'deploy'); import install_release; import json; print(json.dumps(install_release.install(Path('/src/bundle'),Path('/src/bootstrap/bbsbox-operator'),Path('/src/public-key.txt').read_text().strip(),'Signed service fixture',True)))"
 CMD ["/sbin/init"]

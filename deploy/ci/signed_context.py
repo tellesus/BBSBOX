@@ -18,13 +18,16 @@ def context(fixture,verifier,output):
     candidate.command([verifier,'release-inspect','--bundle',fixture/'bundle','--public-key',public['public_key']])
     output.mkdir(mode=0o755);output.chmod(0o755)
     sources={'Dockerfile':ROOT/'deploy/ci/Dockerfile.release','bootstrap/bbsbox-operator':verifier}
-    for name in ['install_release.py','install_development.py','backup_development.py','backup_node.py','enrollment.py','configure_network.py','network_profile.py','local_tls.py','renew_tls.py','diagnose.py']:
+    for name in ['install_release.py','update_release.py','install_development.py','backup_development.py','backup_node.py','enrollment.py','configure_network.py','network_profile.py','local_tls.py','renew_tls.py','maintenance_lock.py','diagnose.py']:
         sources['deploy/'+name]=ROOT/'deploy'/name
     for name in ['runtime_bundle.py','release_candidate.py','release_materials.py']:
         sources['tools/'+name]=ROOT/'tools'/name
     for path in (fixture/'bundle').rglob('*'):
         if path.is_file():sources['bundle/'+path.relative_to(fixture/'bundle').as_posix()]=path
     sources['next-manifest.cose']=fixture/'next/manifest.cose'
+    for name in ['upgrade_rejecting','upgrade_interrupted','upgrade_successor']:
+        # Other committed assets/materials equal baseline; reconstruct public links in-guest.
+        for member in ['manifest.cose','bbsbox-node']:sources[name+'/'+member]=fixture/name/member
     for name,source in sources.items():
         target=output/name;target.parent.mkdir(parents=True,exist_ok=True,mode=0o755)
         candidate.copy_file(source,target);target.chmod(0o755 if name=='bootstrap/bbsbox-operator' else 0o644)

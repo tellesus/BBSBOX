@@ -9,6 +9,7 @@ from urllib.parse import urlsplit
 
 import enrollment
 import local_tls
+import maintenance_lock
 from configure_network import target, write_new
 
 
@@ -16,6 +17,10 @@ def renew(root):
     if os.name!='posix' or os.geteuid()!=0:raise ValueError('Use the Debian development node as root')
     root=Path(root).absolute()
     if root!=root.resolve():raise ValueError('Root must not traverse symlinks')
+    with maintenance_lock.acquire(root):return renew_locked(root)
+
+
+def renew_locked(root):
     import fcntl
     lock_path=target(root,'etc/bbsbox/.tls-renewal.lock')
     lock=os.open(lock_path,os.O_RDWR|os.O_CREAT|os.O_NOFOLLOW,0o600)

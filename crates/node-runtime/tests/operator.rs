@@ -59,6 +59,95 @@ impl Fixture {
         }
     }
 }
+
+#[test]
+fn existing_migration_uses_only_the_supplied_compiled_registry_and_never_initializes_missing_data()
+{
+    let f = Fixture::new();
+    let mut registry = migrations();
+    registry.push(bbsbox_storage::Migration{module:"events",version:4,sql:"CREATE TABLE events_upgrade_fixture(value INTEGER NOT NULL); INSERT INTO events_upgrade_fixture VALUES(7);"});
+    let wrong = bbsbox_credentials::NodeId::from_digest([9; 32]);
+    assert!(operator::migrate_existing(&f.database, wrong, registry.clone()).is_err());
+    let missing = f.root.join("missing.sqlite");
+    assert!(operator::migrate_existing(&missing, f.node, registry.clone()).is_err());
+    assert!(!missing.exists());
+    let result = operator::migrate_existing(&f.database, f.node, registry.clone()).unwrap();
+    assert_eq!(result["listener_opened"], false);
+    assert_eq!(NodeSigner::inspect_existing(&f.database).unwrap(), f.node);
+    let reader = bbsbox_storage::open_reader(&f.database).unwrap();
+    assert_eq!(
+        reader
+            .query_row("SELECT value FROM events_upgrade_fixture", [], |r| r
+                .get::<_, i64>(0))
+            .unwrap(),
+        7
+    );
+    drop(reader);
+    assert!(
+        operator::migrate_existing(&f.database, f.node, migrations()).is_err(),
+        "older code cannot silently remove an applied migration"
+    );
+    assert!(operator::migrate_existing(&f.database, f.node, registry).is_ok());
+}
+
+#[test]
+fn explicit_restore_authorization_keeps_client_recovery_and_installed_activation_separate() {
+    use std::ffi::OsString;
+    let f = Fixture::new();
+    let key = f.root.join("operator.key");
+    let public = operator::keygen(&key).unwrap();
+    let derived = operator::command(&[
+        "backup-public".into(),
+        "--identity-file".into(),
+        key.as_os_str().into(),
+    ])
+    .unwrap();
+    assert_eq!(public, derived);
+    let recipient = public["recipient"].as_str().unwrap().parse().unwrap();
+    let cipher = f.root.join("backup.age");
+    operator::backup(&f.config, f.node, &recipient, &cipher, &f.root).unwrap();
+    let destination = f.root.join("authorized");
+    let args = vec![
+        OsString::from("restore-and-authorize"),
+        "--archive".into(),
+        cipher.as_os_str().into(),
+        "--node".into(),
+        f.node.to_string().into(),
+        "--identity-file".into(),
+        key.as_os_str().into(),
+        "--output".into(),
+        destination.as_os_str().into(),
+        "--staging".into(),
+        f.root.as_os_str().into(),
+        "--source".into(),
+        "retired".into(),
+        "--reason".into(),
+        "fixture stopped source; isolated continuation only".into(),
+        "--at".into(),
+        "0".into(),
+    ];
+    let result = operator::command(&args).unwrap();
+    assert_eq!(result["isolated_writer_ready"], true);
+    assert_eq!(result["installed"], false);
+    assert_eq!(result["client_recovery"], "separate");
+    assert_eq!(result["post_snapshot_writes"], "not-reconciled");
+    let decision =
+        std::fs::read(destination.join("configuration/maintenance/recovery.cose")).unwrap();
+    bbsbox_maintenance::continuation::verify(&decision, f.node).unwrap();
+    assert!(
+        !destination
+            .join("data/node.sqlite.recovery-required")
+            .exists()
+    );
+    let writer = Writer::start(
+        destination.join("data/node.sqlite"),
+        migrations(),
+        WriterConfig::default(),
+    )
+    .unwrap();
+    writer.shutdown().unwrap();
+    assert_eq!(NodeSigner::inspect_existing(&f.database).unwrap(), f.node);
+}
 #[test]
 fn local_operator_round_trip_keeps_identity_configuration_and_restore_block() {
     let f = Fixture::new();

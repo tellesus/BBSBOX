@@ -34,7 +34,7 @@ def rebuild(root, material_directory, source_commit, cargo, rustc, expected_prof
     version = subprocess.check_output([str(rustc), '--version'], env=environment, text=True).strip()
     if not version.startswith('rustc 1.99.1 '):
         raise ValueError('Rebuild compiler differs from the pinned version')
-    command = [str(cargo), '--config', 'source.crates-io.replace-with="vendored-sources"', '--config', 'source.vendored-sources.directory='+json.dumps(str(root/'vendor')), 'build', '--frozen', '-p', 'bbsbox-node-runtime']
+    command = [str(cargo), '--config', 'source.crates-io.replace-with="vendored-sources"', '--config', 'source.vendored-sources.directory='+json.dumps(str(root/'vendor')), 'build', '--frozen', '-p', 'bbsbox-node-runtime', '--bins', '--examples']
     started = time.monotonic()
     result = subprocess.run(command, cwd=root/'source', env=environment, capture_output=True, text=True, timeout=600)
     if result.returncode:
@@ -47,6 +47,16 @@ def rebuild(root, material_directory, source_commit, cargo, rustc, expected_prof
     if len(expected) > 65536 or information != json.loads(expected) or information.get('format') != 'bbsbox.release-runtime/v1' or information.get('target') != 'debian13-amd64':
         raise ValueError('Rebuilt executable does not report the expected target/profile')
     report = dict(format='bbsbox.offline-material-rebuild/v1', compiler=version, elapsed_seconds=round(time.monotonic()-started, 2), source_commit=source_commit, materials_sha256=material_report['sha256'], binary_sha256=materials.file_digest(binary), empty_cargo_home=True, empty_target=True, network='isolated-loopback-only', compiled_profile_matches_candidate=True, compiled_profile=information)
+    # Real first-party assemblies with distinct compiled SQL, built from the same committed materials.
+    # Each gets its own bound report; never substitute a fake profile or binary digest.
+    for name in ['upgrade_successor','upgrade_rejecting','upgrade_interrupted']:
+        executable=target/'debug/examples'/name
+        compiled=json.loads(subprocess.check_output([str(executable),'--release-profile'],timeout=20))
+        if compiled['module_migrations']==information['module_migrations'] or compiled['target']!='debian13-amd64':
+            raise ValueError('Upgrade fixture lacks its distinct actual compiled registry')
+        evidence=dict(report,binary_sha256=materials.file_digest(executable),compiled_profile=compiled,fixture=name)
+        with (output.parent/('offline-'+name+'.json')).open('x',encoding='utf-8') as destination:
+            json.dump(evidence,destination,indent=2);destination.write('\n')
     with output.open('x', encoding='utf-8') as destination:
         json.dump(report, destination, indent=2)
         destination.write('\n')

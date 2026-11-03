@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Local cold-maintenance commands. No HTTP listener or restored writer activation.
+//! Local cold-maintenance commands. Restored continuation stays isolated; no HTTP listener.
 use crate::{Config, Result, migrations};
 use bbsbox_credentials::NodeId;
 use bbsbox_identity::node::NodeSigner;
 use bbsbox_maintenance::{BackupIdentity, BackupRecipient, Limits, archive, snapshot};
-use bbsbox_storage::writer::{Config as WriterConfig, Writer};
+use bbsbox_storage::writer::{Config as WriterConfig, Priority, Writer};
 use std::{
     collections::BTreeMap,
     ffi::OsString,
@@ -108,8 +108,9 @@ fn regular(path: &Path) -> Result<()> {
     }
     Ok(())
 }
-fn foundation_registry() -> Result<Vec<bbsbox_storage::Migration>> {
-    let registry = migrations();
+fn foundation_registry(
+    registry: Vec<bbsbox_storage::Migration>,
+) -> Result<Vec<bbsbox_storage::Migration>> {
     if registry
         .iter()
         .any(|m| !matches!(m.module, "identity" | "events"))
@@ -166,8 +167,25 @@ pub fn backup(
     destination: &Path,
     staging_parent: &Path,
 ) -> Result<serde_json::Value> {
+    backup_with_registry(
+        config_path,
+        expected,
+        recipient,
+        destination,
+        staging_parent,
+        migrations(),
+    )
+}
+pub fn backup_with_registry(
+    config_path: &Path,
+    expected: NodeId,
+    recipient: &BackupRecipient,
+    destination: &Path,
+    staging_parent: &Path,
+    registry: Vec<bbsbox_storage::Migration>,
+) -> Result<serde_json::Value> {
     let config = Config::read(config_path)?;
-    let registry = foundation_registry()?;
+    let registry = foundation_registry(registry)?;
     let (root, required) = configuration(config_path, &config)?;
     // The configuration owner serializes this with local certificate renewal.
     let lock_path = root.join(".tls-renewal.lock");
@@ -249,7 +267,26 @@ pub fn restore(
     destination: &Path,
     staging_parent: &Path,
 ) -> Result<serde_json::Value> {
-    let registry = foundation_registry()?;
+    restore_with_registry(
+        cipher,
+        expected,
+        identity_file,
+        destination,
+        staging_parent,
+        migrations(),
+        None,
+    )
+}
+pub fn restore_with_registry(
+    cipher: &Path,
+    expected: NodeId,
+    identity_file: &Path,
+    destination: &Path,
+    staging_parent: &Path,
+    registry: Vec<bbsbox_storage::Migration>,
+    authorization: Option<bbsbox_maintenance::continuation::Authorization>,
+) -> Result<serde_json::Value> {
+    let registry = foundation_registry(registry)?;
     let identity = read_key(identity_file)?;
     let stage = private_stage(staging_parent, "bbsbox-restore-")?;
     let opened = archive::open(
@@ -260,17 +297,61 @@ pub fn restore(
         Limits::default(),
     )?;
     let restored = snapshot::restore(&opened, destination, &registry)?;
+    if let Some(authorization) = authorization {
+        let decision = bbsbox_maintenance::continuation::prepare(
+            &restored,
+            &opened,
+            &registry,
+            authorization,
+        )?
+        .finish_isolated()?;
+        return Ok(
+            serde_json::json!({"format":"bbsbox.isolated-continuation/v1","node":expected.to_string(),"inventory_sha256":hex_id(opened.inventory().id()),"decision_sha256":hex_id(decision.id()),"isolated_writer_ready":true,"installed":false,"post_snapshot_writes":"not-reconciled","client_recovery":"separate"}),
+        );
+    }
     Ok(
         serde_json::json!({"format":"bbsbox.node-restore/v1","node":expected.to_string(),"inventory_sha256":hex_id(opened.inventory().id()),"state":"recovery-required","database":restored.database()}),
     )
 }
+pub fn migrate_existing(
+    database: &Path,
+    expected: NodeId,
+    registry: Vec<bbsbox_storage::Migration>,
+) -> Result<serde_json::Value> {
+    regular(database)?;
+    if NodeSigner::inspect_existing(database)? != expected {
+        return Err("Migration source does not match the expected node".into());
+    }
+    let writer = Writer::start(database, registry, WriterConfig::default())?;
+    let result = writer
+        .handle()
+        .submit_service(Priority::Interactive, move |database| {
+            NodeSigner::start_existing(database, expected)
+        })?
+        .blocking_wait();
+    let shutdown = writer.shutdown();
+    result?;
+    shutdown?;
+    Ok(
+        serde_json::json!({"format":"bbsbox.migration-existing/v1","node":expected.to_string(),"core_schema":bbsbox_storage::schema_version(),"listener_opened":false}),
+    )
+}
 pub fn command(arguments: &[OsString]) -> Result<serde_json::Value> {
+    command_with_registry(arguments, migrations())
+}
+/// First-party compiled registries only; no migration SQL is accepted from command input.
+pub fn command_with_registry(
+    arguments: &[OsString],
+    registry: Vec<bbsbox_storage::Migration>,
+) -> Result<serde_json::Value> {
     let command = arguments
         .first()
         .and_then(|s| s.to_str())
         .ok_or("Maintenance command is missing")?;
     let names: &[&str] = match command {
         "backup-keygen" => &["--output"],
+        "backup-public" => &["--identity-file"],
+        "migrate-existing" => &["--database", "--node"],
         "backup" => &["--config", "--node", "--recipient", "--output", "--staging"],
         "restore" => &[
             "--archive",
@@ -278,6 +359,16 @@ pub fn command(arguments: &[OsString]) -> Result<serde_json::Value> {
             "--identity-file",
             "--output",
             "--staging",
+        ],
+        "restore-and-authorize" => &[
+            "--archive",
+            "--node",
+            "--identity-file",
+            "--output",
+            "--staging",
+            "--source",
+            "--reason",
+            "--at",
         ],
         _ => return Err("Unknown maintenance command".into()),
     };
@@ -299,30 +390,61 @@ pub fn command(arguments: &[OsString]) -> Result<serde_json::Value> {
     if command == "backup-keygen" {
         return keygen(path("--output"));
     }
+    if command == "backup-public" {
+        return Ok(
+            serde_json::json!({"format":"bbsbox.backup-recipient/v1","recipient":read_key(path("--identity-file"))?.to_public().to_string()}),
+        );
+    }
     let expected = options["--node"]
         .to_str()
         .ok_or("Invalid node identity")?
         .parse()?;
+    if command == "migrate-existing" {
+        return migrate_existing(path("--database"), expected, registry);
+    }
     if command == "backup" {
         let recipient = options["--recipient"]
             .to_str()
             .ok_or("Invalid recipient")?
             .parse()
             .map_err(|_| "Invalid backup recipient")?;
-        backup(
+        backup_with_registry(
             path("--config"),
             expected,
             &recipient,
             path("--output"),
             path("--staging"),
+            registry,
         )
     } else {
-        restore(
+        let authorization = if command == "restore-and-authorize" {
+            use bbsbox_maintenance::continuation::{Authorization, SourceDisposition};
+            let text = |name| {
+                options[name]
+                    .to_str()
+                    .ok_or("Continuation option must be text")
+            };
+            let source = match text("--source")? {
+                "retired" => SourceDisposition::Retired,
+                "lost" => SourceDisposition::Lost,
+                _ => return Err("Source must be explicitly retired or lost".into()),
+            };
+            Some(Authorization {
+                source,
+                reason: text("--reason")?.into(),
+                recorded_at: text("--at")?.parse()?,
+            })
+        } else {
+            None
+        };
+        restore_with_registry(
             path("--archive"),
             expected,
             path("--identity-file"),
             path("--output"),
             path("--staging"),
+            registry,
+            authorization,
         )
     }
 }

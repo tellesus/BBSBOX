@@ -24,7 +24,7 @@ def context(payload, output):
     bundle.verify(payload)
     output = destination(output)
     files = {'Dockerfile': ROOT/'deploy/ci/Dockerfile', 'deploy/install_development.py': ROOT/'deploy/install_development.py', 'deploy/enrollment.py': ROOT/'deploy/enrollment.py', 'deploy/diagnose.py': ROOT/'deploy/diagnose.py', 'tools/runtime_bundle.py': ROOT/'tools/runtime_bundle.py'}
-    files.update({'deploy/'+name: ROOT/'deploy'/name for name in ['configure_network.py','network_profile.py','local_tls.py','renew_tls.py','backup_development.py']})
+    files.update({'deploy/'+name: ROOT/'deploy'/name for name in ['configure_network.py','network_profile.py','local_tls.py','renew_tls.py','maintenance_lock.py','backup_development.py']})
     files.update({'payload/'+name: Path(payload)/name for name in bundle.MEMBERS | {'manifest.json'}})
     for name, source in files.items():
         target = output/name

@@ -55,6 +55,10 @@ def check(tool,binary,material_directory,commit,rebuild_evidence,root,output):
             target=next_bundle/path.relative_to(claims);target.parent.mkdir(parents=True,exist_ok=True,mode=0o700);os.link(path,target)
     next_input=root/'next.json';next_input.write_bytes(materials.encoded(manifest))
     candidate.command([tool,'release-sign','--bundle',next_bundle,'--manifest',next_input,'--key-file',key])
+    for sequence,name in [(3,'upgrade_rejecting'),(4,'upgrade_interrupted'),(5,'upgrade_successor')]:
+        executable=binary.parent/'examples'/name
+        evidence=rebuild_evidence.parent/('offline-'+name+'.json')
+        candidate.prepare(tool,executable,material_directory,commit,evidence,key,key_info,sequence,0,root/name)
     manifest['module_migrations'][0]['sha256']='00'*32
     input_path=root/'false-claims.json';input_path.write_bytes(materials.encoded(manifest))
     candidate.command([tool,'release-sign','--bundle',claims,'--manifest',input_path,'--key-file',key])

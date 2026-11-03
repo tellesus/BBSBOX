@@ -13,6 +13,7 @@ import release_materials as materials
 STATIC = {'bbsbox.service':'deploy/systemd/bbsbox-release.service', 'node.example.json':'deploy/node.example.json', 'LICENSE.md':'LICENSE.md', 'LICENSES/AGPL-3.0-or-later.txt':'LICENSES/AGPL-3.0-or-later.txt', 'LICENSES/CC-BY-SA-4.0.txt':'LICENSES/CC-BY-SA-4.0.txt'}
 MAX_MEMBER = 2 * 1024 * 1024 * 1024
 MAX_TOTAL = 4 * 1024 * 1024 * 1024
+PACKAGE_COMMANDS = frozenset({'release-sign','release-inspect','release-stage','release-control-begin'})
 
 
 def bounded_run(arguments, timeout=20):
@@ -51,7 +52,9 @@ def bounded_run(arguments, timeout=20):
 
 
 def command(arguments):
-    raw = bounded_run(arguments)
+    # Bundle commands hash/copy large prepared materials. A compiled-profile probe is much smaller.
+    timeout = 1200 if len(arguments)>1 and str(arguments[1]) in PACKAGE_COMMANDS else 20
+    raw = bounded_run(arguments, timeout=timeout)
     return materials.decoded(raw)
 
 

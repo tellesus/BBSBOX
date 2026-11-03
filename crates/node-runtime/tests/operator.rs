@@ -91,6 +91,57 @@ fn existing_migration_uses_only_the_supplied_compiled_registry_and_never_initial
 }
 
 #[test]
+fn compatible_restore_refuses_changed_sql_new_owners_or_an_older_identity_layout_before_output() {
+    use std::ffi::OsString;
+    let f = Fixture::new();
+    let key = f.root.join("operator.key");
+    let public = operator::keygen(&key).unwrap();
+    let recipient = public["recipient"].as_str().unwrap().parse().unwrap();
+    let cipher = f.root.join("before.age");
+    operator::backup(&f.config, f.node, &recipient, &cipher, &f.root).unwrap();
+    let before = fs::read(&cipher).unwrap();
+    let mut identity = migrations();
+    identity.push(bbsbox_storage::Migration {
+        module: "identity",
+        version: 5,
+        sql: "CREATE TABLE identity_future_reader(value INTEGER);",
+    });
+    let mut changed = migrations();
+    changed[0].sql = "SELECT 1;";
+    let mut owner = migrations();
+    owner.push(bbsbox_storage::Migration {
+        module: "other",
+        version: 1,
+        sql: "CREATE TABLE other_state(value INTEGER);",
+    });
+    for (index, registry) in [identity, changed, owner].into_iter().enumerate() {
+        let destination = f.root.join(format!("rejected-{index}"));
+        let mut args = vec![OsString::from("restore-compatible")];
+        for (name, value) in [
+            ("--archive", cipher.as_os_str().to_owned()),
+            ("--node", f.node.to_string().into()),
+            ("--identity-file", key.as_os_str().to_owned()),
+            ("--output", destination.as_os_str().to_owned()),
+            ("--staging", f.root.as_os_str().to_owned()),
+            ("--source", "lost".into()),
+            (
+                "--reason",
+                "Fixture lost-source declaration; no installed activation".into(),
+            ),
+            ("--at", "0".into()),
+        ] {
+            args.push(name.into());
+            args.push(value);
+        }
+        assert!(operator::command_with_registry(&args, registry).is_err());
+        assert!(!destination.exists());
+    }
+    assert_eq!(fs::read(&cipher).unwrap(), before);
+    bbsbox_storage::verify_exact_registry(&f.database, &migrations()).unwrap();
+    assert_eq!(NodeSigner::inspect_existing(&f.database).unwrap(), f.node);
+}
+
+#[test]
 fn explicit_restore_authorization_keeps_client_recovery_and_installed_activation_separate() {
     use std::ffi::OsString;
     let f = Fixture::new();

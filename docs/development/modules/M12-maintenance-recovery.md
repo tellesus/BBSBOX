@@ -1,8 +1,8 @@
 # M12 — Offline updates, backup and continuity
 
-Brief revision 1.1.18 · Roadmap baseline 1.1.0 · 2026-11-02 · Locked scope · Product baseline 0.6.0.
+Brief revision 1.1.19 · Roadmap baseline 1.1.0 · 2026-11-03 · Locked scope · Product baseline 0.6.0.
 
-**State:** In progress. Backup, signed materials/control, Debian install/update/interruption and isolated continuation pass Linux. Recorded rollback/startup exclusion await CI. Source-loss/handover, retention and M11 consumers remain open. Consume C01 v1.5.0/C02 v1.4.1.
+**State:** In progress. Backup, signed materials/control, Debian install/update/rollback/exclusion and isolated continuation pass Linux. Compatible snapshot inspection passes locally. Source-loss/handover, retention and M11 consumers remain open. Consume C01 v1.5.0/C02 v1.4.1.
 
 ## Read only this packet
 

@@ -1,8 +1,8 @@
 # M02 — Durable storage and bounded jobs
 
-Brief revision 1.1.6 · Roadmap baseline 1.1.0 · 2026-11-02 · Product baseline 0.6.0.
+Brief revision 1.1.7 · Roadmap baseline 1.1.0 · 2026-11-03 · Product baseline 0.6.0.
 
-**State:** Complete as a provider under U22. A–C passed 25 Windows/26 Linux integration tests and concurrent load checks. Consume C01 v1.5.0. Consumer integration and release gates remain downstream.
+**State:** Complete as a provider under U22. Storage/recovery providers pass Windows/Linux and load checks; bounded registry-prefix inspection passes locally. Consume C01 v1.5.0. Consumer integration and release gates remain downstream.
 
 ## Read only this packet
 

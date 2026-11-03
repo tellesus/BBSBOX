@@ -460,10 +460,16 @@ impl Database {
 
 /// Independent read-only connection. Modules own queries; games never receive this handle.
 pub fn open_reader(path: impl AsRef<Path>) -> Result<Connection> {
+    reader_with_limit(path, None)
+}
+fn reader_with_limit(path: impl AsRef<Path>, metadata_limit: Option<i32>) -> Result<Connection> {
     let connection = Connection::open_with_flags(
         path,
         OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX,
     )?;
+    if let Some(limit) = metadata_limit {
+        connection.set_limit(rusqlite::limits::Limit::SQLITE_LIMIT_LENGTH, limit)?;
+    }
     let application: i32 = connection.pragma_query_value(None, "application_id", |r| r.get(0))?;
     let version: i32 = connection.pragma_query_value(None, "user_version", |r| r.get(0))?;
     if application != APPLICATION_ID {
@@ -478,6 +484,18 @@ pub fn open_reader(path: impl AsRef<Path>) -> Result<Connection> {
 
 /// Maintenance preflight: require an exact installed registry without migrating or creating storage.
 pub fn verify_exact_registry(path: impl AsRef<Path>, migrations: &[Migration]) -> Result<()> {
+    if applied_registry(path, migrations)?.len() != migrations.len() {
+        return Err(Error::ChangedOrUnknownMigration);
+    }
+    Ok(())
+}
+
+/// Read-only selection of the applied prefixes of a trusted compiled registry. Executes no SQL migrations.
+/// Unknown/changed versions and holes fail; returned SQL always comes from the caller's compiled inputs.
+pub fn applied_registry(
+    path: impl AsRef<Path>,
+    migrations: &[Migration],
+) -> Result<Vec<Migration>> {
     let mut expected = BTreeMap::new();
     for migration in migrations {
         if !valid_key(migration.module)
@@ -485,7 +503,7 @@ pub fn verify_exact_registry(path: impl AsRef<Path>, migrations: &[Migration]) -
             || expected
                 .insert(
                     (migration.module.to_string(), migration.version),
-                    Sha256::digest(migration.sql.as_bytes()).to_vec(),
+                    (Sha256::digest(migration.sql.as_bytes()).to_vec(), migration),
                 )
                 .is_some()
         {
@@ -500,25 +518,37 @@ pub fn verify_exact_registry(path: impl AsRef<Path>, migrations: &[Migration]) -
         }
         *previous = *version;
     }
-    let connection = open_reader(path)?;
-    let mut query = connection
-        .prepare("SELECT module,version,digest FROM core_migrations ORDER BY module,version")?;
-    let mut count = 0usize;
-    for row in query.query_map([], |r| {
+    // This metadata-only connection never reads large user rows. Bound values before any header/schema query.
+    let connection = reader_with_limit(path, Some(64 * 1024))?;
+    // Read raw bytes: SQLite text substr/length can hide a NUL suffix and alias another module.
+    let mut query = connection.prepare("SELECT CASE WHEN typeof(module)='text' AND length(CAST(module AS BLOB)) BETWEEN 1 AND 128 THEN CAST(module AS BLOB) ELSE NULL END,version,CASE WHEN typeof(digest)='blob' AND length(digest)=32 THEN digest ELSE NULL END FROM core_migrations ORDER BY module,version LIMIT ?1")?;
+    let maximum = i64::try_from(expected.len())
+        .map_err(|_| Error::InvalidMigration)?
+        .checked_add(1)
+        .ok_or(Error::InvalidMigration)?;
+    let mut applied = Vec::new();
+    let mut previous = BTreeMap::new();
+    for row in query.query_map([maximum], |r| {
         Ok((
-            r.get::<_, String>(0)?,
+            r.get::<_, Option<Vec<u8>>>(0)?,
             r.get::<_, u32>(1)?,
-            r.get::<_, Vec<u8>>(2)?,
+            r.get::<_, Option<Vec<u8>>>(2)?,
         ))
     })? {
         let (module, version, digest) = row?;
-        if expected.get(&(module, version)) != Some(&digest) {
+        let module = module
+            .and_then(|b| String::from_utf8(b).ok())
+            .filter(|s| valid_key(s))
+            .ok_or(Error::ChangedOrUnknownMigration)?;
+        let Some((hash, migration)) = expected.get(&(module.clone(), version)) else {
+            return Err(Error::ChangedOrUnknownMigration);
+        };
+        let prior = previous.entry(module).or_insert(0);
+        if digest.as_ref() != Some(hash) || version != *prior + 1 {
             return Err(Error::ChangedOrUnknownMigration);
         }
-        count += 1;
+        *prior = version;
+        applied.push((*migration).clone());
     }
-    if count != expected.len() {
-        return Err(Error::ChangedOrUnknownMigration);
-    }
-    Ok(())
+    Ok(applied)
 }

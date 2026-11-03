@@ -30,6 +30,7 @@ pub async fn run(
                     | "backup-keygen"
                     | "backup-public"
                     | "restore-and-authorize"
+                    | "restore-compatible"
                     | "migrate-existing"
             )
         )

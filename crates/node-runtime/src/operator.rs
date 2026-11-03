@@ -286,7 +286,33 @@ pub fn restore_with_registry(
     registry: Vec<bbsbox_storage::Migration>,
     authorization: Option<bbsbox_maintenance::continuation::Authorization>,
 ) -> Result<serde_json::Value> {
-    let registry = foundation_registry(registry)?;
+    restore_with_settings(
+        cipher,
+        expected,
+        identity_file,
+        destination,
+        staging_parent,
+        RestoreSettings {
+            registry,
+            authorization,
+            known_prefix: false,
+        },
+    )
+}
+struct RestoreSettings {
+    registry: Vec<bbsbox_storage::Migration>,
+    authorization: Option<bbsbox_maintenance::continuation::Authorization>,
+    known_prefix: bool,
+}
+fn restore_with_settings(
+    cipher: &Path,
+    expected: NodeId,
+    identity_file: &Path,
+    destination: &Path,
+    staging_parent: &Path,
+    settings: RestoreSettings,
+) -> Result<serde_json::Value> {
+    let registry = foundation_registry(settings.registry)?;
     let identity = read_key(identity_file)?;
     let stage = private_stage(staging_parent, "bbsbox-restore-")?;
     let opened = archive::open(
@@ -296,8 +322,21 @@ pub fn restore_with_registry(
         &identity,
         Limits::default(),
     )?;
+    let current_count = registry.len();
+    let registry = if settings.known_prefix {
+        let applied =
+            bbsbox_storage::applied_registry(opened.content().join("core/core.sqlite"), &registry)?;
+        if applied.iter().filter(|m| m.module == "identity").count()
+            != registry.iter().filter(|m| m.module == "identity").count()
+        {
+            return Err("This foundation reader requires its current identity migrations".into());
+        }
+        applied
+    } else {
+        registry
+    };
     let restored = snapshot::restore(&opened, destination, &registry)?;
-    if let Some(authorization) = authorization {
+    if let Some(authorization) = settings.authorization {
         let decision = bbsbox_maintenance::continuation::prepare(
             &restored,
             &opened,
@@ -305,6 +344,15 @@ pub fn restore_with_registry(
             authorization,
         )?
         .finish_isolated()?;
+        if settings.known_prefix {
+            let applied = registry
+                .iter()
+                .map(bbsbox_maintenance::release::ModuleMigration::from)
+                .collect::<Vec<_>>();
+            return Ok(
+                serde_json::json!({"format":"bbsbox.compatible-continuation/v1","node":expected.to_string(),"inventory_sha256":hex_id(opened.inventory().id()),"decision_sha256":hex_id(decision.id()),"isolated_continuation_authorized":true,"source_registry":applied,"migration_required":registry.len()!=current_count,"installed":false,"post_snapshot_writes":"not-reconciled","client_recovery":"separate"}),
+            );
+        }
         return Ok(
             serde_json::json!({"format":"bbsbox.isolated-continuation/v1","node":expected.to_string(),"inventory_sha256":hex_id(opened.inventory().id()),"decision_sha256":hex_id(decision.id()),"isolated_writer_ready":true,"installed":false,"post_snapshot_writes":"not-reconciled","client_recovery":"separate"}),
         );
@@ -360,7 +408,7 @@ pub fn command_with_registry(
             "--output",
             "--staging",
         ],
-        "restore-and-authorize" => &[
+        "restore-and-authorize" | "restore-compatible" => &[
             "--archive",
             "--node",
             "--identity-file",
@@ -417,7 +465,7 @@ pub fn command_with_registry(
             registry,
         )
     } else {
-        let authorization = if command == "restore-and-authorize" {
+        let authorization = if matches!(command, "restore-and-authorize" | "restore-compatible") {
             use bbsbox_maintenance::continuation::{Authorization, SourceDisposition};
             let text = |name| {
                 options[name]
@@ -437,14 +485,17 @@ pub fn command_with_registry(
         } else {
             None
         };
-        restore_with_registry(
+        restore_with_settings(
             path("--archive"),
             expected,
             path("--identity-file"),
             path("--output"),
             path("--staging"),
-            registry,
-            authorization,
+            RestoreSettings {
+                registry,
+                authorization,
+                known_prefix: command == "restore-compatible",
+            },
         )
     }
 }

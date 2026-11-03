@@ -10,7 +10,7 @@ import tempfile
 import threading
 import release_materials as materials
 
-STATIC = {'bbsbox.service':'deploy/systemd/bbsbox.service', 'node.example.json':'deploy/node.example.json', 'LICENSE.md':'LICENSE.md', 'LICENSES/AGPL-3.0-or-later.txt':'LICENSES/AGPL-3.0-or-later.txt', 'LICENSES/CC-BY-SA-4.0.txt':'LICENSES/CC-BY-SA-4.0.txt'}
+STATIC = {'bbsbox.service':'deploy/systemd/bbsbox-release.service', 'node.example.json':'deploy/node.example.json', 'LICENSE.md':'LICENSE.md', 'LICENSES/AGPL-3.0-or-later.txt':'LICENSES/AGPL-3.0-or-later.txt', 'LICENSES/CC-BY-SA-4.0.txt':'LICENSES/CC-BY-SA-4.0.txt'}
 MAX_MEMBER = 2 * 1024 * 1024 * 1024
 MAX_TOTAL = 4 * 1024 * 1024 * 1024
 

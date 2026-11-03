@@ -46,8 +46,15 @@ def check(tool,binary,material_directory,commit,rebuild_evidence,root,output):
     for path in sorted(p for p in bundle.rglob('*') if p.is_file() and p.name!='manifest.cose'):
         name=path.relative_to(bundle);target=claims/name;target.parent.mkdir(parents=True,exist_ok=True,mode=0o700);os.link(path,target)
         files.append(dict(path=name.as_posix(),size=path.stat().st_size,sha256=materials.file_digest(path)))
-    profile=prepared['expected_profile']
+    profile=json.loads(json.dumps(prepared['expected_profile']))
     manifest=dict(format='bbsbox.release-manifest/v1',issuer=public['key_id'],sequence=2,version=profile['version'],target=profile['target'],created_at=0,source_commit=commit,core_schema=profile['core_schema'],readable_core_schemas=profile['readable_core_schemas'],module_migrations=profile['module_migrations'],files=files,next_key=None)
+    # A valid next-sequence manifest travels into the service fixture without its signing key.
+    next_bundle=root/'next';next_bundle.mkdir(mode=0o700)
+    for path in claims.rglob('*'):
+        if path.is_file():
+            target=next_bundle/path.relative_to(claims);target.parent.mkdir(parents=True,exist_ok=True,mode=0o700);os.link(path,target)
+    next_input=root/'next.json';next_input.write_bytes(materials.encoded(manifest))
+    candidate.command([tool,'release-sign','--bundle',next_bundle,'--manifest',next_input,'--key-file',key])
     manifest['module_migrations'][0]['sha256']='00'*32
     input_path=root/'false-claims.json';input_path.write_bytes(materials.encoded(manifest))
     candidate.command([tool,'release-sign','--bundle',claims,'--manifest',input_path,'--key-file',key])

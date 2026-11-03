@@ -125,6 +125,13 @@ fn check_files(root: &Path, signed: &SignedRelease, manifest_present: bool) -> R
             return Err("release file does not match its signed commitment".into());
         }
     }
+    check_elf(root)?;
+    if manifest_present && read_manifest(root)? != signed.encoded() {
+        return Err("release manifest changed during verification".into());
+    }
+    Ok(())
+}
+fn check_elf(root: &Path) -> Result<()> {
     let mut header = [0; 64];
     File::open(root.join("bbsbox-node"))?.read_exact(&mut header)?;
     if &header[..7] != b"\x7fELF\x02\x01\x01"
@@ -134,10 +141,33 @@ fn check_files(root: &Path, signed: &SignedRelease, manifest_present: bool) -> R
     {
         return Err("release binary must be ELF64 little-endian amd64".into());
     }
-    if manifest_present && read_manifest(root)? != signed.encoded() {
-        return Err("release manifest changed during verification".into());
-    }
     Ok(())
+}
+
+/// Boot preflight for a previously completed release receipt, not full candidate acceptance.
+/// Large source/dependency materials are checked at staging; boot checks exact manifest/binary.
+pub(crate) fn verify_selected_binary(
+    root: &Path,
+    expected_key: &[u8; 32],
+) -> Result<SignedRelease> {
+    let root = directory(root)?;
+    let signed = release::verify_manifest(&read_manifest(&root)?, expected_key)?;
+    let binary = signed
+        .manifest()
+        .files
+        .iter()
+        .find(|r| r.path == "bbsbox-node")
+        .ok_or("release binary commitment missing")?;
+    if archive::hash_file(&root.join("bbsbox-node"), binary.size)?
+        != (binary.size, binary.sha256.clone())
+    {
+        return Err("selected release binary changed".into());
+    }
+    check_elf(&root)?;
+    if read_manifest(&root)? != signed.encoded() {
+        return Err("selected release manifest changed".into());
+    }
+    Ok(signed)
 }
 
 /// Source and ancestors must remain under the caller's control throughout inspection/copy.

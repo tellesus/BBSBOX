@@ -199,8 +199,10 @@ pub fn backup(
     }
     let installed: serde_json::Value =
         serde_json::from_reader(File::open(root.join("installation.json"))?.take(65537))?;
-    if installed["format"] != "bbsbox.development-install/v1"
-        || installed["node_id"] != expected.to_string()
+    if !matches!(
+        installed["format"].as_str(),
+        Some("bbsbox.development-install/v1" | "bbsbox.install/v1")
+    ) || installed["node_id"] != expected.to_string()
     {
         return Err("Installation record does not match this node".into());
     }

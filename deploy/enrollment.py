@@ -32,8 +32,8 @@ def ca_fingerprint(ca):
 def export(installation, config, ca, output):
     installed = read_json(installation); settings = read_json(config)
     node_id = installed.get('node_id', '')
-    if installed.get('format') != 'bbsbox.development-install/v1' or not re.fullmatch(r'node:[a-f0-9]{64}', node_id):
-        raise ValueError('Expected development installation metadata')
+    if installed.get('format') not in ('bbsbox.development-install/v1','bbsbox.install/v1') or not re.fullmatch(r'node:[a-f0-9]{64}', node_id):
+        raise ValueError('Expected node installation metadata')
     hostname = 'bbsbox-'+node_id.split(':')[1][:16]+'.home.arpa'
     if installed.get('hostname') != hostname or settings.get('format') != 'bbsbox.node-config/v1':
         raise ValueError('Node hostname/configuration mismatch')

@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+FROM debian:trixie-20261027-slim
+RUN apt-get update && apt-get install -y --no-install-recommends python3 openssl passwd systemd systemd-sysv libgcc-s1 nftables dnsmasq-base iproute2
+WORKDIR /src
+COPY tools/ tools/
+COPY deploy/ deploy/
+COPY bundle/ bundle/
+COPY bootstrap/ bootstrap/
+COPY public-key.txt public-key.txt
+COPY next-manifest.cose next-manifest.cose
+RUN --network=none SYSTEMD_OFFLINE=1 python3 -c "from pathlib import Path; import sys; sys.path.insert(0,'deploy'); import install_release; import json; print(json.dumps(install_release.install(Path('/src/bundle'),Path('/src/bootstrap/bbsbox-operator'),Path('/src/public-key.txt').read_text().strip(),'Signed service fixture',True)))"
+CMD ["/sbin/init"]

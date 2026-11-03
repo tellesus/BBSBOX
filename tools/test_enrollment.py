@@ -45,6 +45,12 @@ class EnrollmentTests(unittest.TestCase):
         self.assertNotIn('private', (output/'node.json').read_text(encoding='utf-8'))
         with self.assertRaises(FileExistsError): self.export()
 
+    def test_signed_installation_uses_the_same_public_enrollment_boundary(self):
+        self.installation['format']='bbsbox.install/v1'
+        self.installation['release_id']='b'*64
+        self.assertEqual(self.export()['node_id'],self.installation['node_id'])
+        self.assertNotIn('release_id',(self.root/'public/node.json').read_text())
+
     def test_different_ca_or_hostname_is_rejected_before_export(self):
         self.installation['ca_sha256'] = '00:'*31+'00'
         with self.assertRaises(ValueError): self.export()

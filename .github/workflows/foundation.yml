@@ -1,9 +1,9 @@
 name: Foundation experiment
 on:
   push:
-    paths: ['spikes/m00/**', 'crates/**', 'client/**', 'protocol/**', 'deploy/**', 'Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', '.github/workflows/foundation.yml', 'tools/validate_roadmap.py', 'tools/verify_credentials.mjs', 'tools/verify_event_vectors.mjs', 'tools/verify_archive_vectors.mjs', 'tools/verify_release_vectors.mjs', 'tools/release_materials.py', 'tools/test_release_materials.py', 'tools/release_candidate.py', 'tools/test_release_candidate.py', 'tools/runtime_smoke.py', 'tools/runtime_bundle.py', 'tools/test_runtime_bundle.py', 'tools/test_install_development.py', 'tools/test_backup_development.py', 'tools/test_network_profile.py', 'tools/test_enrollment.py', 'tools/test_configure_network.py', 'tools/test_local_tls.py', 'tools/test_link_capture.py', 'docs/**']
+    paths: ['spikes/m00/**', 'crates/**', 'client/**', 'protocol/**', 'deploy/**', 'Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', '.github/workflows/foundation.yml', 'tools/validate_roadmap.py', 'tools/verify_credentials.mjs', 'tools/verify_event_vectors.mjs', 'tools/verify_archive_vectors.mjs', 'tools/verify_release_vectors.mjs', 'tools/release_materials.py', 'tools/test_release_materials.py', 'tools/release_candidate.py', 'tools/test_release_candidate.py', 'tools/runtime_smoke.py', 'tools/runtime_bundle.py', 'tools/test_runtime_bundle.py', 'tools/test_install_development.py', 'tools/test_install_release.py', 'tools/test_backup_development.py', 'tools/test_network_profile.py', 'tools/test_enrollment.py', 'tools/test_configure_network.py', 'tools/test_local_tls.py', 'tools/test_link_capture.py', 'docs/**']
   pull_request:
-    paths: ['spikes/m00/**', 'crates/**', 'client/**', 'protocol/**', 'deploy/**', 'Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', '.github/workflows/foundation.yml', 'tools/validate_roadmap.py', 'tools/verify_credentials.mjs', 'tools/verify_event_vectors.mjs', 'tools/verify_archive_vectors.mjs', 'tools/verify_release_vectors.mjs', 'tools/release_materials.py', 'tools/test_release_materials.py', 'tools/release_candidate.py', 'tools/test_release_candidate.py', 'tools/runtime_smoke.py', 'tools/runtime_bundle.py', 'tools/test_runtime_bundle.py', 'tools/test_install_development.py', 'tools/test_backup_development.py', 'tools/test_network_profile.py', 'tools/test_enrollment.py', 'tools/test_configure_network.py', 'tools/test_local_tls.py', 'tools/test_link_capture.py', 'docs/**']
+    paths: ['spikes/m00/**', 'crates/**', 'client/**', 'protocol/**', 'deploy/**', 'Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', '.github/workflows/foundation.yml', 'tools/validate_roadmap.py', 'tools/verify_credentials.mjs', 'tools/verify_event_vectors.mjs', 'tools/verify_archive_vectors.mjs', 'tools/verify_release_vectors.mjs', 'tools/release_materials.py', 'tools/test_release_materials.py', 'tools/release_candidate.py', 'tools/test_release_candidate.py', 'tools/runtime_smoke.py', 'tools/runtime_bundle.py', 'tools/test_runtime_bundle.py', 'tools/test_install_development.py', 'tools/test_install_release.py', 'tools/test_backup_development.py', 'tools/test_network_profile.py', 'tools/test_enrollment.py', 'tools/test_configure_network.py', 'tools/test_local_tls.py', 'tools/test_link_capture.py', 'docs/**']
 permissions:
   contents: read
 jobs:
@@ -93,6 +93,7 @@ jobs:
       - run: python3 tools/runtime_bundle.py build --binary target/debug/bbsbox-node --output work/runtime-bundle
       - run: python3 tools/runtime_bundle.py verify work/runtime-bundle
       - run: python3 -m unittest discover -s tools -p test_install_development.py -v
+      - run: python3 -m unittest discover -s tools -p test_install_release.py -v
       - run: python3 -m unittest discover -s tools -p test_backup_development.py -v
       - run: sudo apt-get -o Acquire::http::Timeout=20 -o Acquire::https::Timeout=20 -o Acquire::Retries=1 update && sudo apt-get -o DPkg::Lock::Timeout=60 -o Acquire::http::Timeout=20 -o Acquire::https::Timeout=20 -o Acquire::Retries=1 install -y strace iproute2 systemd-container
         timeout-minutes: 5
@@ -140,6 +141,22 @@ jobs:
             work/reinstall-evidence.json
             work/debian-boot-*.log
             work/debian-network/**
+      - run: sudo python3 deploy/ci/signed_context.py --fixture work/signed-candidate-fixture --verifier target/debug/bbsbox-node --output work/signed-install-context
+      - run: docker build -t bbsbox-signed-install-fixture work/signed-install-context
+        env:
+          DOCKER_BUILDKIT: '1'
+      - run: docker create --name bbsbox-signed-export bbsbox-signed-install-fixture
+      - run: docker export bbsbox-signed-export -o work/signed-debian-root.tar
+      - run: docker rm bbsbox-signed-export
+      - run: sudo python3 deploy/ci/prepare.py extract --archive work/signed-debian-root.tar --output work/signed-debian-root
+      - run: sudo python3 deploy/ci/boot_service.py --root work/signed-debian-root --signed --output work/signed-debian-service-evidence.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: signed-install-service-evidence
+          path: |
+            work/signed-debian-service-evidence.json
+            work/debian-boot-*.log
       - run: cargo run --release --locked --offline --example writer_load > writer-load.json
       - uses: actions/upload-artifact@v4
         with:

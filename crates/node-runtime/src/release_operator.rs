@@ -133,6 +133,9 @@ pub fn command(arguments: &[OsString]) -> Result<serde_json::Value> {
         .first()
         .and_then(|s| s.to_str())
         .ok_or("release command missing")?;
+    if command.starts_with("release-control-") {
+        return control_command(command, &arguments[1..]);
+    }
     let names: &[&str] = match command {
         "release-keygen" => &["--output"],
         "release-sign" => &["--bundle", "--manifest", "--key-file"],
@@ -180,5 +183,165 @@ pub fn command(arguments: &[OsString]) -> Result<serde_json::Value> {
             };
             Ok(report(&signed))
         }
+    }
+}
+
+fn fixed_hex<const N: usize>(value: &std::ffi::OsStr) -> Result<[u8; N]> {
+    let value = value.to_str().ok_or("invalid hexadecimal release option")?;
+    if value.len() != N * 2
+        || !value
+            .bytes()
+            .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+    {
+        return Err("invalid hexadecimal release option".into());
+    }
+    let mut bytes = [0; N];
+    hex::decode_to_slice(value, &mut bytes)?;
+    Ok(bytes)
+}
+fn control_command(command: &str, arguments: &[OsString]) -> Result<serde_json::Value> {
+    use bbsbox_maintenance::release_trust::{Recovery, Store};
+    if command == "release-control-boot" {
+        if !arguments.is_empty() {
+            return Err("installed release boot check takes no options".into());
+        }
+        return installed_boot();
+    }
+    let names: &[&str] = match command {
+        "release-control-init" => &["--directory", "--public-key"],
+        "release-control-state" => &["--directory"],
+        "release-control-check" => &["--directory", "--release"],
+        "release-control-begin" => &["--directory", "--revision", "--bundle", "--request"],
+        "release-control-complete" => &["--directory", "--revision", "--request", "--release-id"],
+        "release-control-failed" => &["--directory", "--revision", "--request", "--reason", "--at"],
+        "release-control-recover" => &[
+            "--directory",
+            "--revision",
+            "--request",
+            "--release-id",
+            "--snapshot",
+            "--reason",
+            "--at",
+        ],
+        _ => return Err("unknown release control command".into()),
+    };
+    let mut options = BTreeMap::new();
+    let (chunks, remainder) = arguments.as_chunks::<2>();
+    if !remainder.is_empty() {
+        return Err("each release control option requires a value".into());
+    }
+    for pair in chunks {
+        let name = pair[0].to_str().ok_or("invalid release control option")?;
+        if !names.contains(&name) || options.insert(name, pair[1].as_os_str()).is_some() {
+            return Err("unknown or duplicate release control option".into());
+        }
+    }
+    if options.len() != names.len() {
+        return Err("required release control options are missing".into());
+    }
+    let path = |name| Path::new(options[name]);
+    let text = |name| {
+        options[name]
+            .to_str()
+            .ok_or("release control option must be text")
+    };
+    let store = if command == "release-control-init" {
+        Store::initialize(path("--directory"), fixed_hex(options["--public-key"])?)?
+    } else {
+        Store::open(path("--directory"))?
+    };
+    if command == "release-control-check" {
+        return Ok(
+            serde_json::json!({"format":"bbsbox.release-boot-check/v1","selection":store.check_selected(path("--release"))?}),
+        );
+    }
+    let state = match command {
+        "release-control-init" | "release-control-state" => store.state()?,
+        _ => {
+            let revision = text("--revision")?.parse()?;
+            let request = fixed_hex(options["--request"])?;
+            match command {
+                "release-control-begin" => {
+                    // Full byte authentication is mandatory even for an explicit local control request.
+                    // The coordinator additionally checks material semantics and the actual profile.
+                    let current = store.state()?;
+                    let signed = release_payload::verify(path("--bundle"), &current.trusted_key)?;
+                    store.begin(revision, signed.encoded(), request)?
+                }
+                "release-control-complete" => {
+                    store.complete(revision, request, fixed_hex(options["--release-id"])?)?
+                }
+                "release-control-failed" => {
+                    store.failed(revision, request, text("--reason")?, text("--at")?.parse()?)?
+                }
+                "release-control-recover" => store.begin_recovery(
+                    revision,
+                    fixed_hex(options["--release-id"])?,
+                    request,
+                    Recovery {
+                        snapshot_inventory: fixed_hex(options["--snapshot"])?,
+                        reason: text("--reason")?.into(),
+                        recorded_at: text("--at")?.parse()?,
+                    },
+                )?,
+                _ => return Err("unknown release control transition".into()),
+            }
+        }
+    };
+    Ok(serde_json::json!({"format":"bbsbox.release-control/v1","state":state}))
+}
+
+fn installed_boot() -> Result<serde_json::Value> {
+    #[cfg(not(unix))]
+    {
+        Err("installed release boot checks require the Debian appliance".into())
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt;
+        let protected = |path: &Path, directory: bool| -> Result<()> {
+            let metadata = fs::symlink_metadata(path)?;
+            if metadata.file_type().is_symlink()
+                || metadata.uid() != 0
+                || metadata.mode() & 0o022 != 0
+                || metadata.is_dir() != directory
+                || (!directory && !metadata.is_file())
+            {
+                return Err("installed release paths must be root-owned and protected".into());
+            }
+            Ok(())
+        };
+        let control = Path::new("/var/lib/bbsbox-maintenance/release-control");
+        for path in [
+            Path::new("/opt/bbsbox"),
+            Path::new("/opt/bbsbox/releases"),
+            Path::new("/opt/bbsbox/maintenance"),
+            Path::new("/var/lib/bbsbox-maintenance"),
+            control,
+        ] {
+            protected(path, true)?;
+        }
+        protected(Path::new("/opt/bbsbox/maintenance/bbsbox-operator"), false)?;
+        protected(&control.join("release-trust.sqlite"), false)?;
+        let current = Path::new("/opt/bbsbox/current");
+        let link = fs::symlink_metadata(current)?;
+        if !link.file_type().is_symlink() || link.uid() != 0 {
+            return Err("application selection must be a root-owned symlink".into());
+        }
+        let selected = current.canonicalize()?;
+        if selected.parent() != Some(Path::new("/opt/bbsbox/releases")) {
+            return Err("application selection escapes installed releases".into());
+        }
+        protected(&selected, true)?;
+        protected(&selected.join("bbsbox-node"), false)?;
+        protected(&selected.join("manifest.cose"), false)?;
+        let store = bbsbox_maintenance::release_trust::Store::open(control)?;
+        let active = store.check_selected(&selected)?;
+        if selected.file_name().and_then(|p| p.to_str())
+            != Some(hex::encode(active.release_id).as_str())
+        {
+            return Err("installed release directory differs from its receipt".into());
+        }
+        Ok(serde_json::json!({"format":"bbsbox.release-boot-check/v1","selection":active}))
     }
 }

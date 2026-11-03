@@ -135,6 +135,69 @@ fn role_wrong_inventory_and_strict_options_fail_before_manifest_publication() {
     assert!(f.sign().is_err());
     assert!(!f.bundle.join("manifest.cose").exists());
 }
+
+#[test]
+fn operator_control_commands_fence_boot_until_exact_completion_and_recheck_the_binary() {
+    let f = Fixture::new();
+    let signed = f.sign().unwrap();
+    let control = f.root.join("control");
+    let path = |p: &Path| p.as_os_str().to_os_string();
+    let init = vec![
+        "release-control-init".into(),
+        "--directory".into(),
+        path(&control),
+        "--public-key".into(),
+        f.public.clone().into(),
+    ];
+    let initial = release_operator::command(&init).unwrap();
+    assert_eq!(initial["state"]["revision"], 0);
+    assert!(release_operator::command(&init).is_err());
+    let check = vec![
+        "release-control-check".into(),
+        "--directory".into(),
+        path(&control),
+        "--release".into(),
+        path(&f.bundle),
+    ];
+    assert!(release_operator::command(&check).is_err());
+    let request = "01".repeat(16);
+    let begun = release_operator::command(&[
+        "release-control-begin".into(),
+        "--directory".into(),
+        path(&control),
+        "--revision".into(),
+        "0".into(),
+        "--bundle".into(),
+        path(&f.bundle),
+        "--request".into(),
+        request.clone().into(),
+    ])
+    .unwrap();
+    assert_eq!(begun["state"]["highest_sequence"], 1);
+    assert!(release_operator::command(&check).is_err());
+    release_operator::command(&[
+        "release-control-complete".into(),
+        "--directory".into(),
+        path(&control),
+        "--revision".into(),
+        "1".into(),
+        "--request".into(),
+        request.into(),
+        "--release-id".into(),
+        signed["release_id"].as_str().unwrap().into(),
+    ])
+    .unwrap();
+    let accepted = release_operator::command(&check).unwrap();
+    assert_eq!(accepted["format"], "bbsbox.release-boot-check/v1");
+    let binary = f.bundle.join("bbsbox-node");
+    let original = fs::read(&binary).unwrap();
+    fs::write(&binary, b"changed").unwrap();
+    assert!(release_operator::command(&check).is_err());
+    fs::write(binary, original).unwrap();
+    assert!(release_operator::command(&check).is_ok());
+    assert!(!f.root.join("node.sqlite").exists());
+    assert!(!control.join("node.sqlite").exists());
+}
 #[cfg(unix)]
 #[test]
 fn producer_key_must_be_private_and_not_a_link() {

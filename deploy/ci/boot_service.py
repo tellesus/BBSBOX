@@ -47,11 +47,12 @@ def enter(pid,root,arguments,check=True,timeout=20):
         raise
 
 
-def maintenance(pid,root,node):
+def maintenance(pid,root,node,signed=False):
     binary='/opt/bbsbox/current/bbsbox-node'
+    backup_command=['/usr/bin/python3','/src/deploy/backup_node.py'] if signed else ['/usr/bin/python3','/src/deploy/backup_development.py','--development']
     recipient=json.loads(enter(pid,root,[binary,'backup-keygen','--output','/root/bbsbox-ci-backup.key']).stdout)['recipient']
     original_ca=(root/'etc/bbsbox/tls/ca-key.pem').read_bytes()
-    result=json.loads(enter(pid,root,['/usr/bin/python3','/src/deploy/backup_development.py','--development','--output','/root/bbsbox-ci-backup.age','--recipient',recipient],timeout=120).stdout)
+    result=json.loads(enter(pid,root,[*backup_command,'--output','/root/bbsbox-ci-backup.age','--recipient',recipient],timeout=120).stdout)
     assert result['node']==node and result['service_resumed'] and result['scope']=='foundation-node'
     assert enter(pid,root,['/usr/bin/systemctl','is-active','bbsbox.service']).stdout.strip()==b'active'
     service_identity(pid,root)
@@ -73,12 +74,12 @@ def maintenance(pid,root,node):
             if suffix=='':raise
             continue
         assert stat.S_ISREG(metadata.st_mode) and metadata.st_uid==uid and metadata.st_gid==gid and stat.S_IMODE(metadata.st_mode)==0o600
-    failed=enter(pid,root,['/usr/bin/python3','/src/deploy/backup_development.py','--development','--output','/root/bbsbox-ci-invalid.age','--recipient','age1invalid'],check=False,timeout=120)
+    failed=enter(pid,root,[*backup_command,'--output','/root/bbsbox-ci-invalid.age','--recipient','age1invalid'],check=False,timeout=120)
     assert failed.returncode!=0 and not (root/'root/bbsbox-ci-invalid.age').exists()
     assert enter(pid,root,['/usr/bin/systemctl','is-active','bbsbox.service']).stdout.strip()==b'active'
     service_identity(pid,root)
     enter(pid,root,['/usr/bin/systemctl','stop','bbsbox.service'])
-    inactive=json.loads(enter(pid,root,['/usr/bin/python3','/src/deploy/backup_development.py','--development','--output','/root/bbsbox-ci-inactive.age','--recipient',recipient],timeout=120).stdout)
+    inactive=json.loads(enter(pid,root,[*backup_command,'--output','/root/bbsbox-ci-inactive.age','--recipient',recipient],timeout=120).stdout)
     assert inactive['service_resumed'] is False and inactive['node']==node
     assert enter(pid,root,['/usr/bin/systemctl','is-active','bbsbox.service'],False).stdout.strip()==b'inactive'
     enter(pid,root,['/usr/bin/systemctl','start','bbsbox.service'])
@@ -136,12 +137,12 @@ def service_identity(pid,root,user='bbsbox',process_name='bbsbox-node',unit='bbs
     raise RuntimeError(f'Expected {process_name} as {user} (uid {uid}) in {unit}; observed {observed}')
 
 
-def boot(root,output):
+def boot(root,output,signed=False):
     if sys.platform!='linux' or os.geteuid()!=0:raise RuntimeError('Use a disposable Linux CI host as root')
     root=root.resolve();work=(ROOT/'work').resolve()
     if not root.is_relative_to(work) or root==work:raise RuntimeError('Test root must be beneath repository work/')
     installed=json.loads((root/'etc/bbsbox/installation.json').read_text())
-    if installed['format']!='bbsbox.development-install/v1':raise RuntimeError('Expected the development install fixture')
+    if installed['format']!=('bbsbox.install/v1' if signed else 'bbsbox.development-install/v1'):raise RuntimeError('Unexpected installation fixture format')
     cases=[]
     for attempt in range(2):
         log=output.parent/f'debian-boot-{attempt}.log'
@@ -158,11 +159,14 @@ def boot(root,output):
                 pid,restarted=wait_ready(process,root)
                 assert restarted['node_id']==info['node_id'] and service_identity(pid,root)!=first_pid
                 if attempt==0:
-                    maintenance_result=maintenance(pid,root,info['node_id'])
+                    maintenance_result=maintenance(pid,root,info['node_id'],signed)
                     # Independent maintenance scenarios deliberately used five successful starts.
                     # Keep the production crash-loop limit; reset only this fixture's test counter.
                     assert int(enter(pid,root,['/usr/bin/systemctl','show','bbsbox.service','-p','StartLimitBurst','--value']).stdout)==5
                     enter(pid,root,['/usr/bin/systemctl','reset-failed','bbsbox.service'])
+                    if signed:
+                        import release_boot_cases
+                        maintenance_result['release_control']=release_boot_cases.exercise(pid,root)
                     enter(pid,root,['/usr/bin/systemctl','stop','bbsbox.service'])
                     config_path=root/'etc/bbsbox/node.json';config=json.loads(config_path.read_text());config.update(bind='[::1]:8443',origin='https://[::1]:8443')
                     config_path.write_text(json.dumps(config)+'\n')
@@ -198,14 +202,14 @@ def boot(root,output):
                 finally:
                     if pid_fd is not None:os.close(pid_fd)
         if process.returncode!=0:raise RuntimeError(f'Test OS shutdown failed; inspect {log}')
-    report=dict(status='passed',target='Debian 13 amd64 userspace/systemd in systemd-nspawn',cases=cases,ipv4_and_ipv6=True,node_identity_preserved_after_os_reboot=True,scope='Install/service proof on the CI kernel; physical appliance/router/phone acceptance remains separate')
+    report=dict(status='passed',target='Debian 13 amd64 userspace/systemd in systemd-nspawn',cases=cases,ipv4_and_ipv6=True,node_identity_preserved_after_os_reboot=True,signed_release=signed,scope='Install/service proof on the CI kernel; physical appliance/router/phone acceptance remains separate')
     output.write_text(json.dumps(report,indent=2)+'\n');print(json.dumps(report,indent=2))
 
 
 def main():
-    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--root',type=Path,required=True);parser.add_argument('--output',type=Path,default=ROOT/'work/debian-service-evidence.json');parser.add_argument('--probe',action='store_true');args=parser.parse_args()
+    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--root',type=Path,required=True);parser.add_argument('--output',type=Path,default=ROOT/'work/debian-service-evidence.json');parser.add_argument('--probe',action='store_true');parser.add_argument('--signed',action='store_true');args=parser.parse_args()
     if args.probe:print(json.dumps(probe(args.root)))
-    else:args.output.parent.mkdir(parents=True,exist_ok=True);boot(args.root,args.output)
+    else:args.output.parent.mkdir(parents=True,exist_ok=True);boot(args.root,args.output,args.signed)
 
 
 if __name__=='__main__':main()

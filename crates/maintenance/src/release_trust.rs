@@ -284,6 +284,26 @@ impl Store {
         transaction.commit()?;
         Ok(state)
     }
+    /// Boot gate only: requires a completed selection, no pending operation and its exact binary.
+    /// Caller retains installation/selection exclusion through the service-start operation.
+    pub fn check_selected(&self, bundle: &Path) -> Result<Selection> {
+        let state = self.state()?;
+        if state.pending.is_some() {
+            return Err("release operation is pending; service activation is blocked".into());
+        }
+        let active = state
+            .active
+            .as_ref()
+            .ok_or("no release selection is completed")?;
+        let signed = crate::release_payload::verify_selected_binary(bundle, &active.authority)?;
+        if Selection::from_signed(&signed) != *active {
+            return Err("application selection differs from release control".into());
+        }
+        if self.state()? != state {
+            return Err("release control changed during boot verification".into());
+        }
+        Ok(active.clone())
+    }
     fn change(
         &self,
         expected: u64,

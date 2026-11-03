@@ -42,7 +42,7 @@ def prepare_stage(path):
         raise ValueError('Maintenance staging must be a private root-owned directory')
 
 
-def backup(destination, recipient):
+def backup(destination, recipient, release=False):
     if os.name!='posix' or os.geteuid()!=0:raise ValueError('Use the Debian development node as root')
     import fcntl
     import pwd
@@ -64,16 +64,19 @@ def backup(destination, recipient):
         regular(path,[0])
     regular(database,[user.pw_uid])
     config=enrollment.read_json(configuration/'node.json');installed=enrollment.read_json(configuration/'installation.json')
-    if config.get('database')!=str(database) or installed.get('format')!='bbsbox.development-install/v1':raise ValueError('Expected the installed development layout')
+    expected_format='bbsbox.install/v1' if release else 'bbsbox.development-install/v1'
+    if config.get('database')!=str(database) or installed.get('format')!=expected_format:raise ValueError('Expected the installed node layout')
     stage=Path('/var/lib/bbsbox-maintenance');prepare_stage(stage)
     executable=Path('/opt/bbsbox/current/bbsbox-node')
     regular(executable.resolve(),[0])
-    if not executable.resolve().is_relative_to(Path('/opt/bbsbox/development')):raise ValueError('Expected an installed development release')
+    release_root=Path('/opt/bbsbox/releases') if release else Path('/opt/bbsbox/development')
+    if not executable.resolve().is_relative_to(release_root):raise ValueError('Expected the installed application release')
     lock=os.open('/run/bbsbox-maintenance.lock',os.O_RDWR|os.O_CREAT|os.O_NOFOLLOW,0o600)
     try:
         metadata=os.fstat(lock)
         if not stat.S_ISREG(metadata.st_mode) or metadata.st_uid!=0 or metadata.st_mode&0o077:raise ValueError('Unexpected maintenance lock ownership/mode')
         fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
+        if release:run(['/opt/bbsbox/maintenance/bbsbox-operator','release-control-boot'])
         active=subprocess.run(['/usr/bin/systemctl','is-active','bbsbox.service'],capture_output=True,timeout=20).stdout.strip()
         if active not in [b'active',b'inactive',b'failed']:raise ValueError('Wait for the service state transition before backup')
         was_active=active==b'active'

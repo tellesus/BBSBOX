@@ -46,8 +46,26 @@ pub async fn run(
         return Err("Usage: bbsbox-node --config <node.json> [--initialize]".into());
     }
     let config = crate::Config::read(std::path::Path::new(&args[1]))?;
+    let installation = std::path::Path::new(&args[1]).with_file_name("installation.json");
+    let present = match std::fs::symlink_metadata(&installation) {
+        Ok(_) => true,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => false,
+        Err(error) => return Err(error.into()),
+    };
+    let expected = match present {
+        true => Some(crate::release_operator::check_installed_node(
+            &config.database,
+            &installation,
+        )?),
+        false => None,
+    };
     if initialize {
-        let runtime = crate::Runtime::start_with_registry(&config, registry).await?;
+        let runtime = match expected {
+            Some(node) => {
+                crate::Runtime::start_existing_with_registry(&config, registry, node).await?
+            }
+            None => crate::Runtime::start_with_registry(&config, registry).await?,
+        };
         let info = runtime.info();
         println!(
             "{}",
@@ -55,6 +73,9 @@ pub async fn run(
         );
         runtime.shutdown().await
     } else {
-        crate::serve_with_registry(config, registry).await
+        match expected {
+            Some(node) => crate::serve_existing_with_registry(config, registry, node).await,
+            None => crate::serve_with_registry(config, registry).await,
+        }
     }
 }

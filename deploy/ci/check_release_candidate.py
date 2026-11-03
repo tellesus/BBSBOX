@@ -30,6 +30,7 @@ def check(tool,binary,material_directory,commit,rebuild_evidence,root,output):
     if prepared['release_id']!=verified['release_id'] or verified['installation_authority'] is not False:
         raise ValueError('Candidate round trip did not preserve its exact identity/boundary')
     wrong=candidate.command([tool,'release-keygen','--output',root/'other-ephemeral.key'])
+    (root/'rotation-public.json').write_bytes(materials.encoded(wrong))
     try: candidate.inspect(tool,bundle,wrong['public_key'],root/'wrong-key')
     except ValueError: pass
     else: raise AssertionError('wrong release authority accepted')
@@ -58,7 +59,7 @@ def check(tool,binary,material_directory,commit,rebuild_evidence,root,output):
     for sequence,name in [(3,'upgrade_rejecting'),(4,'upgrade_interrupted'),(5,'upgrade_successor')]:
         executable=binary.parent/'examples'/name
         evidence=rebuild_evidence.parent/('offline-'+name+'.json')
-        candidate.prepare(tool,executable,material_directory,commit,evidence,key,key_info,sequence,0,root/name)
+        candidate.prepare(tool,executable,material_directory,commit,evidence,key,key_info,sequence,0,root/name,wrong['public_key'] if name=='upgrade_successor' else None)
     manifest['module_migrations'][0]['sha256']='00'*32
     input_path=root/'false-claims.json';input_path.write_bytes(materials.encoded(manifest))
     candidate.command([tool,'release-sign','--bundle',claims,'--manifest',input_path,'--key-file',key])

@@ -99,7 +99,7 @@ def committed_assets(material_directory):
     return found
 
 
-def prepare(tool, binary, material_directory, commit, evidence_path, key_file, key_info, sequence, created_at, output):
+def prepare(tool, binary, material_directory, commit, evidence_path, key_file, key_info, sequence, created_at, output, next_public=None):
     if not 1 <= sequence <= 2**64-1 or not -(2**63) <= created_at < 2**63:
         raise ValueError('Invalid release sequence/time')
     verified = materials.verify(material_directory, commit)
@@ -110,6 +110,11 @@ def prepare(tool, binary, material_directory, commit, evidence_path, key_file, k
     if profile != evidence.get('compiled_profile') or profile.get('format') != 'bbsbox.release-runtime/v1' or profile.get('target') != 'debian13-amd64':
         raise ValueError('Candidate compiled profile differs from its rebuild evidence')
     authority = public_info(key_info)
+    next_key=None
+    if next_public is not None:
+        successor=bytes.fromhex(next_public)
+        if len(successor)!=32 or successor.hex()!=next_public or next_public==authority['public_key']:raise ValueError('Next release authority must be a different canonical public key')
+        next_key=list(successor)
     output = Path(output).absolute()
     materials.directory(output.parent)
     output.mkdir(mode=0o700)
@@ -136,7 +141,7 @@ def prepare(tool, binary, material_directory, commit, evidence_path, key_file, k
         records.append({'path':path.relative_to(output).as_posix(),'size':size,'sha256':materials.file_digest(path)})
     if total > MAX_TOTAL:
         raise ValueError('Candidate exceeds total byte budget')
-    manifest = dict(format='bbsbox.release-manifest/v1',issuer=authority['key_id'],sequence=sequence,version=profile['version'],target=profile['target'],created_at=created_at,source_commit=commit,core_schema=profile['core_schema'],readable_core_schemas=profile['readable_core_schemas'],module_migrations=profile['module_migrations'],files=records,next_key=None)
+    manifest = dict(format='bbsbox.release-manifest/v1',issuer=authority['key_id'],sequence=sequence,version=profile['version'],target=profile['target'],created_at=created_at,source_commit=commit,core_schema=profile['core_schema'],readable_core_schemas=profile['readable_core_schemas'],module_migrations=profile['module_migrations'],files=records,next_key=next_key)
     with tempfile.TemporaryDirectory(prefix='release-input-',dir=output.parent) as temporary:
         path=Path(temporary)/'input.json'
         path.write_bytes(materials.encoded(manifest))
@@ -176,6 +181,7 @@ def main():
     prepare_parser.add_argument('--key-info',type=Path,required=True)
     prepare_parser.add_argument('--sequence',type=int,required=True)
     prepare_parser.add_argument('--created-at',type=int,required=True)
+    prepare_parser.add_argument('--next-public-key')
     prepare_parser.add_argument('--output',type=Path,required=True)
     inspect_parser=commands.add_parser('inspect')
     inspect_parser.add_argument('--tool',type=Path,required=True)
@@ -184,7 +190,7 @@ def main():
     inspect_parser.add_argument('--output',type=Path,required=True)
     args=parser.parse_args()
     if args.command=='prepare':
-        result=prepare(args.tool.resolve(),args.binary.resolve(),args.materials,args.source_commit,args.rebuild_evidence,args.key_file,args.key_info,args.sequence,args.created_at,args.output)
+        result=prepare(args.tool.resolve(),args.binary.resolve(),args.materials,args.source_commit,args.rebuild_evidence,args.key_file,args.key_info,args.sequence,args.created_at,args.output,args.next_public_key)
     else:
         result=inspect(args.tool.resolve(),args.bundle,args.public_key,args.output)
     print(json.dumps(result,indent=2))

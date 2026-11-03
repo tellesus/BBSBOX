@@ -54,9 +54,24 @@ def exercise_updates(pid,root,original_release):
     updater=['/usr/bin/python3','/src/deploy/update_release.py']
     identity=['--identity-file','/root/bbsbox-ci-backup.key']
     def command(*args):return json.loads(guest.enter(pid,root,[operator,*args],timeout=120).stdout)
-    def update(name):return json.loads(guest.enter(pid,root,[*updater,'apply','--bundle','/var/lib/bbsbox-maintenance/'+name,*identity],timeout=1200).stdout)
+    def update(name,expected_status=0):
+        result=guest.enter(pid,root,[*updater,'apply','--bundle','/var/lib/bbsbox-maintenance/'+name,*identity],check=False,timeout=1200)
+        assert result.returncode==expected_status,result.stderr[-8192:].decode(errors='replace')
+        return json.loads(result.stdout)
     original_ca=(root/'etc/bbsbox/tls/ca-key.pem').read_bytes()
     node=json.loads((root/'etc/bbsbox/installation.json').read_text())['node_id']
+    guest.enter(pid,root,['/usr/bin/systemctl','stop','bbsbox.service'])
+    held="import sys,time; from pathlib import Path; sys.path.insert(0,'/src/deploy'); import maintenance_lock\nwith maintenance_lock.acquire():\n Path('/var/lib/bbsbox-maintenance/start-fence-ready').write_text('held'); time.sleep(30)"
+    guest.enter(pid,root,['/usr/bin/systemd-run','--unit=bbsbox-maintenance-fence','--property=Type=exec','/usr/bin/python3','-c',held])
+    deadline=time.monotonic()+5
+    while not (root/'var/lib/bbsbox-maintenance/start-fence-ready').exists():
+        if time.monotonic()>deadline:raise ValueError('Maintenance/start fence did not acquire its lock')
+        time.sleep(.02)
+    assert command('release-control-state','--directory',control)['state']['pending'] is None
+    denied=guest.enter(pid,root,['/usr/bin/systemctl','start','bbsbox.service'],check=False,timeout=10)
+    assert denied.returncode!=0 # No pending ticket: this denial must come from maintenance exclusion.
+    guest.enter(pid,root,['/usr/bin/systemctl','stop','bbsbox-maintenance-fence.service'])
+    command('release-control-boot')
     # Seed valid independent idempotency namespaces sharing one command ID.
     guest.enter(pid,root,['/usr/bin/systemctl','stop','bbsbox.service'])
     script="import sqlite3; c=sqlite3.connect('/var/lib/bbsbox/node.sqlite'); c.executemany('INSERT INTO core_command_receipts VALUES(?,?,?,?)',[(n,'same-id',bytes(32),b'kept') for n in ['fixture-one','fixture-two']]); c.commit(); c.close()"
@@ -70,8 +85,8 @@ def exercise_updates(pid,root,original_release):
             relative=path.relative_to(root/'opt/bbsbox/releases'/original_release)
             source=(root/'src'/name/path.name) if relative.as_posix() in ['bbsbox-node','manifest.cose'] else path
             target=bundle/relative;target.parent.mkdir(parents=True,exist_ok=True,mode=0o700);os.link(source,target)
-    failed=update('upgrade_rejecting')
-    assert failed['state']=='recovered' and failed['highest_sequence']==3
+    failed=update('upgrade_rejecting',2)
+    assert failed['state']=='recovered' and failed['highest_sequence']==3 and failed['failed_phase']=='migrating'
     after_failure=command('release-control-state','--directory',control)['state']
     assert bytes(after_failure['active']['release_id']).hex()==original_release and after_failure['pending'] is None
     guest.service_identity(pid,root)
@@ -105,6 +120,9 @@ def exercise_updates(pid,root,original_release):
             break
         time.sleep(.02)
     else:raise ValueError('Did not observe the actual expensive migration child before its deadline')
+    config_before=(root/'etc/bbsbox/node.json').read_bytes()
+    renewal=guest.enter(pid,root,['/usr/bin/python3','/src/deploy/renew_tls.py','--development'],check=False,timeout=30)
+    assert renewal.returncode!=0 and (root/'etc/bbsbox/node.json').read_bytes()==config_before
     guest.enter(pid,root,['/usr/bin/systemctl','kill','--kill-whom=all','--signal=KILL','bbsbox-update-fixture.service'])
     guest.enter(pid,root,['/usr/bin/systemctl','stop','bbsbox-update-fixture.service'])
     pending=command('release-control-state','--directory',control)['state']
@@ -119,13 +137,26 @@ def exercise_updates(pid,root,original_release):
     assert succeeded['state']=='completed' and succeeded['highest_sequence']==5
     current=command('release-control-state','--directory',control)['state']
     assert current['pending'] is None and current['highest_sequence']==5 and bytes(current['active']['release_id']).hex()==succeeded['release_id']
-    assert current['trusted_key']==after_failure['trusted_key']
+    rotated=json.loads((root/'src/rotation-public.json').read_text())
+    assert current['trusted_key']!=after_failure['trusted_key'] and bytes(current['trusted_key']).hex()==rotated['public_key']
     assert json.loads((root/'etc/bbsbox/installation.json').read_text())['node_id']==node
     assert (root/'etc/bbsbox/tls/ca-key.pem').read_bytes()==original_ca
     with closing(sqlite3.connect('file:'+str(root/'var/lib/bbsbox/node.sqlite')+'?mode=ro',uri=True)) as database:
         assert database.execute('SELECT count(*) FROM core_migrations').fetchone()[0]==9
         assert database.execute('SELECT count(*) FROM events_upgrade_receipts').fetchone()[0]==2
     command('release-control-boot');guest.service_identity(pid,root)
+    # Completion retry must preserve a write accepted after that update's snapshot/completion.
+    guest.enter(pid,root,['/usr/bin/systemctl','stop','bbsbox.service'])
+    later="import sqlite3; c=sqlite3.connect('/var/lib/bbsbox/node.sqlite'); c.execute('INSERT INTO core_command_receipts VALUES(?,?,?,?)',('fixture-later','after-update',bytes(32),b'newer-write')); c.commit(); c.close()"
+    guest.enter(pid,root,['runuser','-u','bbsbox','--','/usr/bin/python3','-c',later])
+    repeated=json.loads(guest.enter(pid,root,[*updater,'recover','--operation',succeeded['operation'],*identity],timeout=120).stdout)
+    assert repeated['state']=='completed'
+    with closing(sqlite3.connect('file:'+str(root/'var/lib/bbsbox/node.sqlite')+'?mode=ro',uri=True)) as database:
+        assert database.execute("SELECT response FROM core_command_receipts WHERE namespace='fixture-later'").fetchone()[0]==b'newer-write'
+        assert database.execute('SELECT count(*) FROM core_migrations').fetchone()[0]==9
+    stale=guest.enter(pid,root,[*updater,'recover','--operation',failed['operation'],*identity],check=False,timeout=120)
+    assert stale.returncode!=0
+    assert command('release-control-state','--directory',control)['state']==current
     # The upgraded assembly must also back up its new exact registry, preserving an inactive source.
     guest.enter(pid,root,['/usr/bin/systemctl','stop','bbsbox.service'])
     recipient=json.loads(guest.enter(pid,root,['/opt/bbsbox/current/bbsbox-node','backup-public',*identity]).stdout)['recipient']
@@ -133,4 +164,22 @@ def exercise_updates(pid,root,original_release):
     assert backed['service_resumed'] is False and backed['node']==node
     guest.enter(pid,root,['/usr/bin/systemctl','reset-failed','bbsbox.service'])
     guest.enter(pid,root,['/usr/bin/systemctl','start','bbsbox.service']);guest.service_identity(pid,root)
-    return dict(failed_sql_restored_matching_snapshot=True,actual_migration_process_killed=True,pending_interruption_blocks_boot=True,explicit_interrupted_recovery=True,new_sql_migrated=True,receipts_identity_ca_preserved=True,upgraded_registry_backup=True,maximum_sequence_preserved=5)
+    rollback=json.loads(guest.enter(pid,root,['/usr/bin/python3','/src/deploy/rollback_release.py','--operation',succeeded['operation'],*identity,'--reason','CI explicit matching historical recovery'],timeout=1200).stdout)
+    assert rollback['state']=='rolled-back' and rollback['highest_sequence']==5
+    verify_restored();guest.service_identity(pid,root)
+    after_rollback=command('release-control-state','--directory',control)['state']
+    assert after_rollback['pending'] is None and after_rollback['highest_sequence']==5
+    assert bytes(after_rollback['active']['release_id']).hex()==original_release and after_rollback['trusted_key']==current['trusted_key']
+    with closing(sqlite3.connect('file:'+str(root/'var/lib/bbsbox/node.sqlite')+'?mode=ro',uri=True)) as database:
+        assert database.execute("SELECT count(*) FROM core_command_receipts WHERE namespace='fixture-later'").fetchone()[0]==0
+    plan=json.loads((root/'var/lib/bbsbox-maintenance/updates'/rollback['operation']/'plan.json').read_text())
+    retained=json.loads(guest.enter(pid,root,['/opt/bbsbox/releases/'+succeeded['release_id']+'/bbsbox-node','restore','--archive','/var/lib/bbsbox-maintenance/updates/'+rollback['operation']+'/displaced-before.age','--node',node,*identity,'--output','/root/rollback-retained','--staging','/var/lib/bbsbox-maintenance'],timeout=120).stdout)
+    assert retained['inventory_sha256']==plan['retained_inventory'] and retained['state']=='recovery-required'
+    with closing(sqlite3.connect('file:'+str(root/'root/rollback-retained/data/node.sqlite')+'?mode=ro',uri=True)) as database:
+        assert database.execute("SELECT response FROM core_command_receipts WHERE namespace='fixture-later'").fetchone()[0]==b'newer-write'
+        assert database.execute('SELECT count(*) FROM core_migrations').fetchone()[0]==9
+    with closing(sqlite3.connect('file:'+str(root/'var/lib/bbsbox-maintenance/release-control/release-trust.sqlite')+'?mode=ro',uri=True)) as database:
+        evidence=json.loads(database.execute("SELECT detail FROM history WHERE action='begin-recovery' ORDER BY revision DESC LIMIT 1").fetchone()[0])['purpose']['evidence']
+        assert evidence['reason']=='CI explicit matching historical recovery' and bytes(evidence['snapshot_inventory']).hex()==plan['snapshot']
+    command('release-control-boot')
+    return dict(manual_start_excluded_before_pending=True,failed_sql_restored_matching_snapshot=True,actual_migration_process_killed=True,renewal_excluded_during_update=True,pending_interruption_blocks_boot=True,explicit_interrupted_recovery=True,new_sql_migrated=True,receipts_identity_ca_preserved=True,completed_retry_keeps_newer_writes=True,stale_operation_refused=True,upgraded_registry_backup=True,completed_rollback_recorded=True,displaced_newer_writes_retained_separately=True,prior_key_rotation_preserved=True,maximum_sequence_preserved=5)

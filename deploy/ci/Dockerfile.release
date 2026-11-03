@@ -8,6 +8,7 @@ COPY bundle/ bundle/
 COPY bootstrap/ bootstrap/
 COPY public-key.txt public-key.txt
 COPY next-manifest.cose next-manifest.cose
+COPY rotation-public.json rotation-public.json
 COPY upgrade_rejecting/ upgrade_rejecting/
 COPY upgrade_successor/ upgrade_successor/
 COPY upgrade_interrupted/ upgrade_interrupted/

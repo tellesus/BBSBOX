@@ -121,7 +121,30 @@ async fn compiled_registry_drives_both_runtime_migrations_and_its_release_profil
     let mut registry = bbsbox_node_runtime::migrations();
     registry.push(bbsbox_storage::Migration{module:"events",version:4,sql:"CREATE TABLE events_assembly_fixture(value INTEGER NOT NULL); INSERT INTO events_assembly_fixture VALUES(23);"});
     let profile = bbsbox_node_runtime::release_profile_for_registry(&registry);
-    let upgraded = Runtime::start_with_registry(&config, registry)
+    let wrong = bbsbox_credentials::NodeId::from_digest([9; 32]);
+    assert!(
+        Runtime::start_existing_with_registry(&config, registry.clone(), wrong)
+            .await
+            .is_err()
+    );
+    let reader = bbsbox_storage::open_reader(&config.database).unwrap();
+    assert_eq!(
+        reader
+            .query_row("SELECT count(*) FROM core_migrations", [], |r| r
+                .get::<_, i64>(0))
+            .unwrap(),
+        7
+    );
+    drop(reader);
+    let mut absent = config.clone();
+    absent.database = directory.path().join("absent.sqlite");
+    assert!(
+        Runtime::start_existing_with_registry(&absent, registry.clone(), node.parse().unwrap())
+            .await
+            .is_err()
+    );
+    assert!(!absent.database.exists());
+    let upgraded = Runtime::start_existing_with_registry(&config, registry, node.parse().unwrap())
         .await
         .unwrap();
     assert_eq!(upgraded.info().node_id, node);

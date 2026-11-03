@@ -56,6 +56,13 @@ def state(action='state',*arguments):
     return install.control(OPERATOR,CONTROL,action,*arguments)
 
 
+def installed_release(release,authority,expected):
+    for path in [release,*release.rglob('*')]:protected(path,path.is_dir())
+    report=command(OPERATOR,'release-inspect','--bundle',release,'--public-key',authority)
+    if report.get('release_id')!=expected:raise ValueError('Installed release bytes differ from the selected receipt')
+    return report
+
+
 def command(*arguments,timeout=1200):
     return materials.decoded(candidate.bounded_run(arguments,timeout=timeout))
 
@@ -120,11 +127,16 @@ def prerequisites(identity):
 
 
 def finish_service(plan):
-    command(OPERATOR,'release-control-boot',timeout=20)
+    installed=install.enrollment.read_json(CONFIGURATION/'installation.json')
+    if installed.get('format')!='bbsbox.install/v1' or installed.get('node_id')!=plan['node']:raise ValueError('Installed identity differs from the operation')
+    command(OPERATOR,'release-control-installed',timeout=20)
     import pwd
     user=pwd.getpwnam('bbsbox')
     if not user.pw_uid or not user.pw_gid:raise ValueError('Expected the unprivileged node account')
     install.backup.repair_ownership(DATA/'node.sqlite',user.pw_uid,user.pw_gid)
+
+
+def resume_service(plan):
     if plan['service_was_active']:service('start')
 
 
@@ -158,39 +170,53 @@ def configuration_matches(saved):
 def recover_locked(directory,plan,identity):
     current=state()
     pending=current['pending']
+    rollback=plan['format']=='bbsbox.offline-rollback-plan/v1'
     if pending is None:
         selected=bytes(current['active']['release_id']).hex() if current['active'] else None
+        if rollback:
+            if selected==plan['previous'] and plan['phase'] in ['rollback-durable','rolled-back'] and current['revision']==plan['pending_revision']+1:
+                save(directory,plan,'rolled-back')
+                return dict(format='bbsbox.offline-update/v1',operation=plan['request'],state='rolled-back',node=plan['node'],highest_sequence=current['highest_sequence'])
+            if selected==plan['candidate'] and current['revision']==plan['begin_revision']:
+                save(directory,plan,'cancelled')
+                return dict(format='bbsbox.offline-update/v1',operation=plan['request'],state='cancelled',node=plan['node'])
+            raise ValueError('Recorded rollback no longer matches release control')
         if selected==plan['candidate']:
-            save(directory,plan,'completed');finish_service(plan)
+            save(directory,plan,'completed')
             return dict(format='bbsbox.offline-update/v1',operation=plan['request'],state='completed',node=plan['node'])
         if (selected==plan['previous'] and current['revision']==plan['begin_revision']) or (selected==plan['previous'] and plan['phase']=='rollback-durable' and current['revision']==plan['pending_revision']+1):
-            save(directory,plan,'recovered');finish_service(plan)
+            save(directory,plan,'recovered')
             return dict(format='bbsbox.offline-update/v1',operation=plan['request'],state='recovered',node=plan['node'])
         if plan['phase']=='recovered' and selected==plan['previous']:
-            finish_service(plan)
             return dict(format='bbsbox.offline-update/v1',operation=plan['request'],state='recovered',node=plan['node'])
         raise ValueError('Operation no longer matches release control')
-    if bytes(pending['request']).hex()!=plan['request'] or bytes(pending['candidate']['release_id']).hex()!=plan['candidate'] or pending['purpose']['kind']!='install' or not current['active'] or bytes(current['active']['release_id']).hex()!=plan['previous']:
+    target=plan['previous'] if rollback else plan['candidate']
+    source=plan['candidate'] if rollback else plan['previous']
+    if bytes(pending['request']).hex()!=plan['request'] or bytes(pending['candidate']['release_id']).hex()!=target or pending['purpose']['kind']!=('recovery' if rollback else 'install') or not current['active'] or bytes(current['active']['release_id']).hex()!=source:
         raise ValueError('Recovery ticket differs from current pending operation')
+    if rollback and bytes(pending['purpose']['evidence']['snapshot_inventory']).hex()!=plan['snapshot']:raise ValueError('Recorded rollback snapshot differs from its control evidence')
+    prior=pending['candidate'] if rollback else current['active']
+    if bytes(prior['authority']).hex()!=plan['previous_authority']:raise ValueError('Historical release authority differs from its receipt')
     service('stop')
     with source_lock():result=restore_pending(directory,plan,identity,current)
-    finish_service(plan)
     return result
 
 
 def restore_pending(directory,plan,identity,current):
     previous=APPLICATION/'releases'/plan['previous']
-    protected(previous,True)
     # Check the old receipt/binary using its saved authority, independently of a newer pending key.
-    command(OPERATOR,'release-inspect','--bundle',previous,'--public-key',plan['previous_authority'])
+    installed_release(previous,plan['previous_authority'],plan['previous'])
     work=DATA/'.maintenance';install.backup.prepare_stage(work)
     with tempfile.TemporaryDirectory(prefix='restore-',dir=work) as temporary:
         restored=Path(temporary)/'restored'
-        evidence=command(previous/'bbsbox-node','restore-and-authorize','--archive',directory/'before.age','--node',plan['node'],'--identity-file',identity,'--output',restored,'--staging',MAINTENANCE,'--source','retired','--reason','Failed or interrupted update; source service stopped on this appliance','--at',str(int(time.time())))
+        reason=('Recorded rollback; stopped source: '+plan['reason']) if plan['format']=='bbsbox.offline-rollback-plan/v1' else 'Failed or interrupted update; source service stopped on this appliance'
+        evidence=command(previous/'bbsbox-node','restore-and-authorize','--archive',directory/'before.age','--node',plan['node'],'--identity-file',identity,'--output',restored,'--staging',MAINTENANCE,'--source','retired','--reason',reason,'--at',str(int(time.time())))
         if evidence.get('inventory_sha256')!=plan['snapshot'] or evidence.get('isolated_writer_ready') is not True or evidence.get('installed') is not False:raise ValueError('Recovery does not match the pre-update snapshot')
         configuration_matches(restored/'configuration')
         installed=install.enrollment.read_json(restored/'configuration/installation.json')
         if installed.get('node_id')!=plan['node'] or installed.get('release_id')!=plan['previous']:raise ValueError('Snapshot does not belong to the previous selection')
+        present=install.enrollment.read_json(CONFIGURATION/'installation.json')
+        if present.get('format')!='bbsbox.install/v1' or present.get('node_id')!=plan['node'] or present.get('release_id') not in [plan['previous'],plan['candidate']]:raise ValueError('Current installation metadata changed outside this update')
         # Only known core entries move; external control and unknown data are never overwritten.
         for path in DATA.iterdir():
             if path.name=='.maintenance':continue
@@ -216,69 +242,88 @@ def restore_pending(directory,plan,identity,current):
         atomic(recovery_directory/'recovery.cose',(restored/'configuration/maintenance/recovery.cose').read_bytes())
         choose(previous)
         save(directory,plan,'rollback-durable',pending_revision=current['revision'])
-        recovered=state('failed','--revision',str(current['revision']),'--request',plan['request'],'--reason','Restored the matching pre-update snapshot and prior application','--at',str(int(time.time())))
-        save(directory,plan,'recovered',final_revision=recovered['revision'])
-    return dict(format='bbsbox.offline-update/v1',operation=plan['request'],state='recovered',node=plan['node'],highest_sequence=recovered['highest_sequence'],post_snapshot_writes='not-reconciled',client_recovery='separate')
+        if plan['format']=='bbsbox.offline-rollback-plan/v1':
+            recovered=state('complete','--revision',str(current['revision']),'--request',plan['request'],'--release-id',plan['previous']);outcome='rolled-back'
+        else:
+            recovered=state('failed','--revision',str(current['revision']),'--request',plan['request'],'--reason','Restored the matching pre-update snapshot and prior application','--at',str(int(time.time())));outcome='recovered'
+        save(directory,plan,outcome,final_revision=recovered['revision'])
+    return dict(format='bbsbox.offline-update/v1',operation=plan['request'],state=outcome,node=plan['node'],highest_sequence=recovered['highest_sequence'],post_snapshot_writes='not-reconciled',client_recovery='separate')
 
 
 def apply(bundle,identity):
     identity=prerequisites(identity)
     with maintenance_lock.acquire():
-        command(OPERATOR,'release-control-boot',timeout=20)
-        before=state();previous=bytes(before['active']['release_id']).hex()
-        previous_release=APPLICATION/'releases'/previous
-        installed=install.enrollment.read_json(CONFIGURATION/'installation.json')
-        config=install.enrollment.read_json(CONFIGURATION/'node.json')
-        if installed.get('format')!='bbsbox.install/v1' or installed.get('release_id')!=previous or config.get('database')!=str(DATA/'node.sqlite'):
-            raise ValueError('Expected the current signed foundation-node installation')
-        recipient=command(previous_release/'bbsbox-node','backup-public','--identity-file',identity,timeout=20)['recipient']
-        with tempfile.TemporaryDirectory(prefix='.update-',dir=APPLICATION/'releases') as temporary:
-            staged=Path(temporary)/'verified'
-            verified=candidate.inspect(OPERATOR,Path(bundle),bytes(before['trusted_key']).hex(),staged)
-            if verified['sequence']<=before['highest_sequence']:raise ValueError('Update sequence has already been consumed')
-            compatible(command(previous_release/'bbsbox-node','--release-profile',timeout=20),command(staged/'bbsbox-node','--release-profile',timeout=20))
-            release=APPLICATION/'releases'/verified['release_id']
-            if release.exists() or release.is_symlink():
-                # A preparation crash may have published this exact verified release before its plan.
-                for path in [release,*release.rglob('*')]:protected(path,path.is_dir())
-                retained=command(OPERATOR,'release-inspect','--bundle',release,'--public-key',bytes(before['trusted_key']).hex())
-                if retained.get('release_id')!=verified['release_id']:raise ValueError('Existing release differs from the verified candidate')
-            else:
-                durable_tree(staged,public=True);staged.rename(release);sync(release.parent)
-        updates=MAINTENANCE/'updates';install.backup.prepare_stage(updates)
-        request=os.urandom(16).hex();directory=updates/request;directory.mkdir(mode=0o700);sync(updates)
-        active=service('is-active',False)
-        if active not in [b'active',b'inactive',b'failed']:raise ValueError('Wait for the service state transition')
-        was_active=active==b'active'
-        plan=dict(format='bbsbox.offline-update-plan/v1',request=request,node=installed['node_id'],previous=previous,previous_authority=bytes(before['active']['authority']).hex(),candidate=verified['release_id'],sequence=verified['sequence'],snapshot=None,begin_revision=before['revision'],service_was_active=was_active)
-        save(directory,plan,'preparing')
+        result=apply_locked(bundle,identity)
+        plan=completed_plan(result)
+    resume_service(plan)
+    return result
+
+
+def completed_plan(result):
+    operation=result['operation']
+    plan=materials.decoded(materials.read_file(MAINTENANCE/'updates'/operation/'plan.json',65536))
+    validate_plan(plan,operation)
+    finish_service(plan)
+    return plan
+
+
+def apply_locked(bundle,identity):
+    command(OPERATOR,'release-control-installed',timeout=20)
+    before=state();previous=bytes(before['active']['release_id']).hex()
+    previous_release=APPLICATION/'releases'/previous
+    installed=install.enrollment.read_json(CONFIGURATION/'installation.json')
+    config=install.enrollment.read_json(CONFIGURATION/'node.json')
+    if installed.get('format')!='bbsbox.install/v1' or installed.get('release_id')!=previous or config.get('database')!=str(DATA/'node.sqlite'):
+        raise ValueError('Expected the current signed foundation-node installation')
+    recipient=command(previous_release/'bbsbox-node','backup-public','--identity-file',identity,timeout=20)['recipient']
+    with tempfile.TemporaryDirectory(prefix='.update-',dir=APPLICATION/'releases') as temporary:
+        staged=Path(temporary)/'verified'
+        verified=candidate.inspect(OPERATOR,Path(bundle),bytes(before['trusted_key']).hex(),staged)
+        if verified['sequence']<=before['highest_sequence']:raise ValueError('Update sequence has already been consumed')
+        compatible(command(previous_release/'bbsbox-node','--release-profile',timeout=20),command(staged/'bbsbox-node','--release-profile',timeout=20))
+        release=APPLICATION/'releases'/verified['release_id']
+        if release.exists() or release.is_symlink():
+            # A preparation crash may have published this exact verified release before its plan.
+            installed_release(release,bytes(before['trusted_key']).hex(),verified['release_id'])
+        else:
+            durable_tree(staged,public=True);staged.rename(release);sync(release.parent)
+    updates=MAINTENANCE/'updates';install.backup.prepare_stage(updates)
+    request=os.urandom(16).hex();directory=updates/request;directory.mkdir(mode=0o700);sync(updates)
+    active=service('is-active',False)
+    if active not in [b'active',b'inactive',b'failed']:raise ValueError('Wait for the service state transition')
+    was_active=active==b'active'
+    plan=dict(format='bbsbox.offline-update-plan/v1',request=request,node=installed['node_id'],previous=previous,previous_authority=bytes(before['active']['authority']).hex(),candidate=verified['release_id'],sequence=verified['sequence'],snapshot=None,begin_revision=before['revision'],service_was_active=was_active)
+    save(directory,plan,'preparing')
+    try:
+        service('stop')
+        snapshot=command(previous_release/'bbsbox-node','backup','--config',CONFIGURATION/'node.json','--node',installed['node_id'],'--recipient',recipient,'--output',directory/'before.age','--staging',MAINTENANCE)
+        if snapshot.get('node')!=installed['node_id'] or snapshot.get('format')!='bbsbox.node-backup/v1':raise ValueError('Unexpected pre-update snapshot')
+        sync(directory)
+        # Prove this exact encrypted snapshot can be opened with the supplied identity first.
+        with tempfile.TemporaryDirectory(prefix='pre-update-',dir=MAINTENANCE) as temporary:
+            checked=command(previous_release/'bbsbox-node','restore','--archive',directory/'before.age','--node',installed['node_id'],'--identity-file',identity,'--output',Path(temporary)/'checked','--staging',MAINTENANCE)
+            if checked.get('inventory_sha256')!=snapshot['inventory_sha256'] or checked.get('state')!='recovery-required':raise ValueError('Pre-update snapshot could not be verified')
+        save(directory,plan,'snapshot-ready',snapshot=snapshot['inventory_sha256'])
+        pending=state('begin','--revision',str(before['revision']),'--bundle',release,'--request',request)
+        save(directory,plan,'migrating',pending_revision=pending['revision'])
+        migrated=command(release/'bbsbox-node','migrate-existing','--database',DATA/'node.sqlite','--node',installed['node_id'])
+        if migrated.get('format')!='bbsbox.migration-existing/v1' or migrated.get('node')!=installed['node_id'] or migrated.get('listener_opened') is not False:raise ValueError('Unexpected migration response')
+        import pwd
+        user=pwd.getpwnam('bbsbox');install.backup.repair_ownership(DATA/'node.sqlite',user.pw_uid,user.pw_gid)
+        installed.update(release_id=verified['release_id'],release_sequence=verified['sequence'],source_commit=verified['source_commit'])
+        atomic(CONFIGURATION/'installation.json',materials.encoded(installed),0o640,user.pw_gid)
+        choose(release)
+        save(directory,plan,'selection-durable')
+        completed=state('complete','--revision',str(pending['revision']),'--request',request,'--release-id',verified['release_id'])
+        save(directory,plan,'completed',final_revision=completed['revision'])
+    except Exception as error:
+        failed_phase=plan['phase']
         try:
-            service('stop')
-            snapshot=command(previous_release/'bbsbox-node','backup','--config',CONFIGURATION/'node.json','--node',installed['node_id'],'--recipient',recipient,'--output',directory/'before.age','--staging',MAINTENANCE)
-            if snapshot.get('node')!=installed['node_id'] or snapshot.get('format')!='bbsbox.node-backup/v1':raise ValueError('Unexpected pre-update snapshot')
-            sync(directory)
-            # Prove this exact encrypted snapshot can be opened with the supplied identity first.
-            with tempfile.TemporaryDirectory(prefix='pre-update-',dir=MAINTENANCE) as temporary:
-                checked=command(previous_release/'bbsbox-node','restore','--archive',directory/'before.age','--node',installed['node_id'],'--identity-file',identity,'--output',Path(temporary)/'checked','--staging',MAINTENANCE)
-                if checked.get('inventory_sha256')!=snapshot['inventory_sha256'] or checked.get('state')!='recovery-required':raise ValueError('Pre-update snapshot could not be verified')
-            save(directory,plan,'snapshot-ready',snapshot=snapshot['inventory_sha256'])
-            pending=state('begin','--revision',str(before['revision']),'--bundle',release,'--request',request)
-            save(directory,plan,'migrating',pending_revision=pending['revision'])
-            migrated=command(release/'bbsbox-node','migrate-existing','--database',DATA/'node.sqlite','--node',installed['node_id'])
-            if migrated.get('format')!='bbsbox.migration-existing/v1' or migrated.get('node')!=installed['node_id'] or migrated.get('listener_opened') is not False:raise ValueError('Unexpected migration response')
-            import pwd
-            user=pwd.getpwnam('bbsbox');install.backup.repair_ownership(DATA/'node.sqlite',user.pw_uid,user.pw_gid)
-            installed.update(release_id=verified['release_id'],release_sequence=verified['sequence'],source_commit=verified['source_commit'])
-            atomic(CONFIGURATION/'installation.json',materials.encoded(installed),0o640,user.pw_gid)
-            choose(release)
-            save(directory,plan,'selection-durable')
-            completed=state('complete','--revision',str(pending['revision']),'--request',request,'--release-id',verified['release_id'])
-            save(directory,plan,'completed',final_revision=completed['revision'])
-        except Exception:
-            try:return recover_locked(directory,plan,identity)
-            except Exception as recovery_error:raise ValueError('Update '+request+' requires explicit recovery; its control ticket remains authoritative') from recovery_error
-        finish_service(plan)
-        return dict(format='bbsbox.offline-update/v1',operation=request,state='completed',node=installed['node_id'],release_id=verified['release_id'],highest_sequence=completed['highest_sequence'])
+            recovered=recover_locked(directory,plan,identity)
+            recovered.update(failed_phase=failed_phase,failure_type=type(error).__name__)
+            return recovered
+        except Exception as recovery_error:raise ValueError('Update '+request+' requires explicit recovery; its control ticket remains authoritative') from recovery_error
+    return dict(format='bbsbox.offline-update/v1',operation=request,state='completed',node=installed['node_id'],release_id=verified['release_id'],highest_sequence=completed['highest_sequence'])
 
 
 def recover(operation,identity):
@@ -287,8 +332,24 @@ def recover(operation,identity):
     with maintenance_lock.acquire():
         directory=MAINTENANCE/'updates'/operation;protected(directory,True);protected(directory/'plan.json')
         plan=materials.decoded(materials.read_file(directory/'plan.json',65536))
-        if plan.get('format')!='bbsbox.offline-update-plan/v1' or plan.get('request')!=operation or any(not re.fullmatch('[0-9a-f]{64}',plan.get(name,'')) for name in ['previous','candidate','previous_authority']) or (plan.get('snapshot') is not None and not re.fullmatch('[0-9a-f]{64}',plan['snapshot'])):raise ValueError('Invalid update recovery plan')
-        return recover_locked(directory,plan,identity)
+        validate_plan(plan,operation)
+        result=recover_locked(directory,plan,identity)
+        finish_service(plan)
+    resume_service(plan)
+    return result
+
+
+def validate_plan(plan,operation):
+    if not isinstance(plan,dict) or plan.get('format') not in ['bbsbox.offline-update-plan/v1','bbsbox.offline-rollback-plan/v1'] or plan.get('request')!=operation or not re.fullmatch('[0-9a-f]{32}',operation):raise ValueError('Invalid update recovery plan')
+    if any(not isinstance(plan.get(name),str) or not re.fullmatch('[0-9a-f]{64}',plan[name]) for name in ['previous','candidate','previous_authority']):raise ValueError('Invalid release binding in recovery plan')
+    if not isinstance(plan.get('node'),str) or not re.fullmatch('node:[0-9a-f]{64}',plan['node']) or type(plan.get('service_was_active')) is not bool:raise ValueError('Invalid source binding in recovery plan')
+    if type(plan.get('begin_revision')) is not int or not 0<=plan['begin_revision']<2**63 or type(plan.get('sequence')) is not int or not 1<=plan['sequence']<2**64:raise ValueError('Invalid recovery plan fence')
+    if plan.get('snapshot') is not None and (not isinstance(plan['snapshot'],str) or not re.fullmatch('[0-9a-f]{64}',plan['snapshot'])):raise ValueError('Invalid snapshot binding in recovery plan')
+    if plan.get('phase') not in ['preparing','snapshot-ready','migrating','selection-durable','completed','restoring','rollback-durable','recovered','rolled-back','cancelled']:raise ValueError('Unknown recovery plan phase')
+    if 'pending_revision' in plan and (type(plan['pending_revision']) is not int or plan['pending_revision']!=plan['begin_revision']+1):raise ValueError('Invalid pending revision in recovery plan')
+    if plan['format']=='bbsbox.offline-rollback-plan/v1':
+        reason=plan.get('reason')
+        if not isinstance(reason,str) or not reason.strip() or len(reason.encode())>360 or any(ord(c)<32 or 127<=ord(c)<=159 for c in reason) or plan['snapshot'] is None:raise ValueError('Recorded rollback needs its reason and exact snapshot')
 
 
 def main():
@@ -298,6 +359,7 @@ def main():
     args=parser.parse_args()
     result=apply(args.bundle,args.identity_file) if args.command=='apply' else recover(args.operation,args.identity_file)
     print(json.dumps(result,indent=2))
+    if args.command=='apply' and result['state']!='completed':return 2
 
 
-if __name__=='__main__':main()
+if __name__=='__main__':raise SystemExit(main())

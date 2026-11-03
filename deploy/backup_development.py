@@ -72,11 +72,12 @@ def backup(destination, recipient, release=False):
     release_root=Path('/opt/bbsbox/releases') if release else Path('/opt/bbsbox/development')
     if not executable.resolve().is_relative_to(release_root):raise ValueError('Expected the installed application release')
     lock=os.open('/run/bbsbox-maintenance.lock',os.O_RDWR|os.O_CREAT|os.O_NOFOLLOW,0o600)
+    resume=False
     try:
         metadata=os.fstat(lock)
         if not stat.S_ISREG(metadata.st_mode) or metadata.st_uid!=0 or metadata.st_mode&0o077:raise ValueError('Unexpected maintenance lock ownership/mode')
         fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
-        if release:run(['/opt/bbsbox/maintenance/bbsbox-operator','release-control-boot'])
+        if release:run(['/opt/bbsbox/maintenance/bbsbox-operator','release-control-installed'])
         active=subprocess.run(['/usr/bin/systemctl','is-active','bbsbox.service'],capture_output=True,timeout=20).stdout.strip()
         if active not in [b'active',b'inactive',b'failed']:raise ValueError('Wait for the service state transition before backup')
         was_active=active==b'active'
@@ -88,10 +89,12 @@ def backup(destination, recipient, release=False):
             if result.get('format')!='bbsbox.node-backup/v1' or result.get('node')!=installed['node_id']:raise ValueError('Unexpected backup result')
         finally:
             repair_ownership(database,user.pw_uid,user.pw_gid)
-            if was_active:run(['/usr/bin/systemctl','start','bbsbox.service'])
+            resume=was_active
         result.update(service_resumed=was_active,source_identity_preserved=True)
         return result
-    finally:os.close(lock)
+    finally:
+        os.close(lock)
+        if resume:run(['/usr/bin/systemctl','start','bbsbox.service'])
 
 
 def main():

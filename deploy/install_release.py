@@ -111,7 +111,7 @@ def install(bundle,verifier,public_key,name,enable=False):
                 try:os.fsync(entry)
                 finally:os.close(entry)
             control(operator,root_control,'complete','--revision',str(pending['revision']),'--request',request,'--release-id',release_id)
-            candidate.command([operator,'release-control-boot'])
+            candidate.command([operator,'release-control-installed'])
             if enable:
                 wanted=layout.unit.parent/'multi-user.target.wants';wanted.mkdir(mode=0o755,exist_ok=True);wanted.chmod(0o755)
                 (wanted/layout.unit.name).symlink_to(layout.unit)

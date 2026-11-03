@@ -205,6 +205,13 @@ fn control_command(command: &str, arguments: &[OsString]) -> Result<serde_json::
         if !arguments.is_empty() {
             return Err("installed release boot check takes no options".into());
         }
+        return serialized_boot();
+    }
+    if command == "release-control-installed" {
+        if !arguments.is_empty() {
+            return Err("installed release inspection takes no options".into());
+        }
+        // Read-only inspection for a coordinator already holding the appliance maintenance lock.
         return installed_boot();
     }
     let names: &[&str] = match command {
@@ -291,6 +298,68 @@ fn control_command(command: &str, arguments: &[OsString]) -> Result<serde_json::
     Ok(serde_json::json!({"format":"bbsbox.release-control/v1","state":state}))
 }
 
+/// Read-only installed identity binding. Missing/corrupt storage is never initialized here.
+pub fn check_installed_node(
+    database: &Path,
+    installation: &Path,
+) -> Result<bbsbox_credentials::NodeId> {
+    for path in [database, installation] {
+        let metadata = fs::symlink_metadata(path)?;
+        if !metadata.is_file() || metadata.file_type().is_symlink() {
+            return Err("installed node paths must be regular files".into());
+        }
+    }
+    if fs::metadata(installation)?.len() > 65536 {
+        return Err("installation metadata exceeds its bound".into());
+    }
+    let installed: serde_json::Value =
+        serde_json::from_reader(File::open(installation)?.take(65537))?;
+    if !matches!(
+        installed["format"].as_str(),
+        Some("bbsbox.install/v1" | "bbsbox.development-install/v1")
+    ) {
+        return Err("expected node installation metadata".into());
+    }
+    let expected = installed["node_id"]
+        .as_str()
+        .ok_or("installed node identity is missing")?
+        .parse()?;
+    if bbsbox_identity::node::NodeSigner::inspect_existing(database)? != expected {
+        return Err("installed node identity differs from its saved registration".into());
+    }
+    Ok(expected)
+}
+
+fn serialized_boot() -> Result<serde_json::Value> {
+    #[cfg(not(unix))]
+    {
+        Err("installed boot serialization requires the Debian appliance".into())
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::{MetadataExt, OpenOptionsExt};
+        let path = Path::new("/run/bbsbox-maintenance.lock");
+        if fs::symlink_metadata(path).is_ok_and(|m| !m.is_file() || m.file_type().is_symlink()) {
+            return Err("unexpected maintenance lock path".into());
+        }
+        let file = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .truncate(false)
+            .mode(0o600)
+            .open(path)?;
+        let metadata = file.metadata()?;
+        if metadata.uid() != 0 || metadata.mode() & 0o077 != 0 || !metadata.is_file() {
+            return Err("maintenance lock must be private and root-owned".into());
+        }
+        file.try_lock()?;
+        let result = installed_boot();
+        file.unlock()?;
+        result
+    }
+}
+
 fn installed_boot() -> Result<serde_json::Value> {
     #[cfg(not(unix))]
     {
@@ -342,6 +411,33 @@ fn installed_boot() -> Result<serde_json::Value> {
         {
             return Err("installed release directory differs from its receipt".into());
         }
-        Ok(serde_json::json!({"format":"bbsbox.release-boot-check/v1","selection":active}))
+        let configuration = Path::new("/etc/bbsbox");
+        protected(configuration, true)?;
+        protected(&configuration.join("installation.json"), false)?;
+        protected(&configuration.join("node.json"), false)?;
+        let config = crate::Config::read(&configuration.join("node.json"))?;
+        if config.database != Path::new("/var/lib/bbsbox/node.sqlite") {
+            return Err("installed node storage differs from the fixed appliance layout".into());
+        }
+        // Root verifies public registration; the unprivileged CLI checks the actual SQLite key.
+        // A root WAL reader here could leave sidecars unreadable by the service account.
+        if fs::metadata(configuration.join("installation.json"))?.len() > 65536 {
+            return Err("installation metadata exceeds its bound".into());
+        }
+        let installed: serde_json::Value = serde_json::from_reader(
+            File::open(configuration.join("installation.json"))?.take(65537),
+        )?;
+        if installed["format"] != "bbsbox.install/v1"
+            || installed["release_id"] != hex::encode(active.release_id)
+        {
+            return Err("installation metadata differs from the selected release".into());
+        }
+        let node: bbsbox_credentials::NodeId = installed["node_id"]
+            .as_str()
+            .ok_or("installed node identity is missing")?
+            .parse()?;
+        Ok(
+            serde_json::json!({"format":"bbsbox.release-boot-check/v1","selection":active,"expected_node":node.to_string()}),
+        )
     }
 }

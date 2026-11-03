@@ -193,11 +193,33 @@ impl Runtime {
         Self::start_with_registry(config, migrations()).await
     }
     pub async fn start_with_registry(config: &Config, registry: Vec<Migration>) -> Result<Self> {
+        Self::start_expected(config, registry, None).await
+    }
+    pub async fn start_existing_with_registry(
+        config: &Config,
+        registry: Vec<Migration>,
+        expected: bbsbox_credentials::NodeId,
+    ) -> Result<Self> {
+        Self::start_expected(config, registry, Some(expected)).await
+    }
+    async fn start_expected(
+        config: &Config,
+        registry: Vec<Migration>,
+        expected: Option<bbsbox_credentials::NodeId>,
+    ) -> Result<Self> {
         config.validate()?;
+        if let Some(node) = expected
+            && NodeSigner::inspect_existing(&config.database)? != node
+        {
+            return Err("existing runtime identity differs from its expected node".into());
+        }
         let writer = Writer::start(&config.database, registry, WriterConfig::default())?;
         let signer = writer
             .handle()
-            .submit_service(Priority::Interactive, NodeSigner::start)?
+            .submit_service(Priority::Interactive, move |database| match expected {
+                Some(node) => NodeSigner::start_existing(database, node),
+                None => NodeSigner::start(database),
+            })?
             .wait()
             .await?;
         let info = NodeInfo {
@@ -301,6 +323,14 @@ pub async fn serve(config: Config) -> Result<()> {
     serve_with_registry(config, migrations()).await
 }
 pub async fn serve_with_registry(config: Config, registry: Vec<Migration>) -> Result<()> {
+    let expected = NodeSigner::inspect_existing(&config.database)?;
+    serve_existing_with_registry(config, registry, expected).await
+}
+pub async fn serve_existing_with_registry(
+    config: Config,
+    registry: Vec<Migration>,
+    expected: bbsbox_credentials::NodeId,
+) -> Result<()> {
     config.validate()?;
     rustls::crypto::ring::default_provider()
         .install_default()
@@ -321,7 +351,7 @@ pub async fn serve_with_registry(config: Config, registry: Vec<Migration>) -> Re
         prepared.push(axum_server::from_tcp_rustls(listener, tls.clone())?.handle(handle.clone()));
         handles.push(handle);
     }
-    let runtime = Runtime::start_with_registry(&config, registry).await?;
+    let runtime = Runtime::start_existing_with_registry(&config, registry, expected).await?;
     let router = app(&config, runtime.info().clone())?;
     let mut servers = tokio::task::JoinSet::new();
     for server in prepared {

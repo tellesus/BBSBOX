@@ -8,6 +8,7 @@ import sqlite3
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from unittest.mock import patch
 
@@ -29,6 +30,23 @@ def run(*args,check=True):
 
 @unittest.skipUnless(all(p.is_file() for p in [BASE,SUCCESS,REJECT]),'Build actual node-runtime binaries/examples first')
 class CompiledUpgradeTests(unittest.TestCase):
+    def test_serving_requires_initialized_registered_identity_and_cannot_recreate_a_missing_installed_key(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root=Path(temporary).resolve();database=root/'node.sqlite';config=root/'node.json'
+            run(sys.executable,ROOT/'spikes/m00/tools/init_tls.py','--state',root)
+            config.write_text(json.dumps(dict(format='bbsbox.node-config/v1',name='Identity fixture',bind='127.0.0.1:8443',origin='https://localhost:8443',database=str(database),certificate=str(root/'tls/server.pem'),certificate_key=str(root/'tls/server-key.pem'))),encoding='utf-8')
+            missing=subprocess.run([str(BASE),'--config',str(config)],capture_output=True,timeout=5)
+            self.assertNotEqual(missing.returncode,0);self.assertFalse(database.exists())
+            node=json.loads(run(BASE,'--config',config,'--initialize').stdout)['node_id']
+            installed=root/'installation.json';installed.write_text(json.dumps(dict(format='bbsbox.install/v1',node_id='node:'+'11'*32)),encoding='utf-8')
+            wrong=run(BASE,'--config',config,check=False)
+            self.assertNotEqual(wrong.returncode,0);self.assertIn(b'identity differs',wrong.stderr)
+            installed.write_text(json.dumps(dict(format='bbsbox.install/v1',node_id=node)),encoding='utf-8')
+            with closing(sqlite3.connect(database)) as connection:
+                connection.execute('DELETE FROM identity_node_identity');connection.commit()
+            self.assertNotEqual(run(BASE,'--config',config,'--initialize',check=False).returncode,0)
+            with closing(sqlite3.connect(database)) as connection:self.assertEqual(connection.execute('SELECT count(*) FROM identity_node_identity').fetchone()[0],0)
+
     def test_distinct_compiled_sql_migrates_real_receipts_and_matching_backup_restores_old_registry(self):
         with tempfile.TemporaryDirectory() as temporary:
             root=Path(temporary).resolve()
@@ -82,19 +100,28 @@ class CompiledUpgradeTests(unittest.TestCase):
 
 
 class RecoveryExclusionTests(unittest.TestCase):
-    @unittest.skipUnless(sys.platform=='linux','Same Linux flock as the storage writer')
+    @unittest.skipUnless(sys.platform=='linux' and (ROOT/'target/debug/examples/upgrade_interrupted').is_file(),'Actual Linux migration process and writer flock')
     def test_live_migration_process_excludes_replacement_without_changing_its_lock_inode(self):
         with tempfile.TemporaryDirectory() as temporary:
-            root=Path(temporary);lock=root/'node.sqlite.writer.lock';lock.write_bytes(b'preserved')
-            child=subprocess.Popen([sys.executable,'-c',"import fcntl,sys; f=open(sys.argv[1],'r+b'); fcntl.flock(f,fcntl.LOCK_EX); print('locked',flush=True); sys.stdin.read()",str(lock)],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+            root=Path(temporary).resolve();database=root/'node.sqlite';config=root/'node.json'
+            config.write_text(json.dumps(dict(format='bbsbox.node-config/v1',name='Lock fixture',bind='127.0.0.1:8443',origin='https://localhost:8443',database=str(database),certificate=str(root/'missing.pem'),certificate_key=str(root/'missing-key.pem'))),encoding='utf-8')
+            node=json.loads(run(BASE,'--config',config,'--initialize').stdout)['node_id']
+            lock=root/'node.sqlite.writer.lock';inode=lock.stat().st_ino
+            child=subprocess.Popen([str(ROOT/'target/debug/examples/upgrade_interrupted'),'migrate-existing','--database',str(database),'--node',node],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
             try:
-                self.assertEqual(child.stdout.readline(),b'locked\n');inode=lock.stat().st_ino
                 with patch.object(update,'DATA',root):
-                    with self.assertRaises(BlockingIOError):
-                        with update.source_lock():self.fail('Live migration admitted replacement')
-                    child.communicate(timeout=5)
+                    deadline=time.monotonic()+5
+                    while time.monotonic()<deadline:
+                        self.assertIsNone(child.poll(),'Migration exited before exclusion was observed')
+                        try:
+                            with update.source_lock():pass
+                        except BlockingIOError:break
+                        time.sleep(.01)
+                    else:self.fail('Did not observe the actual Rust migration writer lock')
+                    child.kill();child.communicate(timeout=5)
                     with update.source_lock():self.assertEqual(lock.stat().st_ino,inode)
-                self.assertEqual(lock.read_bytes(),b'preserved')
+                with closing(sqlite3.connect(database)) as connection:self.assertEqual(connection.execute('SELECT count(*) FROM core_migrations').fetchone()[0],7)
+                run(BASE,'migrate-existing','--database',database,'--node',node)
             finally:
                 if child.poll() is None:child.kill();child.communicate(timeout=5)
 

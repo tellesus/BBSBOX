@@ -11,6 +11,43 @@ use std::{
     path::{Path, PathBuf},
 };
 
+#[test]
+fn installed_identity_check_is_read_only_and_never_replaces_wrong_missing_or_unregistered_nodes() {
+    use bbsbox_identity::node::NodeSigner;
+    use bbsbox_storage::{Database, disk::Class};
+    let temporary = tempfile::tempdir().unwrap();
+    let database = temporary.path().join("node.sqlite");
+    let installation = temporary.path().join("installation.json");
+    let mut storage = Database::open(&database, &bbsbox_node_runtime::migrations()).unwrap();
+    let node = NodeSigner::start(&mut storage).unwrap().id();
+    drop(storage);
+    let record = |id: String| {
+        serde_json::to_vec(&serde_json::json!({"format":"bbsbox.install/v1","node_id":id})).unwrap()
+    };
+    fs::write(&installation, record(node.to_string())).unwrap();
+    assert_eq!(
+        release_operator::check_installed_node(&database, &installation).unwrap(),
+        node
+    );
+    fs::write(&installation, record(format!("node:{}", "11".repeat(32)))).unwrap();
+    assert!(release_operator::check_installed_node(&database, &installation).is_err());
+    assert_eq!(NodeSigner::inspect_existing(&database).unwrap(), node);
+    fs::write(&installation, record(node.to_string())).unwrap();
+    let missing = temporary.path().join("missing.sqlite");
+    assert!(release_operator::check_installed_node(&missing, &installation).is_err());
+    assert!(!missing.exists());
+    let mut storage = Database::open(&database, &bbsbox_node_runtime::migrations()).unwrap();
+    storage
+        .write(Class::Control, 1024, |tx| {
+            tx.execute("DELETE FROM identity_node_identity", [])?;
+            Ok::<_, bbsbox_storage::Error>(())
+        })
+        .unwrap();
+    drop(storage);
+    assert!(release_operator::check_installed_node(&database, &installation).is_err());
+    assert!(NodeSigner::inspect_existing(&database).is_err());
+}
+
 struct Fixture {
     _temporary: tempfile::TempDir,
     root: PathBuf,

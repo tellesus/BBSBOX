@@ -114,6 +114,10 @@ jobs:
             work/offline-upgrade_*.json
             work/signed-candidate-evidence.json
             work/release-materials/notices.json
+      - name: Release build-only storage before unpacking appliances
+        run: |
+          sudo rm -rf -- work/release-vendor work/release-extracted work/release-materials work/signed-candidate-fixture/verified work/signed-candidate-fixture/false-profile
+          df -h .
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -130,6 +134,7 @@ jobs:
       - run: docker export bbsbox-install-export -o work/debian-root.tar
       - run: docker rm bbsbox-install-export
       - run: sudo python3 deploy/ci/prepare.py extract --archive work/debian-root.tar --output work/debian-root
+      - run: rm -- work/debian-root.tar
       - run: sudo python3 deploy/ci/reinstall.py --root work/debian-root
       - run: sudo python3 deploy/ci/boot_service.py --root work/debian-root
       - run: python3 -c "import json; p=json.load(open('deploy/network.example.json')); p['hostname']='auto'; json.dump(p,open('work/network-install.json','w'))"
@@ -150,7 +155,9 @@ jobs:
       - run: docker create --name bbsbox-signed-export bbsbox-signed-install-fixture
       - run: docker export bbsbox-signed-export -o work/signed-debian-root.tar
       - run: docker rm bbsbox-signed-export
+      - run: docker image rm bbsbox-signed-install-fixture
       - run: sudo python3 deploy/ci/prepare.py extract --archive work/signed-debian-root.tar --output work/signed-debian-root
+      - run: rm -- work/signed-debian-root.tar
       - run: sudo python3 deploy/ci/boot_service.py --root work/signed-debian-root --signed --output work/signed-debian-service-evidence.json
       - uses: actions/upload-artifact@v4
         if: always()

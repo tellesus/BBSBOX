@@ -408,7 +408,7 @@
         "T14"
       ],
       "gate": "G1",
-      "execution_status": "in_progress"
+      "execution_status": "complete"
     },
     {
       "id": "M13",
@@ -1118,5 +1118,5 @@
       "scope": "Desktop/core and isolated-runtime evidence; G1/G2 device, appliance and private-client acceptance remain open"
     }
   },
-  "execution_revision": "1.1.2"
+  "execution_revision": "1.1.3"
 }

@@ -1,6 +1,6 @@
 # Development work ledger
 
-Version 1.1.0 · 2026-10-25 · Locked roadmap; M01–M04 software providers Complete; M00/M12 In progress. Other modules Unstarted. Execution updated 2026-11-01.
+Version 1.1.0 · 2026-10-25 · Locked roadmap. M01–M04 and M12 software providers Complete. M00 In progress. Other modules Unstarted. Execution updated 2026-11-03.
 
 Evidence log — not an independent source of scope authority. Current choices live in the canonical roadmap and user instructions.
 
@@ -13,7 +13,7 @@ Design review is complete and the first M00 prototype has real local implementat
 | [M02](modules/M02-storage-jobs.md) | Approved | Complete | A–C: 25 Windows/26 Linux integration tests; CI 41167864139 passed | Consumers own HTTP/module integration; M12 owns full-node backup activation |
 | [M03](modules/M03-identity-access.md) | Approved | Complete | A–C: 68 Windows/70 Linux workspace checks and independent vectors; CI 41172025063 passed | Consumers integrate current v2/legacy v1 profiles; native/HTTP/MLS gates remain downstream |
 | [M04](modules/M04-signed-events.md) | Approved | Complete | A–C: 15 codec/33 core tests, independent vectors, all 120 arrival orders; CI 41245899257 passed | Feature modules prove actual policies/views; M13/M15/M16 complete AC07 integration |
-| [M12](modules/M12-maintenance-recovery.md) | Approved | In progress | A: foundation/worker providers confirmed on Linux; combined game-node snapshot/restore passes local fixtures | Confirm game-profile Linux checks, then offline release/update and recovery continuation |
+| [M12](modules/M12-maintenance-recovery.md) | Approved | Complete | A–C: Debian signed install/update/rollback, fresh recovery, scheduled backup and retention; CI 41718200103 | Begin M05 A. M11 owns real game adapter acceptance. G1 physical tests remain |
 | [M05](modules/M05-interface-themes.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
 | [M06](modules/M06-boards-mail.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
 | [M07](modules/M07-directory-profiles.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
@@ -492,3 +492,11 @@ The root catalogue binds each sealed archive to its size, ciphertext hash, inven
 Portable calendar and mount parser checks pass. Linux CI adds actual prune tests, an unmounted-path preservation case and a real backup service and timer in the recovered appliance. It decrypts the scheduled archive, confirms same-day deduplication and checks that detaching media leaves the bare mountpoint untouched. M12 brief 1.1.21 and the deployment and maintenance references track the pending Debian evidence. The product and on-wire formats remain unchanged. M11 owns actual game checkpoint integration. Physical acceptance stays at G1.
 
 The [fresh-recovery retry](https://github.com/tellesus/BBSBOX/actions/runs/41715992176) passed Debian image extraction and the installed source tests. On the replacement, the installer's restrictive umask stripped group traversal from the recovered leaf certificate directory. The unprivileged readability check stopped activation. The installer now sets the intended root-owned, service-group directory mode explicitly while keeping the CA key root-private. Scheduler setup now checks the age checksum with the same parser used for backups before writing the media marker or configuration. The local operator suite checks valid and mistyped recipients. The Debian fixture also checks that a mistyped recipient leaves the media and settings untouched.
+
+## 2026-11-03 — M12 A–C software provider complete
+
+[Debian CI](https://github.com/tellesus/BBSBOX/actions/runs/41718200103) passed all four jobs and 203 Rust tests at commit `47327b5`, now on main. Fresh media recovered an older snapshot with independently rotated release authority, retained the node ID and CA, migrated the known source history, and booted and reprovisioned local networking. The original fixture stayed stopped and unchanged. Five retention checks passed. On the replacement, the real backup service wrote an archive that the fixture decrypted with the separate backup key. The timer loaded, the second check skipped the same UTC day, and the detached mount was left untouched.
+
+M12 closes as a software provider at brief 1.1.22. M11 still integrates actual game workers, and device acceptance remains at G1. If fresh install or recovery stops after admission, keep the pending record for inspection and retry on fresh media. Signed in-place update and recorded rollback have their own resumable paths. The product baseline and shared schemas are unchanged.
+
+Next is M05 A. A local SvelteKit experiment prerendered landing and sign-in pages with an external stylesheet under the node's current security policy. Edge exercised the keyboard route and black default at 360 pixels with the browser set to light mode. A fresh offline npm cache seeded with lockfile-verified tarballs reproduced both HTML pages byte for byte. The experiment did not attach accounts or replace the running node's pages.

@@ -278,8 +278,7 @@ def apply_locked(bundle,identity):
     recipient=command(previous_release/'bbsbox-node','backup-public','--identity-file',identity,timeout=20)['recipient']
     with tempfile.TemporaryDirectory(prefix='.update-',dir=APPLICATION/'releases') as temporary:
         staged=Path(temporary)/'verified'
-        verified=candidate.inspect(OPERATOR,Path(bundle),bytes(before['trusted_key']).hex(),staged)
-        if verified['sequence']<=before['highest_sequence']:raise ValueError('Update sequence has already been consumed')
+        verified=candidate.inspect(OPERATOR,Path(bundle),bytes(before['trusted_key']).hex(),staged,minimum_sequence=before['highest_sequence']+1)
         compatible(command(previous_release/'bbsbox-node','--release-profile',timeout=20),command(staged/'bbsbox-node','--release-profile',timeout=20))
         release=APPLICATION/'releases'/verified['release_id']
         if release.exists() or release.is_symlink():

@@ -151,11 +151,15 @@ def prepare(tool, binary, material_directory, commit, evidence_path, key_file, k
     return report
 
 
-def inspect(tool, bundle, public, output):
+def inspect(tool, bundle, public, output, minimum_sequence=1):
+    if type(minimum_sequence) is not int or not 1<=minimum_sequence<2**64:
+        raise ValueError('No admissible release sequence for this minimum')
     # Staging authenticates all copied bytes before any candidate code is executable.
     report=command([tool,'release-stage','--bundle',bundle,'--public-key',public,'--output',output])
     if report.get('format')!='bbsbox.release-inspection/v1' or report.get('installation_authority') is not False:
         raise ValueError('Unsupported public release inspection')
+    if type(report.get('sequence')) is not int or report['sequence']<minimum_sequence:
+        raise ValueError('Prepared release is below the independently supplied minimum sequence')
     material_report=materials.verify(Path(output)/'materials',report['source_commit'])
     for name, raw in committed_assets(Path(output)/'materials').items():
         if materials.read_file(Path(output)/name, materials.SOURCE_MEMBER) != raw:

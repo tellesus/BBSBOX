@@ -60,6 +60,7 @@ def check(tool,binary,material_directory,commit,rebuild_evidence,root,output):
         executable=binary.parent/'examples'/name
         evidence=rebuild_evidence.parent/('offline-'+name+'.json')
         candidate.prepare(tool,executable,material_directory,commit,evidence,key,key_info,sequence,0,root/name,wrong['public_key'] if name=='upgrade_successor' else None)
+    candidate.prepare(tool,binary.parent/'examples/upgrade_successor',material_directory,commit,rebuild_evidence.parent/'offline-upgrade_successor.json',root/'other-ephemeral.key',root/'rotation-public.json',6,0,root/'source_loss_successor')
     manifest['module_migrations'][0]['sha256']='00'*32
     input_path=root/'false-claims.json';input_path.write_bytes(materials.encoded(manifest))
     candidate.command([tool,'release-sign','--bundle',claims,'--manifest',input_path,'--key-file',key])

@@ -169,3 +169,25 @@ Separate release control records the reason/time/exact snapshot reference throug
 The shipped signed unit now checks the global maintenance flock before startup, including preparation before any pending release ticket. `release-control-installed` performs the same protected installed-selection/public-registration inspection for coordinators already holding that lock, without acquiring it again. Helpers validate completion/repair known ownership while locked, release the global lock, then resume a previously active service. Root inspection does not open node SQLite; the ordinary unprivileged CLI checks the actual saved node key against installation registration. Normal serving requires prior explicit initialization, and installed initialization cannot recreate a missing/mismatched key. This keeps WAL sidecars owned by the service account.
 
 The [extended Debian checkpoint](https://github.com/tellesus/BBSBOX/actions/runs/41566924144) passes all four jobs and 200 Rust tests. It confirms manual start refusal under maintenance with no pending ticket, renewal exclusion, nonzero failed-update status, safe completed/stale retries, actual release-key rotation, recorded older-release rollback and retained newer writes. Physical/phone acceptance remains separate.
+
+
+## Fresh-appliance recovery and operator handover
+
+Prepare fresh Debian 13 amd64 media with the existing offline dependencies. Keep a compatible signed release bundle and bootstrap verifier, the independently trusted release public key and minimum accepted sequence, and the saved node ID/CA fingerprint. Keep the encrypted snapshot and its private backup identity on separate operator media. The node archive carries node data and keys; the release authority and accepted sequence are supplied independently.
+
+For planned handover, stop and disable the original `bbsbox.service` before taking the final [signed backup](backup_node.py). The backup helper leaves an inactive source stopped. Keep its public connection card and record the current `trusted_key` and `highest_sequence` from `release-control-state --directory /var/lib/bbsbox-maintenance/release-control`. The trusted key is a 32-byte JSON array; supply its lowercase hexadecimal encoding on the replacement. Hand over the saved node registration, release records, encrypted archive and separate backup identity. Leave the original node stopped. After unexpected source loss, use the last verified backup and independent operator release records.
+
+```sh
+sudo python3 deploy/recover_release.py \
+  --bundle /media/release --verifier /private/bbsbox-operator \
+  --public-key TRUSTED_RELEASE_PUBLIC_HEX --minimum-sequence SAVED_SEQUENCE \
+  --archive /media/backup/node.age --identity-file /private/operator-backup.key \
+  --node node:SAVED_NODE_DIGEST --source lost --reason 'Original appliance unavailable' \
+  --enable
+```
+
+Use `--source retired` and a handover reason for a planned move. The explicit source disposition is recorded in the node-signed decision. The bootstrap rejects a release below the independently supplied sequence before probing that executable. It verifies the complete encrypted stream, matching node and known migration history, then migrates a disposable restored copy. Once ready, it records pending fresh release admission, copies closed data and protected configuration, checks identity as the unprivileged service user and durably completes selection before enabling the unit. Existing node, configuration, service overrides, operator control and previous bootstrap evidence are refused. A failure after admission leaves its pending record for explicit recovery.
+
+The replacement keeps the saved node ID, CA and neighborhood name. It issues a fresh loopback leaf under the saved CA and starts on localhost. Reapply the local network profile for the replacement hardware before opening visitor access; the original archive retains the previous generated network settings. Compare the new connection card with the saved CA fingerprint and node ID. The new appliance has explicitly bootstrapped release control outside the restored data. Newer writes remain unreconciled, and client key recovery uses the clients’ own exports.
+
+The Debian fixture takes an older snapshot from a stopped source and uses the independently rotated release key to select a newer signed assembly. It checks wrong-node and below-floor refusal, preserves the original CA and data, applies real SQL, boots/reboots with trusted HTTPS, and reprovisions the local network. These installed source-loss assertions await their containing-commit CI result.

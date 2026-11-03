@@ -15,6 +15,7 @@ from unittest.mock import patch
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'deploy'))
 import update_release as update
+from restore_provisioning import check_closed_data
 
 SUFFIX='.exe' if os.name=='nt' else ''
 BASE=ROOT/'target/debug'/('bbsbox-node'+SUFFIX)
@@ -79,6 +80,7 @@ class CompiledUpgradeTests(unittest.TestCase):
             self.assertEqual(resumed['format'],'bbsbox.compatible-continuation/v1');self.assertTrue(resumed['migration_required']);self.assertEqual(len(resumed['source_registry']),7);self.assertFalse(resumed['installed'])
             with closing(sqlite3.connect(compatible/'data/node.sqlite')) as connection:self.assertEqual(connection.execute('SELECT count(*) FROM core_migrations').fetchone()[0],7)
             run(SUCCESS,'migrate-existing','--database',compatible/'data/node.sqlite','--node',node)
+            check_closed_data(compatible/'data')
             with closing(sqlite3.connect(compatible/'data/node.sqlite')) as connection:self.assertEqual(connection.execute('SELECT count(*) FROM core_migrations').fetchone()[0],9)
             target=root/'restored'
             restored=json.loads(run(BASE,'restore-and-authorize','--archive',cipher,'--node',node,'--identity-file',key,'--output',target,'--staging',root,'--source','retired','--reason','Stopped disposable upgraded fixture','--at','0').stdout)

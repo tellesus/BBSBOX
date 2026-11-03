@@ -137,7 +137,7 @@ def service_identity(pid,root,user='bbsbox',process_name='bbsbox-node',unit='bbs
     raise RuntimeError(f'Expected {process_name} as {user} (uid {uid}) in {unit}; observed {observed}')
 
 
-def boot(root,output,signed=False):
+def boot(root,output,signed=False,maintenance_check=None):
     if sys.platform!='linux' or os.geteuid()!=0:raise RuntimeError('Use a disposable Linux CI host as root')
     root=root.resolve();work=(ROOT/'work').resolve()
     if not root.is_relative_to(work) or root==work:raise RuntimeError('Test root must be beneath repository work/')
@@ -159,14 +159,16 @@ def boot(root,output,signed=False):
                 pid,restarted=wait_ready(process,root)
                 assert restarted['node_id']==info['node_id'] and service_identity(pid,root)!=first_pid
                 if attempt==0:
-                    maintenance_result=maintenance(pid,root,info['node_id'],signed)
-                    # Independent maintenance scenarios deliberately used five successful starts.
-                    # Keep the production crash-loop limit; reset only this fixture's test counter.
-                    assert int(enter(pid,root,['/usr/bin/systemctl','show','bbsbox.service','-p','StartLimitBurst','--value']).stdout)==5
-                    enter(pid,root,['/usr/bin/systemctl','reset-failed','bbsbox.service'])
-                    if signed:
-                        import release_boot_cases
-                        maintenance_result['release_control']=release_boot_cases.exercise(pid,root)
+                    if maintenance_check is not None:
+                        maintenance_result=maintenance_check(pid,root,info['node_id'])
+                    else:
+                        maintenance_result=maintenance(pid,root,info['node_id'],signed)
+                        # Keep the production crash-loop limit; reset only this fixture's counter.
+                        assert int(enter(pid,root,['/usr/bin/systemctl','show','bbsbox.service','-p','StartLimitBurst','--value']).stdout)==5
+                        enter(pid,root,['/usr/bin/systemctl','reset-failed','bbsbox.service'])
+                        if signed:
+                            import release_boot_cases
+                            maintenance_result['release_control']=release_boot_cases.exercise(pid,root)
                     enter(pid,root,['/usr/bin/systemctl','stop','bbsbox.service'])
                     config_path=root/'etc/bbsbox/node.json';config=json.loads(config_path.read_text());config.update(bind='[::1]:8443',origin='https://[::1]:8443')
                     config_path.write_text(json.dumps(config)+'\n')

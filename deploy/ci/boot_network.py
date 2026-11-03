@@ -41,7 +41,7 @@ def exercise(root, output):
     if root==work or not root.is_relative_to(work): raise RuntimeError('Boot only the prepared repository work/ tree')
     installed = json.loads((root/'etc/bbsbox/installation.json').read_text())
     profile = json.loads((root/'etc/bbsbox/network/profile.json').read_text())
-    if installed['format']!='bbsbox.development-install/v1' or profile['interfaces']!=[dict(name='bbs-client',role='client',addresses=['192.168.50.1/24','fd42:bb50::1/64'])]:
+    if installed['format'] not in ('bbsbox.development-install/v1','bbsbox.install/v1') or profile['interfaces']!=[dict(name='bbs-client',role='client',addresses=['192.168.50.1/24','fd42:bb50::1/64'])]:
         raise RuntimeError('Use only the known local client fixture, without peers')
     output.mkdir(parents=True,exist_ok=False); cases=[]
     for attempt in range(2):

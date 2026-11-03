@@ -31,5 +31,24 @@ class SignedInstallGuards(unittest.TestCase):
             with self.assertRaises(ValueError):release.check_fresh(layout)
             self.assertEqual(marker.read_bytes(),b'community data')
 
+    def test_lost_control_does_not_make_a_previous_installation_or_restore_ticket_fresh(self):
+        for name in ['first-install.json','first-restore.json']:
+            with self.subTest(name=name),tempfile.TemporaryDirectory() as temporary:
+                root=Path(temporary).resolve();layout=release.base.Layout(root)
+                directory=root/'var/lib/bbsbox-maintenance';directory.mkdir(parents=True)
+                ticket=directory/name;ticket.write_bytes(b'existing operator evidence')
+                with self.assertRaises(ValueError):release.check_fresh(layout)
+                self.assertEqual(ticket.read_bytes(),b'existing operator evidence')
+                self.assertEqual(list(directory.iterdir()),[ticket])
+
+    def test_partial_configuration_or_service_override_is_preserved(self):
+        for name in ['etc/bbsbox/installation.json','etc/systemd/system/bbsbox.service.d/old.conf']:
+            with self.subTest(name=name),tempfile.TemporaryDirectory() as temporary:
+                root=Path(temporary).resolve();layout=release.base.Layout(root)
+                saved=root/name;saved.parent.mkdir(parents=True);saved.write_bytes(b'retain existing setup')
+                with self.assertRaises(ValueError):release.check_fresh(layout)
+                self.assertEqual(saved.read_bytes(),b'retain existing setup')
+                self.assertFalse(layout.application.exists());self.assertFalse(layout.data.exists())
+
 
 if __name__=='__main__':unittest.main()

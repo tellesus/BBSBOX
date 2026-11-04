@@ -5,6 +5,6 @@ export default {
   kit: {
     adapter: adapter(),
     paths: { relative: false },
-    prerender: { crawl: false, entries: ['/', '/login', '/account', '/settings/theme'] }
+    prerender: { crawl: false, entries: ['/', '/login', '/account', '/settings/theme', '/settings/site', '/settings/accounts', '/unavailable'] }
   }
 };

@@ -1,8 +1,8 @@
 # M05 — Browser shell, navigation and SysOp themes
 
-Brief revision 1.1.4 · 2026-11-03 · Roadmap baseline 1.1.0 · Product baseline 0.6.0.
+Brief revision 1.1.5 · 2026-11-03 · Roadmap baseline 1.1.0 · Product baseline 0.6.0.
 
-**State:** In progress. Slice A pages and slice B palette preview, apply and reset pass locally. Node welcome settings and G1 device evidence remain pending.
+**State:** In progress. A–C shell, SysOp settings and member onboarding pass local checks. Signed Debian and G1 device evidence remain pending.
 
 ## Read only this packet
 
@@ -25,7 +25,7 @@ Use SvelteKit/TypeScript with static adapter output served by the node; all asse
 
 ## Ownership and interfaces
 
-`web/shell/` serves the browser templates. `crates/settings/` owns the node palette and its revision. Navigation and welcome art will use the same local settings boundary. The shell consumes feature navigation/profile contributions without owning their data.
+`web/shell/` provides the browser templates. `crates/settings/` owns revisioned palette, welcome message, plain-text art and menu order. The shell consumes installed feature navigation without owning feature data.
 
 The [runtime](../../../crates/node-runtime/README.md#local-account-access) owns HTTP sessions and private first-SysOp setup. The shell consumes that API. A disabled optional module retains its data and does not break unrelated local services.
 

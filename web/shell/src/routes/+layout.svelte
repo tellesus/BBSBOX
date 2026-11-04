@@ -7,11 +7,10 @@
 <header>
   <a class="brand" href="/">BBSBOX</a>
   <nav aria-label="Main">
-    <a href="/">Home</a>
-    <a href="/account/">Account</a>
-    <a href="/status/">Status</a>
+    __BBSBOX_NAV__
   </nav>
 </header>
 <main id="main" tabindex="-1">
+  <p id="shell-state" role="status" hidden></p>
   {@render children()}
 </main>

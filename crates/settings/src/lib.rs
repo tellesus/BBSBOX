@@ -3,12 +3,21 @@
 use bbsbox_storage::Migration;
 use rusqlite::{Connection, OptionalExtension, Transaction, params};
 
-pub fn migrations() -> [Migration; 1] {
-    [Migration {
-        module: "settings",
-        version: 1,
-        sql: include_str!("schema.sql"),
-    }]
+pub mod site;
+
+pub fn migrations() -> [Migration; 2] {
+    [
+        Migration {
+            module: "settings",
+            version: 1,
+            sql: include_str!("schema.sql"),
+        },
+        Migration {
+            module: "settings",
+            version: 2,
+            sql: include_str!("site.sql"),
+        },
+    ]
 }
 
 #[derive(Debug)]

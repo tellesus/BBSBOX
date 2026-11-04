@@ -101,9 +101,11 @@ def exercise(binary, state_root, host, isolated):
                     html = response.read().decode()
                     assert 'default-src' in response.headers['Content-Security-Policy']
                     assert 'Runtime fixture &lt;node&gt;' in html
-                    assert 'href="/login/"' in html and '<script' not in html
+                    assert 'href="/login/"' in html and '<script src="/assets/shell-state.js" defer></script>' in html
                 with request('/assets/shell.css') as response:
                     assert b'color-scheme: dark' in response.read()
+                with request('/assets/shell-state.js') as response:
+                    assert b'Node unreachable.' in response.read()
                 with request('/status/') as response:
                     html = response.read().decode()
                 assets = re.findall(r'<(?:link|script)\b[^>]*(?:href|src)="([^"#]+)"', html)
@@ -160,11 +162,37 @@ def exercise(binary, state_root, host, isolated):
                         assert response.geturl().endswith('/settings/theme/')
                     with request('/assets/shell.css') as response:
                         assert b'--background: #111111' not in response.read()
+                    site = dict(revision=0, csrf=hidden.group(1), welcome='Neighbors <welcome>', artwork='<text art>', menu='status,home,account')
+                    with request('/settings/site/', 'POST', form_headers, urllib.parse.urlencode(site).encode()) as response:
+                        assert response.geturl().endswith('/settings/site/')
+                    with request('/') as response:
+                        updated = response.read().decode()
+                        assert 'Neighbors &lt;welcome&gt;' in updated and '&lt;text art&gt;' in updated
+                        menu = updated.split('<nav aria-label="Main">', 1)[1].split('</nav>', 1)[0]
+                        assert re.findall(r'<a href="([^"]+)"', menu) == ['/status/', '/', '/account/']
+                    member = dict(username='Neighbor', password='fixture member passphrase', role='member', csrf=hidden.group(1))
+                    with request('/settings/accounts/', 'POST', form_headers, urllib.parse.urlencode(member).encode()) as response:
+                        assert response.status == 201 and b'Account created.' in response.read()
+                    try:
+                        request('/events/')
+                        raise AssertionError('Uninstalled events section was served')
+                    except urllib.error.HTTPError as error:
+                        assert error.code == 404 and b'Section unavailable' in error.read()
                     payload = urllib.parse.urlencode(dict(csrf=hidden.group(1))).encode()
                     with request('/account/sign-out/', 'POST', form_headers, payload) as response:
                         assert response.geturl() == origin + '/'
                     with request('/account/') as response:
                         assert response.geturl().endswith('/login/')
+                    member_login = urllib.parse.urlencode({key: member[key] for key in ['username', 'password']}).encode()
+                    with request('/login/', 'POST', form_headers, member_login) as response:
+                        account = response.read()
+                        assert response.geturl().endswith('/account/') and b'>neighbor<' in account
+                        assert b'/settings/accounts/' not in account
+                    try:
+                        request('/settings/accounts/')
+                        raise AssertionError('Member could open the SysOp account editor')
+                    except urllib.error.HTTPError as error:
+                        assert error.code == 403
                 # A new client without the local CA must fail certificate verification.
                 untrusted = urllib.request.build_opener(urllib.request.ProxyHandler({}), urllib.request.HTTPSHandler(context=ssl.create_default_context()))
                 try:
@@ -193,7 +221,7 @@ def exercise(binary, state_root, host, isolated):
                 text = trace.read_text(encoding='utf-8')
                 traces.append(audit.audit_trace(text))
                 (state_root/f'runtime-{"ipv6" if family == socket.AF_INET6 else "ipv4"}-{attempt}.trace').write_text(text, encoding='utf-8')
-        return dict(family='IPv6' if family == socket.AF_INET6 else 'IPv4', simultaneous_dual_stack=True, tls=True, untrusted_ca_rejected=True, local_assets=3, identity_preserved_after_restart=True, configured_alias_accepted=True, unexpected_authority_rejected=True, public_status_read_only=True, local_session_lifecycle=True, restart_invalidates_session=True, palette_preview_apply_reset=True, initialization_audit=initial_audit, network_audit=traces)
+        return dict(family='IPv6' if family == socket.AF_INET6 else 'IPv4', simultaneous_dual_stack=True, tls=True, untrusted_ca_rejected=True, local_assets=4, identity_preserved_after_restart=True, configured_alias_accepted=True, unexpected_authority_rejected=True, public_status_read_only=True, local_session_lifecycle=True, restart_invalidates_session=True, palette_preview_apply_reset=True, welcome_and_menu_settings=True, member_onboarding=True, unavailable_section_status=True, initialization_audit=initial_audit, network_audit=traces)
 
 
 def main():

@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Validated node theme preview and revision-checked publication.
 use super::{
-    RequestOrigin, STYLE, Sessions, check_origin, cookie_header, current_account, html, password,
-    token,
+    RequestOrigin, STYLE, Sessions, check_origin, html, password, sysop_csrf, template, token,
 };
 use axum::{
     Extension, Form, Router,
@@ -11,7 +10,7 @@ use axum::{
     response::{IntoResponse, Redirect, Response},
     routing::{get, post},
 };
-use bbsbox_identity::{Error, Role, session::csrf_from_cookie_header};
+use bbsbox_identity::Error;
 use bbsbox_settings::{Error as ThemeError, Palette, Theme};
 use bbsbox_storage::disk::Class;
 use serde::Deserialize;
@@ -71,6 +70,7 @@ async fn editor(State(state): State<Sessions>, headers: HeaderMap) -> Result<Res
     };
     let theme = current_theme(&state);
     Ok(render(
+        &state,
         &theme,
         &csrf,
         StatusCode::OK,
@@ -79,28 +79,28 @@ async fn editor(State(state): State<Sessions>, headers: HeaderMap) -> Result<Res
     ))
 }
 
-async fn sysop_csrf(
+fn render(
     state: &Sessions,
-    headers: &HeaderMap,
-) -> Result<Zeroizing<String>, StatusCode> {
-    if current_account(state, headers).await?.role != Role::Sysop {
-        return Err(StatusCode::FORBIDDEN);
-    }
-    let cookies = cookie_header(headers)?;
-    let csrf = csrf_from_cookie_header(&cookies).map_err(|_| StatusCode::UNAUTHORIZED)?;
-    Ok(Zeroizing::new(csrf.to_owned()))
-}
-
-fn render(theme: &Theme, csrf: &str, status: StatusCode, message: &str, preview: bool) -> Response {
+    theme: &Theme,
+    csrf: &str,
+    status: StatusCode,
+    message: &str,
+    preview: bool,
+) -> Response {
     let [background, text, accent, secondary] = theme.palette.colors();
-    let mut body = TEMPLATE
-        .replace("__BBSBOX_THEME_STATUS__", message)
-        .replace("__BBSBOX_THEME_REVISION__", &theme.revision.to_string())
-        .replace("__BBSBOX_CSRF__", csrf)
-        .replace("__BBSBOX_BACKGROUND__", background)
-        .replace("__BBSBOX_TEXT__", text)
-        .replace("__BBSBOX_ACCENT__", accent)
-        .replace("__BBSBOX_SECONDARY__", secondary);
+    let mut body = template(
+        state,
+        TEMPLATE,
+        &[
+            ("THEME_STATUS", message),
+            ("THEME_REVISION", &theme.revision.to_string()),
+            ("CSRF", csrf),
+            ("BACKGROUND", background),
+            ("TEXT", text),
+            ("ACCENT", accent),
+            ("SECONDARY", secondary),
+        ],
+    );
     if preview {
         let query = theme
             .palette
@@ -148,6 +148,7 @@ async fn submit(
     let active = current_theme(&state);
     let conflict = |state: &Sessions| {
         render(
+            state,
             &current_theme(state),
             &csrf,
             StatusCode::CONFLICT,
@@ -175,6 +176,7 @@ async fn submit(
                     _ => "Enter a valid six-digit color for each field.",
                 };
                 return Ok(render(
+                    &state,
                     &active,
                     &csrf,
                     StatusCode::UNPROCESSABLE_ENTITY,
@@ -190,6 +192,7 @@ async fn submit(
             palette,
         };
         return Ok(render(
+            &state,
             &theme,
             &csrf,
             StatusCode::OK,

@@ -38,6 +38,7 @@ struct Sessions {
     workers: Arc<Semaphore>,
     node_name: Arc<str>,
     theme: Arc<RwLock<bbsbox_settings::Theme>>,
+    site: Arc<RwLock<bbsbox_settings::site::Site>>,
 }
 
 pub(super) fn router(config: &crate::Config, writer: Handle) -> crate::Result<Router> {
@@ -49,6 +50,7 @@ pub(super) fn router(config: &crate::Config, writer: Handle) -> crate::Result<Ro
     )?;
     let reader = bbsbox_storage::open_reader(&config.database)?;
     let theme = bbsbox_settings::theme(&reader)?;
+    let site = bbsbox_settings::site::read(&reader)?;
     let state = Sessions {
         auth: Arc::new(auth),
         database: config.database.clone(),
@@ -56,6 +58,7 @@ pub(super) fn router(config: &crate::Config, writer: Handle) -> crate::Result<Ro
         workers: Arc::new(Semaphore::new(2)),
         node_name: Arc::from(config.name.as_str()),
         theme: Arc::new(RwLock::new(theme)),
+        site: Arc::new(RwLock::new(site)),
     };
     Ok(Router::new()
         .route(
@@ -63,7 +66,7 @@ pub(super) fn router(config: &crate::Config, writer: Handle) -> crate::Result<Ro
             get(current).post(login).patch(refresh).delete(logout),
         )
         .merge(pages::routes())
-        .layer(DefaultBodyLimit::max(8192))
+        .layer(DefaultBodyLimit::max(12 * 1024))
         .with_state(state))
 }
 

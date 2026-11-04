@@ -21,7 +21,9 @@ sudo systemctl start bbsbox.service
 
 Setup is available only on an existing initialized node, uses its exclusive writer and succeeds once. Keep passwords out of shell arguments and history. Restart the service after setup or a failed setup attempt.
 
-The landing page at `/` links to `/login/`, `/account/` and `/status/`. The account page requires an active session. Its native sign-out form uses the same CSRF proof and storage transaction as the API. Landing and account pages use prerendered SvelteKit templates and a local stylesheet. They work with JavaScript disabled.
+The landing page at `/` links to `/login/`, `/account/` and `/status/`. The account page requires an active session. Its native sign-out form uses the same CSRF proof and storage transaction as the API. The browser shell uses prerendered SvelteKit templates. Its forms work with JavaScript disabled. The optional local script reports submission and connection state.
+
+The SysOp account page links to palette preview and reset, site settings and account creation. The site editor accepts a welcome message, decorative plain-text art and the order of the installed core menu links. The settings are versioned rows in the node database and travel in core backups. A member can sign in to their account but receives a refusal on SysOp pages.
 
 `POST /api/v1/session` accepts the username and password in JSON. It sets the host-only session and CSRF cookies after commit. `GET` reads the current account. `PATCH` records activity and `DELETE` revokes the session. Both require the value of `__Host-bbsbox_csrf` in `X-BBSBOX-CSRF`. All three mutations require an `Origin` that exactly matches the addressed HTTPS origin. Node aliases share cooldown and boot state. Restart expires existing sessions.
 

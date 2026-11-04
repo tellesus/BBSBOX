@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 """Exercise a real two-origin HTTPS demo and its separate persistent worker."""
 import argparse
+import hashlib
 import http.cookiejar
 import json
 import os
@@ -236,8 +237,9 @@ def fixture(binary, directory):
     sealed = operator('backup-game-node', *backup)
     assert sealed['scope'] == 'game-node' and sealed['game_checkpoints'] == 1
     restored = directory/'restored'
-    restore = ['--archive', archive, '--node', node, '--identity-file', identity,
-               '--output', restored, '--staging', directory]
+    restore_options = ['--archive', archive, '--node', node, '--identity-file', identity,
+                       '--staging', directory]
+    restore = [*restore_options, '--output', restored]
     operator('restore', *restore, accept=False)
     assert not restored.exists()
     opened = operator('restore-game-node', *restore)
@@ -253,6 +255,15 @@ def fixture(binary, directory):
         assert db.execute('SELECT count(*) FROM receipts').fetchone() == (2,)
     finally:
         db.close()
+    recorded = directory/'recorded-restore'
+    decision = operator('restore-game-node-and-record', *restore_options, '--output', recorded,
+                        '--source', 'retired', '--reason', 'The source fixture was stopped', '--at', '1')
+    record = recorded/'configuration'/'maintenance'/'recovery.cose'
+    assert decision['format'] == 'bbsbox.game-node-recovery-record/v1'
+    assert decision['state'] == 'recovery-required' and decision['game_checkpoints'] == 1
+    assert decision['inventory_sha256'] == sealed['inventory_sha256']
+    assert decision['decision_sha256'] == hashlib.sha256(record.read_bytes()).hexdigest()
+    operator('migrate-existing', '--database', recorded/'data'/'node.sqlite', '--node', node, accept=False)
 
 
 def main():

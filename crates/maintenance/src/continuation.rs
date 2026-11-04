@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Foundation-node continuation in isolated storage. Installed selection/handover stays separate.
+//! Record source disposition for isolated recovery. Installed selection stays separate.
 use crate::{
-    Error, Limits, Result, archive, inventory,
-    snapshot::{self, RestoredSnapshot},
+    Error, Limits, Result, archive, game_snapshot, inventory,
+    snapshot::{self, Descriptor, RestoredSnapshot},
 };
 use bbsbox_credentials::NodeId;
 use bbsbox_identity::node::NodeSigner;
@@ -20,6 +20,8 @@ use std::{
 
 pub const DOMAIN: &str = "bbsbox.recovery-decision/v1";
 const MAX_DECISION: usize = 16384;
+const FOUNDATION: &str = "foundation-node";
+const GAME_NODE: &str = "game-node";
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum SourceDisposition {
@@ -60,7 +62,7 @@ impl Decision {
     fn valid(&self, node: NodeId) -> bool {
         self.format == DOMAIN
             && self.node == node.to_string()
-            && self.scope == "foundation-node"
+            && matches!(self.scope.as_str(), FOUNDATION | GAME_NODE)
             && self.source_inventory_sha256.len() == 64
             && self
                 .source_inventory_sha256
@@ -207,6 +209,46 @@ pub fn prepare(
     migrations: &[Migration],
     authorization: Authorization,
 ) -> Result<Prepared> {
+    let descriptor = snapshot::verify(&source.content(), source.inventory(), migrations)?;
+    prepare_verified(
+        restored,
+        source,
+        migrations,
+        authorization,
+        descriptor,
+        FOUNDATION,
+    )
+}
+
+/// Verify the exact staged game files before preparing a record that keeps both activation fences.
+pub fn prepare_game_node(
+    restored: &game_snapshot::RestoredNode,
+    source: &archive::OpenedArchive,
+    migrations: &[Migration],
+    games: &[game_snapshot::Requirement],
+    authorization: Authorization,
+) -> Result<Prepared> {
+    let (descriptor, records) =
+        game_snapshot::verify(&source.content(), source.inventory(), migrations, games)?;
+    game_snapshot::verify_restored(restored, &records)?;
+    prepare_verified(
+        restored.node(),
+        source,
+        migrations,
+        authorization,
+        descriptor,
+        GAME_NODE,
+    )
+}
+
+fn prepare_verified(
+    restored: &RestoredSnapshot,
+    source: &archive::OpenedArchive,
+    migrations: &[Migration],
+    authorization: Authorization,
+    descriptor: Descriptor,
+    scope: &str,
+) -> Result<Prepared> {
     if !authorization.valid()
         || migrations.is_empty()
         || migrations
@@ -222,7 +264,6 @@ pub fn prepare(
     {
         return Err(Error::InvalidContinuation);
     }
-    let descriptor = snapshot::verify(&source.content(), source.inventory(), migrations)?;
     // No configuration migration in this profile; only M12's current decision may change.
     let observed = archive::inventory(
         &restored.configuration(),
@@ -271,6 +312,7 @@ pub fn prepare(
         )?;
         if previous.decision().source_inventory_sha256 != report.inventory_sha256
             || previous.decision().snapshot_time != report.snapshot_time
+            || previous.decision().scope != scope
         {
             return Err(Error::InvalidContinuation);
         }
@@ -287,7 +329,7 @@ pub fn prepare(
         source: authorization.source,
         reason: authorization.reason,
         recorded_at: authorization.recorded_at,
-        scope: "foundation-node".into(),
+        scope: scope.into(),
         module_owners: migrations
             .iter()
             .map(|m| m.module.to_owned())
@@ -310,9 +352,7 @@ impl Prepared {
     pub fn decision(&self) -> &SignedDecision {
         &self.signed
     }
-    /// Save the protected current decision before releasing only this isolated writer fence.
-    /// Does not move data/configuration, switch an installed service or recover client keys.
-    pub fn finish_isolated(mut self) -> Result<SignedDecision> {
+    fn persist_record(&self) -> Result<PathBuf> {
         for parent in std::path::absolute(&self.configuration)?.ancestors() {
             let metadata = fs::symlink_metadata(parent)?;
             if !metadata.is_dir() || metadata.file_type().is_symlink() {
@@ -361,6 +401,24 @@ impl Prepared {
             .persist(&record)
             .map_err(|error| Error::Io(error.error))?;
         archive::sync_directory(&directory)?;
+        Ok(record)
+    }
+
+    /// Retain the complete game-node restore and its source decision behind the recovery fence.
+    pub fn record_game_node(self) -> Result<SignedDecision> {
+        if self.signed.decision().scope != GAME_NODE {
+            return Err(Error::InvalidContinuation);
+        }
+        self.persist_record()?;
+        Ok(self.signed)
+    }
+
+    /// Save the protected current decision before releasing only the isolated foundation writer.
+    pub fn finish_isolated(mut self) -> Result<SignedDecision> {
+        if self.signed.decision().scope != FOUNDATION {
+            return Err(Error::InvalidContinuation);
+        }
+        let record = self.persist_record()?;
         self.report.state = "continuation-authorized".into();
         let mut report =
             tempfile::NamedTempFile::new_in(self.report_path.parent().ok_or(Error::UnsafePath)?)?;

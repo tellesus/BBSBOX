@@ -406,8 +406,21 @@ fn restore_with_settings(
         Limits::default(),
     )?;
     if settings.with_games {
-        let game = game_requirement(&crate::games::bundled_manifest()?);
-        let restored = game_snapshot::restore(&opened, destination, &registry, &[game])?;
+        let games = [game_requirement(&crate::games::bundled_manifest()?)];
+        let restored = game_snapshot::restore(&opened, destination, &registry, &games)?;
+        if let Some(authorization) = settings.authorization {
+            let decision = bbsbox_maintenance::continuation::prepare_game_node(
+                &restored,
+                &opened,
+                &registry,
+                &games,
+                authorization,
+            )?
+            .record_game_node()?;
+            return Ok(
+                serde_json::json!({"format":"bbsbox.game-node-recovery-record/v1","node":expected.to_string(),"inventory_sha256":hex_id(opened.inventory().id()),"decision_sha256":hex_id(decision.id()),"state":"recovery-required","game_checkpoints":restored.games().len()}),
+            );
+        }
         return Ok(
             serde_json::json!({"format":"bbsbox.node-restore/v1","node":expected.to_string(),"inventory_sha256":hex_id(opened.inventory().id()),"state":"recovery-required","database":restored.node().database(),"scope":"game-node","game_checkpoints":restored.games().len()}),
         );
@@ -501,7 +514,7 @@ pub fn command_with_registry(
             "--output",
             "--staging",
         ],
-        "restore-and-authorize" | "restore-compatible" => &[
+        "restore-and-authorize" | "restore-compatible" | "restore-game-node-and-record" => &[
             "--archive",
             "--node",
             "--identity-file",
@@ -567,7 +580,10 @@ pub fn command_with_registry(
             command == "backup-game-node",
         )
     } else {
-        let authorization = if matches!(command, "restore-and-authorize" | "restore-compatible") {
+        let authorization = if matches!(
+            command,
+            "restore-and-authorize" | "restore-compatible" | "restore-game-node-and-record"
+        ) {
             use bbsbox_maintenance::continuation::{Authorization, SourceDisposition};
             let text = |name| {
                 options[name]
@@ -597,7 +613,10 @@ pub fn command_with_registry(
                 registry,
                 authorization,
                 known_prefix: command == "restore-compatible",
-                with_games: command == "restore-game-node",
+                with_games: matches!(
+                    command,
+                    "restore-game-node" | "restore-game-node-and-record"
+                ),
             },
         )
     }

@@ -644,3 +644,7 @@ The game host now rechecks the originating local sign-in before ticket exchange,
 ## 2026-11-04 — M11 local game hostname preparation
 
 An opt-in network profile reserves the node's separate game alias on its existing IPv4 and IPv6 addresses. It provisions local DNS and issues a leaf for the alias with the existing node CA. Renewal keeps the alias on the replacement leaf. The node accepts the alias as a game origin only once appliance enablement is available. Local profile, CA and leaf tests pass. The Debian LAN fixture now checks both families and confirms that the reserved alias still rejects core requests after renewal and reboot.
+
+## 2026-11-04 — M11 game-node recovery decision
+
+`restore-game-node-and-record` verifies the complete archive against the bundled game requirements, checks the staged save files and records a node-signed source-disposition decision bound to the full archive inventory. It preserves the writer recovery marker and stages game state separately. Local provider tests reject changed saves and attempts to use the foundation writer-release path. Installed recovery must still place and activate both stores under appliance maintenance control.

@@ -5,6 +5,7 @@ use bbsbox_identity::node::NodeSigner;
 use bbsbox_maintenance::{
     BackupIdentity, Error, Limits, Result, archive,
     checkpoints::{CheckpointRecord, Registration},
+    continuation::{self, Authorization, SourceDisposition},
     game_snapshot::{self, Capture, Requirement},
     snapshot,
 };
@@ -30,6 +31,53 @@ struct Fixture {
     workers: Vec<Worker>,
     states: Vec<Arc<Mutex<State>>>,
     blob: String,
+}
+
+#[test]
+fn game_recovery_records_the_source_decision_only_for_matching_saves_and_keeps_the_writer_fenced() {
+    let mut f = Fixture::new();
+    let cipher = f.capture().unwrap();
+    let opened = f.open(&cipher, "decision-source");
+    let target = f.root.join("decision-restore");
+    let migrations = bbsbox_identity::migrations();
+    let restored = game_snapshot::restore(&opened, &target, &migrations, &f.games).unwrap();
+    let authorize = || {
+        continuation::prepare_game_node(
+            &restored,
+            &opened,
+            &migrations,
+            &f.games,
+            Authorization {
+                source: SourceDisposition::Retired,
+                reason: "The previous test node was retired".into(),
+                recorded_at: 47,
+            },
+        )
+    };
+    let record = &restored.games()[0];
+    let checkpoint = target
+        .join("games")
+        .join(&record.game_id)
+        .join(&record.files[0].path);
+    let original = fs::read(&checkpoint).unwrap();
+    fs::write(&checkpoint, b"changed staged save").unwrap();
+    assert!(matches!(authorize(), Err(Error::IncompleteSnapshot)));
+    fs::write(checkpoint, original).unwrap();
+    let path = target.join("configuration/maintenance/recovery.cose");
+    assert!(authorize().unwrap().finish_isolated().is_err());
+    assert!(!path.exists());
+    let recorded = authorize().unwrap().record_game_node().unwrap();
+    let verified = continuation::verify(&fs::read(path).unwrap(), f.node).unwrap();
+    assert_eq!(recorded.id(), verified.id());
+    assert_eq!(verified.decision().scope, "game-node");
+    assert_eq!(
+        verified.decision().source_inventory_sha256,
+        hex::encode(opened.inventory().id())
+    );
+    assert!(matches!(
+        Writer::start(restored.node().database(), migrations, Config::default()),
+        Err(bbsbox_storage::Error::RecoveryRequired)
+    ));
 }
 impl Fixture {
     fn new() -> Self {

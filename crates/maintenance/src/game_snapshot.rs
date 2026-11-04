@@ -17,6 +17,7 @@ use std::{
 };
 
 const INDEX: &str = "game-checkpoints.json";
+const RECOVERY_REPORT: &str = "game-recovery.json";
 const MAX_INDEX: usize = 8 * 1024 * 1024;
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Requirement {
@@ -263,6 +264,63 @@ impl RestoredNode {
         &self.games
     }
 }
+
+fn recovery_report(records: &[CheckpointRecord]) -> Result<Vec<u8>> {
+    serde_json::to_vec(&serde_json::json!({
+        "format":"bbsbox.isolated-game-restore/v1","state":"recovery-required","checkpoints":records
+    }))
+    .map_err(|_| Error::IncompleteSnapshot)
+}
+
+pub(crate) fn verify_restored(restored: &RestoredNode, records: &[CheckpointRecord]) -> Result<()> {
+    if restored.games() != records {
+        return Err(Error::IncompleteSnapshot);
+    }
+    let root = restored.node().directory();
+    let games = root.join("games");
+    if !fs::symlink_metadata(&games)?.file_type().is_dir() {
+        return Err(Error::UnsafePath);
+    }
+    let mut names = fs::read_dir(&games)?
+        .take(records.len() + 1)
+        .map(|entry| entry.map(|entry| entry.file_name()))
+        .collect::<std::io::Result<Vec<_>>>()?;
+    names.sort();
+    if !names.iter().map(|name| name.as_os_str()).eq(records
+        .iter()
+        .map(|record| std::ffi::OsStr::new(&record.game_id)))
+    {
+        return Err(Error::IncompleteSnapshot);
+    }
+    let mut expected = records
+        .iter()
+        .flat_map(|record| {
+            record.files.iter().map(|file| {
+                let mut member = file.clone();
+                member.path = format!("{}/{}", record.game_id, file.path);
+                member
+            })
+        })
+        .collect::<Vec<_>>();
+    expected.sort_by(|a, b| a.path.cmp(&b.path));
+    if archive::inventory(&games, Limits::default())? != expected {
+        return Err(Error::IncompleteSnapshot);
+    }
+    let report_path = root.join(RECOVERY_REPORT);
+    let report = recovery_report(records)?;
+    let metadata = fs::symlink_metadata(&report_path)?;
+    if !metadata.file_type().is_file() || metadata.len() != report.len() as u64 {
+        return Err(Error::IncompleteSnapshot);
+    }
+    let mut observed = Vec::with_capacity(report.len());
+    File::open(report_path)?
+        .take(report.len() as u64 + 1)
+        .read_to_end(&mut observed)?;
+    if observed != report {
+        return Err(Error::IncompleteSnapshot);
+    }
+    Ok(())
+}
 /// Stage all core/configuration/game data privately. No worker, signer or service is activated.
 pub fn restore(
     opened: &archive::OpenedArchive,
@@ -288,9 +346,10 @@ pub fn restore(
             &record.files,
         )?;
     }
-    write(&destination.join("game-recovery.json"),&serde_json::to_vec(&serde_json::json!({
-        "format":"bbsbox.isolated-game-restore/v1","state":"recovery-required","checkpoints":records
-    })).map_err(|_|Error::IncompleteSnapshot)?)?;
+    write(
+        &destination.join(RECOVERY_REPORT),
+        &recovery_report(&records)?,
+    )?;
     archive::sync_directory(&target)?;
     snapshot::finish_restore(destination)?;
     Ok(RestoredNode {

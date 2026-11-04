@@ -1,6 +1,6 @@
 # M11 — Game host and local multiplayer example
 
-Brief revision 1.1.9 · Roadmap baseline 1.1.0 · 2026-11-04 · Locked scope · Product baseline 0.6.0.
+Brief revision 1.1.10 · Roadmap baseline 1.1.0 · 2026-11-04 · Locked scope · Product baseline 0.6.0.
 
 **State:** In progress. Development browser, worker, profile, group and isolated game-node restore pass. Signed worker packaging awaits Debian confirmation. Appliance worker isolation and recovery activation remain pending.
 
@@ -30,6 +30,8 @@ The offline release build can include the bundled worker as a signed executable.
 The offline network preparer can reserve `bbsbox-game-<node suffix>.home.arpa` in local DNS and the node certificate. The prepared alias becomes a game endpoint when the isolated appliance service is enabled.
 
 `backup-game-node` captures the stopped development node through M12's [game-node snapshot provider](../../../crates/maintenance/README.md#game-node-snapshot-profile). `restore-game-node` verifies and stages a matching demo checkpoint for recovery. Foundation backup refuses retained game state. Appliance installation and activation of restored game state remain pending.
+
+`restore-game-node-and-record` also binds the operator's retired or lost source decision to the verified game-node archive. It keeps the staged node and saves fenced for coordinated activation.
 
 Use the listed contracts. Disabling a game retains its state.
 

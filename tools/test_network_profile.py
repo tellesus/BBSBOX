@@ -51,6 +51,24 @@ class ProfileTests(unittest.TestCase):
             self.assertEqual(saved, {name:(output/name).read_bytes() for name in names})
             origins = json.loads(saved['origins.json'])
             self.assertEqual(origins['additional_origins'], ['https://192.168.50.1:8443', 'https://[fd42:bb50::1]:8443'])
+            self.assertNotIn('game_origin', origins)
+
+    def test_optional_game_alias_uses_the_same_local_addresses_without_becoming_a_core_origin(self):
+        self.profile['prepare_game_host'] = True
+        files = network.render(self.profile)
+        game = 'bbsbox-game-0123456789abcdef.home.arpa'
+        origins = json.loads(files['origins.json'])
+        self.assertEqual(origins.pop('game_origin'), f'https://{game}:8443')
+        self.assertIn(f'host-record={game},192.168.50.1\n', files['dnsmasq.conf'])
+        self.assertIn(f'host-record={game},fd42:bb50::1\n', files['dnsmasq.conf'])
+        self.profile['prepare_game_host'] = False
+        base = network.render(self.profile)
+        self.assertEqual(origins, json.loads(base['origins.json']))
+        self.assertEqual(files['bbsbox.nft'], base['bbsbox.nft'])
+        self.assertNotIn(game, base['dnsmasq.conf'])
+        for invalid in (1, 'true', 'other.example', None):
+            self.profile['prepare_game_host'] = invalid
+            with self.assertRaises(ValueError): network.render(self.profile)
 
 
 if __name__ == '__main__': unittest.main()

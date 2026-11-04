@@ -142,7 +142,7 @@ jobs:
       - run: rm -- work/debian-root.tar
       - run: sudo python3 deploy/ci/reinstall.py --root work/debian-root
       - run: sudo python3 deploy/ci/boot_service.py --root work/debian-root
-      - run: python3 -c "import json; p=json.load(open('deploy/network.example.json')); p['hostname']='auto'; json.dump(p,open('work/network-install.json','w'))"
+      - run: python3 -c "import json; p=json.load(open('deploy/network.example.json')); p.update(hostname='auto',prepare_game_host=True); json.dump(p,open('work/network-install.json','w'))"
       - run: sudo unshare --net -- bash -c 'ip link set lo up && python3 deploy/configure_network.py --root work/debian-root --profile work/network-install.json --development && python3 deploy/ci/boot_network.py --root work/debian-root'
       - uses: actions/upload-artifact@v4
         if: always()

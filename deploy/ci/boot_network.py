@@ -22,14 +22,16 @@ ROOT = Path(__file__).resolve().parents[2]
 def run(*args): return subprocess.run(args, check=True, capture_output=True, timeout=10)
 
 
-def fetch(root, hostname, address, with_fingerprint=False):
+def fetch(root, hostname, address, with_fingerprint=False, expected_status=200):
     context = ssl.create_default_context(cafile=str(root/'etc/bbsbox/tls/ca.pem'))
     with socket.create_connection((address,8443),timeout=2) as plain:
         with context.wrap_socket(plain,server_hostname=hostname) as secure:
             fingerprint=hashlib.sha256(secure.getpeercert(binary_form=True)).hexdigest()
             secure.sendall(f'GET /api/v1/node HTTP/1.1\r\nHost: {hostname}:8443\r\nConnection: close\r\n\r\n'.encode())
             response = http.client.HTTPResponse(secure); response.begin()
-            assert response.status == 200
+            assert response.status == expected_status
+            if expected_status != 200:
+                return fingerprint
             info=json.loads(response.read(8192))
             return (info,fingerprint) if with_fingerprint else info
 
@@ -41,6 +43,7 @@ def exercise(root, output):
     if root==work or not root.is_relative_to(work): raise RuntimeError('Boot only the prepared repository work/ tree')
     installed = json.loads((root/'etc/bbsbox/installation.json').read_text())
     profile = json.loads((root/'etc/bbsbox/network/profile.json').read_text())
+    game_host = installed['hostname'].replace('bbsbox-', 'bbsbox-game-', 1) if profile.get('prepare_game_host') else None
     if installed['format'] not in ('bbsbox.development-install/v1','bbsbox.install/v1') or profile['interfaces']!=[dict(name='bbs-client',role='client',addresses=['192.168.50.1/24','fd42:bb50::1/64'])]:
         raise RuntimeError('Use only the known local client fixture, without peers')
     output.mkdir(parents=True,exist_ok=False); cases=[]
@@ -87,6 +90,10 @@ def exercise(root, output):
                     assert fetch(root,installed['hostname'],address)['node_id']==installed['node_id']
                     response,code,count=query(address,installed['hostname'],version)
                     assert code==0 and count
+                    if game_host:
+                        _,code,count=query(address,game_host,version)
+                        assert code==0 and count
+                        assert fetch(root,game_host,address,expected_status=421)==fetch(root,installed['hostname'],address,True)[1]
                     _,code,count=query(address,'unconfigured.example',version); assert code==3 and count==0
                 for unit in ['bbsbox-boundary.service','bbsbox-dns.service','systemd-networkd.service']:
                     assert service.enter(pid,root,['/usr/bin/systemctl','is-active',unit]).stdout.strip()==b'active'
@@ -131,7 +138,7 @@ def exercise(root, output):
         if process.returncode: raise RuntimeError('Prepared network OS shutdown failed')
         assert capture.report['status']=='passed',capture.report
         cases[-1]['boot_packet_capture']=capture.report
-    report=dict(status='passed',cases=cases,local_leaf_renewal_and_restart_verified=True,complete_boot_link_capture=True,scope='Actual Debian userspace/systemd with simulated local link; physical router/radio/phone acceptance remains separate')
+    report=dict(status='passed',cases=cases,local_leaf_renewal_and_restart_verified=True,prepared_game_alias_verified=bool(game_host),complete_boot_link_capture=True,scope='Actual Debian userspace/systemd with simulated local link; physical router/radio/phone acceptance remains separate')
     (output/'evidence.json').write_text(json.dumps(report,indent=2)+'\n'); print(json.dumps(report,indent=2))
 
 

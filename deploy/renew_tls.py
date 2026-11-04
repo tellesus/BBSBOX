@@ -10,6 +10,7 @@ from urllib.parse import urlsplit
 import enrollment
 import local_tls
 import maintenance_lock
+import network_profile
 from configure_network import target, write_new
 
 
@@ -34,6 +35,17 @@ def renew_locked(root):
         with tempfile.TemporaryDirectory(prefix='renew-check-',dir=root/'etc/bbsbox') as temporary:
             public=enrollment.export(root/'etc/bbsbox/installation.json',config_path,root/'etc/bbsbox/tls/ca.pem',Path(temporary)/'public')
         names=[public['hostname'],*[urlsplit(origin).hostname for origin in public['origins']]]
+        game=config.get('game_origin')
+        profile_path=target(root,'etc/bbsbox/network/profile.json')
+        if profile_path.is_symlink():raise ValueError('Expected a local network profile file')
+        if profile_path.exists():
+            profile=network_profile.validate(enrollment.read_json(profile_path))
+            prepared_game=network_profile.game_origin(profile)
+            if profile['hostname']!=public['hostname'] or (game and game!=prepared_game):
+                raise ValueError('Game host must match the prepared local network')
+            game=prepared_game
+        if game:
+            names.append(urlsplit(game).hostname)
         prepared=local_tls.issue(root/'etc/bbsbox/tls/ca.pem',root/'etc/bbsbox/tls/ca-key.pem',names,root/'etc/bbsbox')
         gid=config_path.stat().st_gid
         relative='etc/bbsbox/certificates/leaf-'+prepared['serial']

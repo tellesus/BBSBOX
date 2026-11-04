@@ -20,7 +20,7 @@ def issue(ca, ca_key, names, temporary_parent):
             if not private:raise ValueError('Certificate address must be local')
             entries.append('IP:'+str(address));verification.append(('-verify_ip',str(address)))
         except ValueError:
-            if name!='localhost' and not re.fullmatch(r'bbsbox-[a-f0-9]{16}\.home\.arpa',name):raise ValueError('Certificate name must be a node-local name or address') from None
+            if name!='localhost' and not re.fullmatch(r'bbsbox-(?:game-)?[a-f0-9]{16}\.home\.arpa',name):raise ValueError('Certificate name must be a node-local name or address') from None
             entries.append('DNS:'+name);verification.append(('-verify_hostname',name))
     ca=Path(ca).resolve();ca_key=Path(ca_key).resolve();serial=secrets.token_hex(16)
     with tempfile.TemporaryDirectory(prefix='leaf-',dir=temporary_parent) as temporary:

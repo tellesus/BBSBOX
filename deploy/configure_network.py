@@ -7,6 +7,7 @@ import re
 from pathlib import Path
 import shutil
 import subprocess
+from urllib.parse import urlsplit
 
 import enrollment
 import network_profile
@@ -106,7 +107,10 @@ def configure(root, profile):
             raise ValueError('Existing local service configuration is preserved: '+unit)
         destination.symlink_to('/dev/null')
     addresses = json.loads(files['origins.json'])
+    game = addresses.pop('game_origin', None)
     hosts = [address.split('/')[0] for interface in profile['interfaces'] for address in interface['addresses']]
+    if game:
+        hosts.append(urlsplit(game).hostname)
     leaf = local_tls.issue(root/'etc/bbsbox/tls/ca.pem', root/'etc/bbsbox/tls/ca-key.pem', [profile['hostname'], *hosts], root/'etc/bbsbox/network')
     write_new(root, 'etc/bbsbox/network/tls/server.pem', leaf['certificate'], 0o644, gid)
     write_new(root, 'etc/bbsbox/network/tls/server-key.pem', leaf['key'], 0o640, gid)

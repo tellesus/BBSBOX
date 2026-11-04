@@ -5,14 +5,18 @@ import ipaddress
 import json
 from pathlib import Path
 import re
+from urllib.parse import urlsplit
 
 FORMAT = 'bbsbox.local-network/v1'
 PRIVATE = [ipaddress.ip_network(value) for value in ['10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16', 'fc00::/7']]
+REQUIRED = {'format', 'hostname', 'https_port', 'interfaces'}
 
 
 def validate(profile):
-    if set(profile) != {'format', 'hostname', 'https_port', 'interfaces'} or profile['format'] != FORMAT:
+    if not isinstance(profile, dict) or not REQUIRED <= profile.keys() or profile.keys() - REQUIRED - {'prepare_game_host'} or profile['format'] != FORMAT:
         raise ValueError('Unknown local-network profile fields/format')
+    if type(profile.get('prepare_game_host', False)) is not bool:
+        raise ValueError('Game host preparation requires a boolean')
     if not re.fullmatch(r'bbsbox-[a-f0-9]{16}\.home\.arpa', profile['hostname']):
         raise ValueError('Use the installation node-ID-suffixed home.arpa name')
     if type(profile['https_port']) is not int or not 1024 <= profile['https_port'] <= 65535:
@@ -53,6 +57,13 @@ def validate(profile):
     return profile
 
 
+def game_origin(profile):
+    if profile.get('prepare_game_host', False):
+        hostname = profile['hostname'].replace('bbsbox-', 'bbsbox-game-', 1)
+        return f"https://{hostname}:{profile['https_port']}"
+    return None
+
+
 def render(profile):
     validate(profile)
     port = profile['https_port']; hostname = profile['hostname']
@@ -83,10 +94,17 @@ def render(profile):
     for name, rules in [('input', inbound), ('output', outbound), ('forward', [])]:
         chains.append(f' chain {name} {{\n  type filter hook {name} priority filter; policy drop;\n' + ''.join(f'  {rule}\n' for rule in rules) + '  counter drop\n }\n')
     files['bbsbox.nft'] = '# Replaces only the owned table, in one nft transaction.\nadd table inet bbsbox_boundary\nflush table inet bbsbox_boundary\ntable inet bbsbox_boundary {\n' + ''.join(chains) + '}\n'
-    files['dnsmasq.conf'] = '# Start with --conf-file pointing only to this file. No upstream or extra conf-dir.\nno-resolv\nno-poll\nno-hosts\nbind-interfaces\nlocal=/home.arpa/\naddress=/#/\nlisten-address=' + ','.join(listeners) + '\n' + ''.join('host-record='+hostname+','+host+'\n' for host in hosts)
+    game = game_origin(profile)
+    dns_names = [hostname]
+    if game:
+        dns_names.append(urlsplit(game).hostname)
+    files['dnsmasq.conf'] = '# Start with --conf-file pointing only to this file. No upstream or extra conf-dir.\nno-resolv\nno-poll\nno-hosts\nbind-interfaces\nlocal=/home.arpa/\naddress=/#/\nlisten-address=' + ','.join(listeners) + '\n' + ''.join('host-record='+name+','+host+'\n' for name in dns_names for host in hosts)
     files['90-bbsbox-local.conf'] = 'net.ipv4.ip_forward=0\nnet.ipv6.conf.all.forwarding=0\nnet.ipv6.conf.default.forwarding=0\nnet.ipv6.conf.all.accept_ra=0\nnet.ipv6.conf.default.accept_ra=0\nnet.ipv6.conf.all.autoconf=0\nnet.ipv6.conf.default.autoconf=0\n'
     binds = [f'[{ip}]:{port}' if ':' in ip else f'{ip}:{port}' for ip in hosts]
-    files['origins.json'] = json.dumps(dict(bind=binds[0], additional_binds=binds[1:], origin=f'https://{hostname}:{port}', additional_origins=['https://'+bind for bind in binds]), indent=2)+'\n'
+    origins = dict(bind=binds[0], additional_binds=binds[1:], origin=f'https://{hostname}:{port}', additional_origins=['https://'+bind for bind in binds])
+    if game:
+        origins['game_origin'] = game
+    files['origins.json'] = json.dumps(origins, indent=2)+'\n'
     files['profile.json'] = json.dumps(profile, indent=2)+'\n'
     return files
 

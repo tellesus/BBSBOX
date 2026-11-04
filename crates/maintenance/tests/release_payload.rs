@@ -145,6 +145,26 @@ fn exact_payload_private_staging_and_independent_compiled_profile_match() {
 }
 
 #[test]
+fn signed_game_units_require_their_pair_and_worker() {
+    let mut f = Fixture::new();
+    let socket = f.bundle.join("game-worker.socket");
+    let template = f.bundle.join("game-worker-template.service");
+    let worker = f.bundle.join(release_payload::DEMO_WORKER);
+    let verify = |f: &mut Fixture| {
+        fs::remove_file(f.bundle.join(release_payload::MANIFEST)).unwrap();
+        f.manifest.files = release_payload::inventory_unsigned(&f.bundle).unwrap();
+        f.sign();
+        f.verify()
+    };
+    fs::write(socket, b"fixture socket unit").unwrap();
+    assert!(!verify(&mut f));
+    fs::write(template, b"fixture service template").unwrap();
+    assert!(!verify(&mut f));
+    fs::copy(f.bundle.join("bbsbox-node"), worker).unwrap();
+    assert!(verify(&mut f));
+}
+
+#[test]
 fn altered_missing_extra_oversized_and_self_inventoried_members_fail() {
     let mut f = Fixture::new();
     let name = "materials/notices.json";

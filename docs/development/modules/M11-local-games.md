@@ -1,8 +1,8 @@
 # M11 — Game host and local multiplayer example
 
-Brief revision 1.1.11 · Roadmap baseline 1.1.0 · 2026-11-04 · Locked scope · Product baseline 0.6.0.
+Brief revision 1.1.12 · Roadmap baseline 1.1.0 · 2026-11-04 · Locked scope · Product baseline 0.6.0.
 
-**State:** In progress. Development browser, worker, profile, group and isolated game-node restore pass. Signed worker packaging awaits Debian confirmation. Appliance worker isolation and recovery activation remain pending.
+**State:** In progress. Development browser and isolated game-node restore pass. Debian confirms signed worker packaging and a separate worker account. Installer-managed worker units, appliance enablement and recovery activation are the remaining appliance work.
 
 ## Read only this packet
 
@@ -25,7 +25,7 @@ Use locally installed HTML/TypeScript game assets and an isolated worker with JS
 
 `crates/game-host/` owns manifests, launch tickets and framed worker requests. `games/demo/` owns the demo's rules, SQLite state and command receipts.
 
-The offline release build can include the bundled worker as a signed executable. A Debian fixture exercises the worker under a separate account through a protected local socket. The signed service requires installer and maintenance integration before it accepts a game origin.
+The offline release build signs the bundled worker and both of its service files. The fresh installer provisions a dedicated worker account and installs the verified service files inactive. The signed service requires appliance enablement before it accepts a game origin.
 
 The offline network preparer can reserve `bbsbox-game-<node suffix>.home.arpa` in local DNS and the node certificate. The prepared alias becomes a game endpoint when the isolated appliance service is enabled.
 

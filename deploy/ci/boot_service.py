@@ -165,15 +165,21 @@ def boot(root,output,signed=False,maintenance_check=None):
     installed=json.loads((root/'etc/bbsbox/installation.json').read_text())
     if installed['format']!=('bbsbox.install/v1' if signed else 'bbsbox.development-install/v1'):raise RuntimeError('Unexpected installation fixture format')
     if signed:
-        worker=root/'opt/bbsbox/releases'/installed['release_id']/'bbsbox-demo-worker'
+        selected=root/'opt/bbsbox/releases'/installed['release_id']
+        worker=selected/'bbsbox-demo-worker'
         metadata=worker.lstat()
         assert stat.S_ISREG(metadata.st_mode) and stat.S_IMODE(metadata.st_mode)==0o755
         assert metadata.st_uid==0 and metadata.st_gid==0
+        for bundle_name, unit in [('game-worker.socket','bbsbox-game-worker.socket'),
+                                  ('game-worker-template.service','bbsbox-game-worker@.service')]:
+            installed_unit=root/'etc/systemd/system'/unit
+            metadata=installed_unit.lstat()
+            assert stat.S_ISREG(metadata.st_mode) and stat.S_IMODE(metadata.st_mode)==0o644
+            assert metadata.st_uid==0 and metadata.st_gid==0
+            assert installed_unit.read_bytes()==(selected/bundle_name).read_bytes()
     probe_game_worker = signed and maintenance_check is None
     if probe_game_worker:
         files = {
-            'etc/systemd/system/bbsbox-game-worker.socket': ROOT/'deploy/systemd/bbsbox-game-worker.socket',
-            'etc/systemd/system/bbsbox-game-worker@.service': ROOT/'deploy/systemd/bbsbox-game-worker@.service',
             'usr/local/lib/bbsbox-game-worker-probe.py': ROOT/'deploy/ci/game_worker_case.py',
         }
         for name, source in files.items():
@@ -208,8 +214,8 @@ def boot(root,output,signed=False,maintenance_check=None):
                         if signed:
                             import release_boot_cases
                             maintenance_result['release_control']=release_boot_cases.exercise(pid,root)
-                            enter(pid,root,['/usr/sbin/useradd','--system','--user-group','--home-dir','/var/lib/bbsbox-game','--shell','/usr/sbin/nologin','bbsbox-game'])
                             socket_unit = 'bbsbox-game-worker.socket'
+                            assert enter(pid,root,['/usr/bin/systemctl','is-active',socket_unit],False).stdout.strip()==b'inactive'
                             enter(pid,root,['/usr/bin/systemctl','start',socket_unit])
                             try:
                                 probe = enter(pid,root,['/usr/bin/python3','/usr/local/lib/bbsbox-game-worker-probe.py','probe'],timeout=35)

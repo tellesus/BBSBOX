@@ -45,6 +45,8 @@ def check(tool,binary,material_directory,commit,rebuild_evidence,root,output):
     staged_worker=root/'verified'/candidate.GAME_WORKER
     if materials.file_digest(staged_worker)!=materials.file_digest(worker):
         raise AssertionError('Signed worker was missing or altered during staging')
+    if any(not (root/'verified'/name).is_file() for name in candidate.GAME_UNITS):
+        raise AssertionError('Signed worker socket and service template were not staged together')
     with (bundle/candidate.GAME_WORKER).open('r+b') as stream:
         original=stream.read(1)
         stream.seek(0);stream.write(bytes([original[0]^1]));stream.flush()

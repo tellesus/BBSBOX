@@ -16,6 +16,7 @@ pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + S
 pub const PROFILE: &str = "bbsbox.release-runtime/v1";
 pub const MANIFEST: &str = "manifest.cose";
 pub const DEMO_WORKER: &str = "bbsbox-demo-worker";
+const GAME_UNITS: [&str; 2] = ["game-worker.socket", "game-worker-template.service"];
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -68,6 +69,7 @@ fn read_manifest(root: &Path) -> Result<Vec<u8>> {
 }
 fn check_files(root: &Path, signed: &SignedRelease, manifest_present: bool) -> Result<()> {
     let manifest = signed.manifest();
+    check_game_inventory(signed)?;
     let mut expected_files = manifest
         .files
         .iter()
@@ -135,6 +137,20 @@ fn check_files(root: &Path, signed: &SignedRelease, manifest_present: bool) -> R
     }
     Ok(())
 }
+
+fn check_game_inventory(signed: &SignedRelease) -> Result<()> {
+    let files = &signed.manifest().files;
+    let units = files
+        .iter()
+        .filter(|record| GAME_UNITS.contains(&record.path.as_str()))
+        .count();
+    if units != 0
+        && (units != GAME_UNITS.len() || !files.iter().any(|record| record.path == DEMO_WORKER))
+    {
+        return Err("signed game units require the complete worker package".into());
+    }
+    Ok(())
+}
 fn check_elf(path: &Path) -> Result<()> {
     let mut header = [0; 64];
     File::open(path)?.read_exact(&mut header)?;
@@ -156,6 +172,7 @@ pub(crate) fn verify_selected_binary(
 ) -> Result<SignedRelease> {
     let root = directory(root)?;
     let signed = release::verify_manifest(&read_manifest(&root)?, expected_key)?;
+    check_game_inventory(&signed)?;
     let binary = signed
         .manifest()
         .files
@@ -168,21 +185,22 @@ pub(crate) fn verify_selected_binary(
         return Err("selected release binary changed".into());
     }
     check_elf(&root.join("bbsbox-node"))?;
-    let worker = root.join(DEMO_WORKER);
-    let worker_commitment = signed
-        .manifest()
-        .files
-        .iter()
-        .find(|r| r.path == DEMO_WORKER);
-    match (worker_commitment, fs::symlink_metadata(&worker)) {
-        (Some(record), Ok(metadata)) if metadata.file_type().is_file() => {
-            if archive::hash_file(&worker, record.size)? != (record.size, record.sha256.clone()) {
-                return Err("selected demo worker changed".into());
+    for name in [DEMO_WORKER].into_iter().chain(GAME_UNITS) {
+        let member = root.join(name);
+        let record = signed.manifest().files.iter().find(|r| r.path == name);
+        match (record, fs::symlink_metadata(&member)) {
+            (Some(record), Ok(metadata)) if metadata.file_type().is_file() => {
+                if archive::hash_file(&member, record.size)? != (record.size, record.sha256.clone())
+                {
+                    return Err("selected game package changed".into());
+                }
+                if name == DEMO_WORKER {
+                    check_elf(&member)?;
+                }
             }
-            check_elf(&worker)?;
+            (None, Err(error)) if error.kind() == std::io::ErrorKind::NotFound => (),
+            _ => return Err("selected game package does not match its signed inventory".into()),
         }
-        (None, Err(error)) if error.kind() == std::io::ErrorKind::NotFound => (),
-        _ => return Err("selected demo worker does not match its signed inventory".into()),
     }
     if read_manifest(&root)? != signed.encoded() {
         return Err("selected release manifest changed".into());

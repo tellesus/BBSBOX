@@ -33,6 +33,11 @@ def check_fresh(layout):
         raise ValueError('Signed first install refuses an existing application tree')
     for path in [layout.unit.with_name(layout.unit.name+'.d'),layout.unit.parent/'multi-user.target.wants'/layout.unit.name]:
         if path.exists() or path.is_symlink():raise ValueError('Signed first install refuses existing service activation or overrides')
+    game_state=layout.root/'var/lib/bbsbox-game'
+    if game_state.exists() or game_state.is_symlink():raise ValueError('Signed first install refuses existing game state')
+    for unit in candidate.GAME_UNITS.values():
+        for path in [layout.unit.parent/unit,layout.unit.parent/(unit+'.d'),layout.unit.parent/'sockets.target.wants'/unit]:
+            if path.exists() or path.is_symlink():raise ValueError('Signed first install refuses existing game worker units')
     maintenance=layout.root/'var/lib/bbsbox-maintenance'
     for name in ['release-control','first-install.json','first-restore.json']:
         path=maintenance/name
@@ -112,13 +117,22 @@ def install(bundle,verifier,public_key,name,enable=False,*,recovery=None):
             layout.unit.parent.mkdir(parents=True,exist_ok=True)
             base.write_new(layout.unit,(release/'bbsbox.service').read_bytes(),0o644,0,0)
             (layout.application/'current').symlink_to(release,target_is_directory=True)
-            base.run(['systemd-analyze','verify','--man=no',str(layout.unit)])
+            units=[layout.unit]
+            if all((release/name).is_file() for name in candidate.GAME_UNITS):
+                game_uid,game_gid=base.service_account('bbsbox-game')
+                if game_uid==uid or game_gid==gid or set(os.getgrouplist('bbsbox-game',game_gid))!={game_gid}:
+                    raise ValueError('Game worker requires a separate OS account and group')
+                for name,unit in candidate.GAME_UNITS.items():
+                    path=layout.unit.parent/unit
+                    base.write_new(path,(release/name).read_bytes(),0o644,0,0)
+                    units.append(path)
+            base.run(['systemd-analyze','verify','--man=no',*map(str,units)])
             public=layout.application/'enrollment';enrollment.export(layout.config/'installation.json',config_path,layout.config/'tls/ca.pem',public)
             public.chmod(0o755)
             for path in public.iterdir():path.chmod(0o644)
             # Synchronize file content/ownership/modes and deepest directory entries first.
             directories={release,releases,operator_directory,layout.application,layout.application.parent,layout.config,layout.config.parent,layout.data,layout.data.parent,layout.unit.parent,public}
-            for path in [operator,layout.unit]:sync_path(path)
+            for path in [operator,*units]:sync_path(path)
             for tree in [release,layout.config,layout.data,public]:
                 for path in tree.rglob('*'):
                     if path.is_dir():directories.add(path)

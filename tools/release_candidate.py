@@ -16,6 +16,10 @@ MAX_TOTAL = 4 * 1024 * 1024 * 1024
 PACKAGE_COMMANDS = frozenset({'release-sign','release-inspect','release-stage','release-control-begin'})
 GAME_WORKER = 'bbsbox-demo-worker'
 EXECUTABLES = frozenset({'bbsbox-node', GAME_WORKER})
+GAME_UNITS = {
+    'game-worker.socket': 'bbsbox-game-worker.socket',
+    'game-worker-template.service': 'bbsbox-game-worker@.service',
+}
 
 
 def bounded_run(arguments, timeout=20):
@@ -90,13 +94,16 @@ def copy_file(source, target):
     return size, digest.hexdigest()
 
 
-def committed_assets(material_directory):
-    wanted = {'source/'+path: name for name,path in STATIC.items()}
+def committed_assets(material_directory, include_game_units=False):
+    assets = dict(STATIC)
+    if include_game_units:
+        assets.update({name:'deploy/systemd/'+unit for name,unit in GAME_UNITS.items()})
+    wanted = {'source/'+path: name for name,path in assets.items()}
     found = {}
     for path, raw, _ in materials.tar_entries(material_directory/'source.tar', materials.SOURCE_FILES+1, materials.SOURCE_MEMBER, materials.SOURCE_TOTAL):
         if path in wanted:
             found[wanted.pop(path)] = raw
-    if wanted:
+    if not STATIC.keys() <= found.keys() or (GAME_UNITS.keys() & found.keys() and not GAME_UNITS.keys() <= found.keys()):
         raise ValueError('Committed source lacks required release assets')
     return found
 
@@ -137,7 +144,7 @@ def prepare(tool, binary, material_directory, commit, evidence_path, key_file, k
         size, copied = copy_file(game_worker, output/GAME_WORKER)
         if size == 0 or copied != worker_digest:
             raise ValueError('Candidate demo worker changed while copying')
-    for name, raw in committed_assets(material_directory).items():
+    for name, raw in committed_assets(material_directory, include_game_units=game_worker is not None).items():
         target = output/name
         target.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
         with target.open('xb') as destination:
@@ -177,7 +184,11 @@ def inspect(tool, bundle, public, output, minimum_sequence=1):
     if type(report.get('sequence')) is not int or report['sequence']<minimum_sequence:
         raise ValueError('Prepared release is below the independently supplied minimum sequence')
     material_report=materials.verify(Path(output)/'materials',report['source_commit'])
-    for name, raw in committed_assets(Path(output)/'materials').items():
+    game_units = {name for name in GAME_UNITS if (Path(output)/name).exists()}
+    assets = committed_assets(Path(output)/'materials', include_game_units=bool(game_units))
+    if game_units and (game_units != GAME_UNITS.keys() or not game_units <= assets.keys()):
+        raise ValueError('Worker units are missing or differ from the committed release source')
+    for name, raw in assets.items():
         if materials.read_file(Path(output)/name, materials.SOURCE_MEMBER) != raw:
             raise ValueError('Release assets differ from committed source')
     binary=Path(output)/'bbsbox-node'

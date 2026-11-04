@@ -652,3 +652,7 @@ An opt-in network profile reserves the node's separate game alias on its existin
 ## 2026-11-04 — M11 isolated appliance checkpoint provider
 
 The appliance socket worker separates gameplay and maintenance using the connecting account. Maintenance opens an existing game save and can checkpoint it. Gameplay requests cannot pause or checkpoint the worker. The signed backup helper selects the complete game-node profile when a save remains, including after game disablement. The Debian fixture backs up a real played turn and verifies both players and the saved receipt after isolated restore. The containing Debian run is pending. Appliance enablement and coordinated installed recovery remain open.
+
+## 2026-11-04 — M11 signed worker unit installation
+
+[Signed worker packaging](https://github.com/tellesus/BBSBOX/actions/runs/41887083293) passed all four Linux jobs and reached `main`. The signed boot exercise also ran the worker under a separate account through a local socket. The fresh installer now stages both game units from the same signed release and checks the dedicated account before publishing them inactive. Old bundles without game units still verify. Partial packages and previous game state or unit overrides fail preflight. The Debian fixture now uses the installed signed unit files. Confirmation of this installer change is pending.

@@ -66,17 +66,18 @@ def platform_preflight():
             raise ValueError(f'Prepare the local dependency first: {command}')
 
 
-def service_account():
+def service_account(name='bbsbox'):
     import pwd
     import grp
+    home='/var/lib/'+name
     try:
-        user = pwd.getpwnam('bbsbox')
+        user = pwd.getpwnam(name)
     except KeyError:
-        run(['useradd', '--system', '--user-group', '--no-create-home', '--home-dir', '/var/lib/bbsbox', '--shell', '/usr/sbin/nologin', 'bbsbox'])
-        user = pwd.getpwnam('bbsbox')
-    group = grp.getgrnam('bbsbox')
-    if user.pw_uid == 0 or group.gr_gid == 0 or user.pw_gid != group.gr_gid or user.pw_dir != '/var/lib/bbsbox' or user.pw_shell not in ['/usr/sbin/nologin', '/bin/false']:
-        raise ValueError('Existing bbsbox OS account does not match the service layout')
+        run(['useradd', '--system', '--user-group', '--no-create-home', '--home-dir', home, '--shell', '/usr/sbin/nologin', name])
+        user = pwd.getpwnam(name)
+    group = grp.getgrnam(name)
+    if user.pw_uid == 0 or group.gr_gid == 0 or user.pw_gid != group.gr_gid or user.pw_dir != home or user.pw_shell not in ['/usr/sbin/nologin', '/bin/false']:
+        raise ValueError('Existing '+name+' OS account does not match the service layout')
     return user.pw_uid, group.gr_gid
 
 

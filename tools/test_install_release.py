@@ -50,5 +50,15 @@ class SignedInstallGuards(unittest.TestCase):
                 self.assertEqual(saved.read_bytes(),b'retain existing setup')
                 self.assertFalse(layout.application.exists());self.assertFalse(layout.data.exists())
 
+    def test_existing_game_state_or_worker_units_refuse_first_install(self):
+        for name in ['var/lib/bbsbox-game/state.sqlite',
+                     'etc/systemd/system/bbsbox-game-worker@.service',
+                     'etc/systemd/system/bbsbox-game-worker.socket.d/override.conf']:
+            with self.subTest(name=name),tempfile.TemporaryDirectory() as temporary:
+                root=Path(temporary).resolve()
+                saved=root/name;saved.parent.mkdir(parents=True);saved.write_bytes(b'keep game data')
+                with self.assertRaises(ValueError):release.check_fresh(release.base.Layout(root))
+                self.assertEqual(saved.read_bytes(),b'keep game data')
+
 
 if __name__=='__main__':unittest.main()

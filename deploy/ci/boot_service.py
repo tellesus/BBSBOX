@@ -148,6 +148,19 @@ def boot(root,output,signed=False,maintenance_check=None):
         metadata=worker.lstat()
         assert stat.S_ISREG(metadata.st_mode) and stat.S_IMODE(metadata.st_mode)==0o755
         assert metadata.st_uid==0 and metadata.st_gid==0
+    probe_game_worker = signed and maintenance_check is None
+    if probe_game_worker:
+        files = {
+            'etc/systemd/system/bbsbox-game-worker.socket': ROOT/'deploy/systemd/bbsbox-game-worker.socket',
+            'etc/systemd/system/bbsbox-game-worker@.service': ROOT/'deploy/systemd/bbsbox-game-worker@.service',
+            'usr/local/lib/bbsbox-game-worker-probe.py': ROOT/'deploy/ci/game_worker_case.py',
+        }
+        for name, source in files.items():
+            target = root/name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            with target.open('xb') as file:
+                file.write(source.read_bytes())
+            target.chmod(0o644)
     cases=[]
     for attempt in range(2):
         log=output.parent/f'debian-boot-{attempt}.log'
@@ -174,6 +187,14 @@ def boot(root,output,signed=False,maintenance_check=None):
                         if signed:
                             import release_boot_cases
                             maintenance_result['release_control']=release_boot_cases.exercise(pid,root)
+                            enter(pid,root,['/usr/sbin/useradd','--system','--user-group','--home-dir','/var/lib/bbsbox-game','--shell','/usr/sbin/nologin','bbsbox-game'])
+                            socket_unit = 'bbsbox-game-worker.socket'
+                            enter(pid,root,['/usr/bin/systemctl','start',socket_unit])
+                            try:
+                                probe = enter(pid,root,['/usr/bin/python3','/usr/local/lib/bbsbox-game-worker-probe.py','probe'],timeout=35)
+                                maintenance_result['isolated_game_worker']=json.loads(probe.stdout)
+                            finally:
+                                enter(pid,root,['/usr/bin/systemctl','stop',socket_unit])
                     enter(pid,root,['/usr/bin/systemctl','stop','bbsbox.service'])
                     config_path=root/'etc/bbsbox/node.json';config=json.loads(config_path.read_text());config.update(bind='[::1]:8443',origin='https://[::1]:8443')
                     config_path.write_text(json.dumps(config)+'\n')

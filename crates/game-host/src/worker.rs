@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Own the child process and bound a request across both pipe directions.
+//! Own a local worker connection and bound each framed request.
 use super::{
     Manifest, ipc,
     protocol::{Operation, Reply, Request, ResultBody, VERSION},
@@ -9,8 +9,10 @@ use bbsbox_maintenance::{
     checkpoints::{WorkerArtifact, WorkerCheckpoint},
 };
 use rand_core::{OsRng, RngCore};
+#[cfg(unix)]
+use std::os::unix::net::UnixStream;
 use std::{
-    io,
+    io::{self, Read, Write},
     path::Path,
     process::{Child, Command, Stdio},
     sync::mpsc::{self, SyncSender},
@@ -23,9 +25,30 @@ struct Work {
 }
 
 pub struct Worker {
-    child: Child,
+    transport: Option<Transport>,
     queue: SyncSender<Work>,
     timeout: Duration,
+}
+
+enum Transport {
+    Child(Child),
+    #[cfg(unix)]
+    Socket(UnixStream),
+}
+
+impl Drop for Transport {
+    fn drop(&mut self) {
+        match self {
+            Self::Child(child) => {
+                let _ = child.kill();
+                let _ = child.wait();
+            }
+            #[cfg(unix)]
+            Self::Socket(socket) => {
+                let _ = socket.shutdown(std::net::Shutdown::Both);
+            }
+        }
+    }
 }
 
 impl Worker {
@@ -46,6 +69,30 @@ impl Worker {
         timeout: Duration,
     ) -> io::Result<Self> {
         Self::launch_mode(executable, state, expected, timeout, true)
+    }
+
+    /// The appliance supplies a protected filesystem socket to its separate worker account.
+    #[cfg(unix)]
+    pub fn connect(path: &Path, expected: &Manifest, timeout: Duration) -> io::Result<Self> {
+        use socket2::{Domain, SockAddr, Socket, Type};
+        if !path.is_absolute() || !expected.valid() || timeout.is_zero() {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "invalid game worker socket configuration",
+            ));
+        }
+        let socket = Socket::new(Domain::UNIX, Type::STREAM, None)?;
+        socket.set_nonblocking(true)?;
+        socket.connect(&SockAddr::unix(path)?)?;
+        socket.set_nonblocking(false)?;
+        let socket = UnixStream::from(socket);
+        Self::start(
+            Transport::Socket(socket.try_clone()?),
+            socket.try_clone()?,
+            socket,
+            expected,
+            timeout,
+        )
     }
 
     fn launch_mode(
@@ -76,10 +123,20 @@ impl Worker {
             .stdout(Stdio::piped())
             .stderr(Stdio::null())
             .spawn()?;
-        let mut input = child.stdin.take().expect("piped worker input");
-        let mut output = child.stdout.take().expect("piped worker output");
+        let input = child.stdin.take().expect("piped worker input");
+        let output = child.stdout.take().expect("piped worker output");
+        Self::start(Transport::Child(child), input, output, expected, timeout)
+    }
+
+    fn start(
+        transport: Transport,
+        mut input: impl Write + Send + 'static,
+        mut output: impl Read + Send + 'static,
+        expected: &Manifest,
+        timeout: Duration,
+    ) -> io::Result<Self> {
         let (queue, jobs) = mpsc::sync_channel::<Work>(1);
-        if let Err(error) = std::thread::Builder::new()
+        std::thread::Builder::new()
             .name("bbsbox-game-ipc".into())
             .spawn(move || {
                 while let Ok(job) = jobs.recv() {
@@ -94,14 +151,9 @@ impl Worker {
                         break;
                     }
                 }
-            })
-        {
-            let _ = child.kill();
-            let _ = child.wait();
-            return Err(error);
-        }
+            })?;
         let mut worker = Self {
-            child,
+            transport: Some(transport),
             queue,
             timeout,
         };
@@ -149,20 +201,9 @@ impl Worker {
                 Ok(reply.result)
             });
         if result.is_err() {
-            self.stop();
+            drop(self.transport.take());
         }
         result
-    }
-
-    fn stop(&mut self) {
-        let _ = self.child.kill();
-        let _ = self.child.wait();
-    }
-}
-
-impl Drop for Worker {
-    fn drop(&mut self) {
-        self.stop();
     }
 }
 

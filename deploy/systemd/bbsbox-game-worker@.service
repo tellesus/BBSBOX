@@ -1,0 +1,34 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+[Unit]
+Description=BBSBOX isolated bundled game worker
+CollectMode=inactive-or-failed
+
+[Service]
+Type=exec
+User=bbsbox-game
+Group=bbsbox-game
+ExecStart=/opt/bbsbox/current/bbsbox-demo-worker --state /var/lib/bbsbox-game/state.sqlite
+StandardInput=socket
+StandardOutput=inherit
+StandardError=journal
+StateDirectory=bbsbox-game
+StateDirectoryMode=0700
+UMask=0077
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+PrivateNetwork=yes
+RestrictAddressFamilies=none
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectControlGroups=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+RestrictNamespaces=yes
+InaccessiblePaths=-/etc/bbsbox -/var/lib/bbsbox -/var/lib/bbsbox-maintenance
+SystemCallArchitectures=native
+MemoryDenyWriteExecute=yes
+MemoryMax=128M
+TasksMax=8
+TimeoutStopSec=5

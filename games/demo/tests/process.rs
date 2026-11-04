@@ -98,6 +98,55 @@ fn actual_worker_process_keeps_two_seats_and_deduplicates_after_restart() {
     ));
 }
 
+#[cfg(unix)]
+#[test]
+fn socket_activated_worker_uses_the_same_protocol_and_exits_when_the_core_disconnects() {
+    use std::{
+        os::{fd::OwnedFd, unix::net::UnixListener},
+        process::{Command, Stdio},
+    };
+    let directory = tempfile::tempdir().unwrap();
+    let state = directory.path().join("game.sqlite");
+    let socket = directory.path().join("worker.sock");
+    let listener = UnixListener::bind(&socket).unwrap();
+    let manifest = Manifest::parse(include_bytes!("../manifest.json")).unwrap();
+    let executable = env!("CARGO_BIN_EXE_bbsbox-demo-worker");
+
+    let server = std::thread::spawn(move || {
+        let (connection, _) = listener.accept().unwrap();
+        let stdin = OwnedFd::from(connection.try_clone().unwrap());
+        let stdout = OwnedFd::from(connection);
+        Command::new(executable)
+            .arg("--state")
+            .arg(state)
+            .stdin(Stdio::from(stdin))
+            .stdout(Stdio::from(stdout))
+            .spawn()
+            .unwrap()
+    });
+    let mut worker = Worker::connect(&socket, &manifest, Duration::from_secs(3)).unwrap();
+    let mut child = server.join().unwrap();
+    let first = player(1);
+    assert_eq!(
+        read(worker.call(Operation::Join { player: first }).unwrap()).seat,
+        0
+    );
+    drop(worker);
+    let deadline = std::time::Instant::now() + Duration::from_secs(3);
+    loop {
+        if let Some(status) = child.try_wait().unwrap() {
+            assert!(status.success());
+            break;
+        }
+        if std::time::Instant::now() >= deadline {
+            let _ = child.kill();
+            let _ = child.wait();
+            panic!("game worker stayed up after the core disconnected");
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    }
+}
+
 #[test]
 fn coordinator_copies_a_real_worker_checkpoint_and_resumes_only_the_matching_fence() {
     let directory = tempfile::tempdir().unwrap();

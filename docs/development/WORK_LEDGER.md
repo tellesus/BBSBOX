@@ -20,7 +20,7 @@ Design review is complete and the first M00 prototype has real local implementat
 | [M08](modules/M08-friends-events.md) | Approved | Complete | A–C: local feeds, friendships, events, invitations and calendar pass signed Debian CI 41808835341 | G1 device acceptance |
 | [M09](modules/M09-clans-cohorts.md) | Approved | Complete | A–C: roster privacy, consent, handover and typed membership pass signed Debian CI 41810057605 | M11/M18 bind game consumers |
 | [M10](modules/M10-local-files.md) | Approved | Complete | A–C: permission, streaming, quota and restore pass signed Debian CI 41811437491 | M15/M16 own actual exchange tests |
-| [M11](modules/M11-local-games.md) | Approved | In progress | Development browser and encrypted game-node restore pass CI 41814817663 | Confirm signed worker package, then appliance isolation and recovery activation |
+| [M11](modules/M11-local-games.md) | Approved | In progress | Development browser and encrypted game-node restore pass CI 41814817663 | Verify isolated Debian socket, wire appliance enablement and recovery activation |
 | [M13](modules/M13-encrypted-forums.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
 | [M14](modules/M14-complaints-moderation.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
 | [M15](modules/M15-selected-federation.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
@@ -634,3 +634,7 @@ The [browser](https://github.com/tellesus/BBSBOX/actions/runs/41814207093) and [
 ## 2026-11-04 — M11 signed worker packaging
 
 The offline rebuild produces the worker from the committed source and records its digest. Candidate preparation binds that rebuilt executable in the existing signed file inventory. Staging checks its signature commitment and Debian executable format. Install and update give the top-level worker a root-owned executable mode. Boot preflight rechecks the worker against its signed commitment. The signed service requires appliance isolation before a game origin can be enabled. Earlier worker-free release inventories remain readable. Debian installation confirmation for this checkpoint is pending.
+
+## 2026-11-04 — M11 isolated worker socket fixture
+
+The host can connect over a Unix socket with the same manifest handshake, framing and request deadline as the development child. The Debian fixture starts a separate worker account with a private state directory and no new network sockets. It plays a turn through the filesystem socket as the node account, checks that an unrelated account cannot connect, checks the worker's actual identity and view of core paths, and waits for it to exit after disconnect. The Windows pipe regressions pass. Linux transport and systemd fixture results are pending. Appliance installation, configuration and recovery activation are still separate work.

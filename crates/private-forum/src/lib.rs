@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! The private forum's public routing metadata and client authenticated data.
 //! Membership, epoch authority and delivery policy are separate checks.
-use bbsbox_credentials::{ForumId, Purpose};
+use bbsbox_credentials::{CredentialId, ForumId, Purpose};
 use bbsbox_event_codec::{
     Actor, CompleteEvent, Dependency, Distribution, Draft, EventId, Extension, Role, Scope,
 };
 pub mod control;
+pub mod membership;
 
 pub const AUDIENCE: &str = "forum-members";
 pub const HEADER_EXTENSION: u16 = 0x1301;
@@ -19,6 +20,8 @@ pub enum Error {
     InvalidDependencies,
     InvalidAuthor,
     EmptyBody,
+    InvalidMembership,
+    MissingCredential(CredentialId),
 }
 
 impl std::fmt::Display for Error {
@@ -121,7 +124,7 @@ impl Header {
     }
 
     fn parse<'a>(kind: &str, extensions: &'a [Extension]) -> Result<(Self, &'a [u8]), Error> {
-        let data = required_extension(HEADER_EXTENSION, extensions)?;
+        let data = required_extension(HEADER_EXTENSION, extensions, &[])?;
         let reference = |offset: usize| {
             EventId::from_bytes(
                 data[offset..offset + 32]
@@ -167,6 +170,7 @@ impl Header {
 pub struct Outer {
     pub forum: ForumId,
     pub distribution: Distribution,
+    pub credential: CredentialId,
     pub header: Header,
     pub authenticated_data: Vec<u8>,
 }
@@ -256,6 +260,7 @@ impl Outer {
         Ok(Self {
             forum,
             distribution: scope.distribution,
+            credential,
             header,
             authenticated_data: data,
         })
@@ -270,7 +275,11 @@ fn forum_scope(scope: &Scope) -> Result<ForumId, Error> {
     Ok(forum)
 }
 
-fn required_extension(id: u16, extensions: &[Extension]) -> Result<&[u8], Error> {
+fn required_extension<'a>(
+    id: u16,
+    extensions: &'a [Extension],
+    also_known: &[u16],
+) -> Result<&'a [u8], Error> {
     let mut recognized = extensions.iter().filter(|extension| extension.id == id);
     let extension = recognized
         .next()
@@ -279,10 +288,9 @@ fn required_extension(id: u16, extensions: &[Extension]) -> Result<&[u8], Error>
     if recognized.next().is_some() {
         return Err(Error::InvalidHeader);
     }
-    if extensions
-        .iter()
-        .any(|candidate| candidate.required && candidate.id != id)
-    {
+    if extensions.iter().any(|candidate| {
+        candidate.required && candidate.id != id && !also_known.contains(&candidate.id)
+    }) {
         return Err(Error::Unsupported);
     }
     Ok(&extension.data)

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Forum-root signatures bind the exact MLS epoch transition.
 use super::{Error, Outer, forum_scope, required_extension};
+use crate::membership::{MEMBERSHIP_EXTENSION, MembershipChanges};
 use bbsbox_credentials::ForumId;
 use bbsbox_event_codec::{CompleteEvent, Dependency, Distribution, EventId, Extension, Role};
 
@@ -45,7 +46,7 @@ impl ControlHeader {
     }
 
     fn parse(kind: &str, extensions: &[Extension]) -> Result<Self, Error> {
-        let data = required_extension(CONTROL_EXTENSION, extensions)?;
+        let data = required_extension(CONTROL_EXTENSION, extensions, &[MEMBERSHIP_EXTENSION])?;
         let parent = match (kind, data.len()) {
             (GENESIS, 8) => None,
             (COMMIT, 40) => Some(EventId::from_bytes(
@@ -63,12 +64,13 @@ impl ControlHeader {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Control {
     id: EventId,
     forum: ForumId,
     distribution: Distribution,
     header: ControlHeader,
+    membership: MembershipChanges,
 }
 
 impl Control {
@@ -86,8 +88,15 @@ impl Control {
             return Err(Error::InvalidAuthor);
         }
         let header = ControlHeader::parse(&metadata.kind, &metadata.extensions)?;
-        let parent = header.parent.map(Dependency::event);
-        if metadata.dependencies.as_slice() != parent.as_slice() {
+        let membership = MembershipChanges::parse(&metadata.extensions)?;
+        let mut expected = header
+            .parent
+            .map(Dependency::event)
+            .into_iter()
+            .collect::<Vec<_>>();
+        expected.extend(membership.dependencies());
+        expected.sort_unstable();
+        if metadata.dependencies != expected {
             return Err(Error::InvalidDependencies);
         }
         if metadata.previous.is_some() && metadata.previous != header.parent {
@@ -98,18 +107,19 @@ impl Control {
             forum,
             distribution: metadata.scope.distribution,
             header,
+            membership,
         })
     }
 
-    pub fn id(self) -> EventId {
+    pub fn id(&self) -> EventId {
         self.id
     }
 
-    pub fn header(self) -> ControlHeader {
+    pub fn header(&self) -> ControlHeader {
         self.header
     }
 
-    pub fn is_successor_of(self, parent: Self) -> bool {
+    pub fn is_successor_of(&self, parent: &Self) -> bool {
         self.forum == parent.forum
             && self.distribution == parent.distribution
             && self.header.parent == Some(parent.id)
@@ -117,24 +127,31 @@ impl Control {
     }
 
     /// The caller supplies an epoch on the accepted control chain and checks device membership.
-    pub fn anchors(self, post: &Outer) -> bool {
+    pub fn anchors(&self, post: &Outer) -> bool {
         self.forum == post.forum
             && self.distribution == post.distribution
             && self.id == post.header.control
             && self.header.epoch == post.header.epoch
     }
+
+    pub fn membership(&self) -> &MembershipChanges {
+        &self.membership
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Successor {
+pub enum Successor<'a> {
     None,
-    Unique(Control),
+    Unique(&'a Control),
     Conflict,
 }
 
 /// Resolve all known verified direct children. The caller retains conflicting evidence.
-pub fn successor(parent: Control, candidates: impl IntoIterator<Item = Control>) -> Successor {
-    let mut selected: Option<Control> = None;
+pub fn successor<'a>(
+    parent: &Control,
+    candidates: impl IntoIterator<Item = &'a Control>,
+) -> Successor<'a> {
+    let mut selected: Option<&Control> = None;
     for candidate in candidates
         .into_iter()
         .filter(|candidate| candidate.is_successor_of(parent))

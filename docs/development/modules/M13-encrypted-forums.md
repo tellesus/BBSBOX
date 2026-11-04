@@ -1,8 +1,8 @@
 # M13 — Trusted clients and encrypted forums
 
-Brief revision 1.1.2 · Roadmap baseline 1.1.0 · 2026-11-04 · Locked scope · Product baseline 0.6.0.
+Brief revision 1.1.3 · Roadmap baseline 1.1.0 · 2026-11-04 · Locked scope · Product baseline 0.6.0.
 
-**State:** In progress. Signed post framing and forum-root authorization pass pinned MLS fixtures. Membership admission, trusted client runtime and hardware evidence remain open.
+**State:** In progress. Signed framing and forum-root authorization pass pinned MLS fixtures. Membership bindings pass local authority checks. Durable host admission, trusted client runtime and hardware evidence remain open.
 
 ## Read only this packet
 

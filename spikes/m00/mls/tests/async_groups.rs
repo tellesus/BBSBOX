@@ -343,7 +343,7 @@ fn a_valid_mls_commit_needs_the_matching_forum_owner_approval() {
         &commit,
     ))
     .unwrap();
-    assert!(joined.is_successor_of(genesis));
+    assert!(joined.is_successor_of(&genesis));
     moderator.join(&welcome);
     recipient.join(&welcome);
     let next = ControlHeader {
@@ -355,7 +355,7 @@ fn a_valid_mls_commit_needs_the_matching_forum_owner_approval() {
     assert_eq!(recipient.epoch(), 1);
     let approved = sign(&authority, next, &owner.update());
     let control = Control::inspect(&approved).unwrap();
-    assert!(control.is_successor_of(joined));
+    assert!(control.is_successor_of(&joined));
     assert_eq!(recipient.receive(approved.body()).unwrap(), None);
     assert_eq!(recipient.epoch(), control.header().epoch);
 }

@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 import re
 import socket
+import sqlite3
 import ssl
 import subprocess
 import sys
@@ -26,25 +27,59 @@ def fixture(binary, directory):
         port = reserve.getsockname()[1]
     core = f'https://127.0.0.1:{port}'
     game = f'https://localhost:{port}'
-    config = directory/'node.json'
+    configuration = directory/'configuration'
+    configuration.mkdir(mode=0o700)
+    data = directory/'data'
+    data.mkdir(mode=0o700)
+    config = configuration/'node.json'
+
+    def native(path):
+        return '\\\\?\\'+str(path) if os.name == 'nt' else str(path)
+
     config.write_text(json.dumps(dict(
         format='bbsbox.node-config/v1', name='Game fixture', bind=f'127.0.0.1:{port}',
         additional_binds=[f'[::1]:{port}'], origin=core, game_origin=game,
-        database=str(directory/'node.sqlite'), certificate=str(directory/'tls/server.pem'),
-        certificate_key=str(directory/'tls/server-key.pem'),
+        database=native(data/'node.sqlite'), certificate=native(configuration/'tls/server.pem'),
+        certificate_key=native(configuration/'tls/server-key.pem'),
     )), encoding='utf-8')
     command = [str(binary), '--config', str(config)]
     flags = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
-    subprocess.run([*command, '--initialize'], check=True, capture_output=True, creationflags=flags)
+    initialized = subprocess.run([*command, '--initialize'], check=True, capture_output=True, creationflags=flags)
+    node = json.loads(initialized.stdout)['node_id']
     subprocess.run(
         [*command, '--bootstrap-sysop', 'operator'], input=(PASSWORD+'\n').encode(),
         check=True, capture_output=True, creationflags=flags,
     )
     subprocess.run(
-        [sys.executable, str(ROOT/'spikes/m00/tools/init_tls.py'), '--state', str(directory)],
+        [sys.executable, str(ROOT/'spikes/m00/tools/init_tls.py'), '--state', str(configuration)],
         check=True, capture_output=True, creationflags=flags,
     )
-    context = ssl.create_default_context(cafile=str(directory/'tls/ca.pem'))
+    (configuration/'installation.json').write_text(json.dumps(dict(
+        format='bbsbox.development-install/v1', node_id=node,
+    )), encoding='utf-8')
+    context = ssl.create_default_context(cafile=str(configuration/'tls/ca.pem'))
+
+    def operator(*arguments, accept=True):
+        result = subprocess.run([str(binary), *map(str, arguments)], capture_output=True,
+                                creationflags=flags, timeout=30)
+        if accept:
+            assert result.returncode == 0, result.stderr.decode(errors='replace')
+            return json.loads(result.stdout)
+        assert result.returncode != 0, result.stdout
+
+    identity = directory/'backup.key'
+    recipient = operator('backup-keygen', '--output', identity)['recipient']
+    archive = directory/'game.age'
+    backup = ['--config', config, '--node', node, '--recipient', recipient,
+              '--output', archive, '--staging', directory]
+    operator('backup-game-node', *backup, accept=False)
+    assert not archive.exists() and not (data/'games').exists()
+    uninitialized = data/'games'/'dungeon-demo'/'state.sqlite'
+    uninitialized.parent.mkdir(parents=True)
+    uninitialized.touch()
+    operator('backup-game-node', *backup, accept=False)
+    assert not archive.exists() and uninitialized.stat().st_size == 0
+    uninitialized.unlink()
 
     class Client:
         def __init__(self):
@@ -112,6 +147,9 @@ def fixture(binary, directory):
                     time.sleep(.05)
             else:
                 raise AssertionError('The development game node did not start')
+            if attempt == 0:
+                operator('backup-game-node', *backup, accept=False)
+                assert not archive.exists()
             one = Client()
             two = Client()
             third = Client()
@@ -171,6 +209,38 @@ def fixture(binary, directory):
                 process.kill()
                 process.communicate()
 
+    operator('backup', *backup, accept=False)
+    assert not archive.exists()
+    # The game stays recoverable after it is disabled. A different, unregistered game blocks capture.
+    settings = json.loads(config.read_text(encoding='utf-8'))
+    del settings['game_origin']
+    config.write_text(json.dumps(settings), encoding='utf-8')
+    unknown = data/'games'/'unknown'
+    unknown.mkdir()
+    operator('backup-game-node', *backup, accept=False)
+    assert not archive.exists()
+    unknown.rmdir()
+    sealed = operator('backup-game-node', *backup)
+    assert sealed['scope'] == 'game-node' and sealed['game_checkpoints'] == 1
+    restored = directory/'restored'
+    restore = ['--archive', archive, '--node', node, '--identity-file', identity,
+               '--output', restored, '--staging', directory]
+    operator('restore', *restore, accept=False)
+    assert not restored.exists()
+    opened = operator('restore-game-node', *restore)
+    assert opened['inventory_sha256'] == sealed['inventory_sha256']
+    assert opened['state'] == 'recovery-required' and opened['game_checkpoints'] == 1
+    assert json.loads((restored/'game-recovery.json').read_text())['state'] == 'recovery-required'
+    assert Path(opened['database']).is_file() and not (restored/'.restore-incomplete').exists()
+    game_db = restored/'games'/'dungeon-demo'/'state.sqlite'
+    db = sqlite3.connect(game_db.as_uri()+'?mode=ro', uri=True)
+    try:
+        assert db.execute('SELECT chamber FROM dungeon').fetchone() == (2,)
+        assert db.execute('SELECT count(*) FROM players').fetchone() == (2,)
+        assert db.execute('SELECT count(*) FROM receipts').fetchone() == (2,)
+    finally:
+        db.close()
+
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -178,7 +248,7 @@ def main():
     args = parser.parse_args()
     with tempfile.TemporaryDirectory(prefix='bbsbox-games-') as state:
         fixture(args.binary.resolve(), Path(state).resolve())
-    print('PASS: distinct HTTPS game host, scoped launch, two players, board access, retry and worker restart')
+    print('PASS: separate HTTPS game host, two players, restart and encrypted game-node recovery')
 
 
 if __name__ == '__main__':

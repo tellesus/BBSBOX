@@ -36,6 +36,25 @@ impl Worker {
         expected: &Manifest,
         timeout: Duration,
     ) -> io::Result<Self> {
+        Self::launch_mode(executable, state, expected, timeout, false)
+    }
+
+    pub fn launch_checkpoint(
+        executable: &Path,
+        state: &Path,
+        expected: &Manifest,
+        timeout: Duration,
+    ) -> io::Result<Self> {
+        Self::launch_mode(executable, state, expected, timeout, true)
+    }
+
+    fn launch_mode(
+        executable: &Path,
+        state: &Path,
+        expected: &Manifest,
+        timeout: Duration,
+        checkpoint_only: bool,
+    ) -> io::Result<Self> {
         if !executable.is_absolute()
             || !state.is_absolute()
             || !expected.valid()
@@ -47,7 +66,11 @@ impl Worker {
             ));
         }
         let mut child = Command::new(executable)
-            .arg("--state")
+            .arg(if checkpoint_only {
+                "--checkpoint-state"
+            } else {
+                "--state"
+            })
             .arg(state)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())

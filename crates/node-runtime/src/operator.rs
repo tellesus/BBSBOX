@@ -3,7 +3,9 @@
 use crate::{Config, Result, migrations};
 use bbsbox_credentials::NodeId;
 use bbsbox_identity::node::NodeSigner;
-use bbsbox_maintenance::{BackupIdentity, BackupRecipient, Limits, archive, snapshot};
+use bbsbox_maintenance::{
+    BackupIdentity, BackupRecipient, Limits, archive, checkpoints, game_snapshot, snapshot,
+};
 use bbsbox_storage::writer::{Config as WriterConfig, Priority, Writer};
 use std::{
     collections::BTreeMap,
@@ -184,10 +186,27 @@ pub fn backup_with_registry(
     staging_parent: &Path,
     registry: Vec<bbsbox_storage::Migration>,
 ) -> Result<serde_json::Value> {
+    backup_with_scope(
+        config_path,
+        expected,
+        recipient,
+        destination,
+        staging_parent,
+        registry,
+        false,
+    )
+}
+
+fn backup_with_scope(
+    config_path: &Path,
+    expected: NodeId,
+    recipient: &BackupRecipient,
+    destination: &Path,
+    staging_parent: &Path,
+    registry: Vec<bbsbox_storage::Migration>,
+    with_games: bool,
+) -> Result<serde_json::Value> {
     let config = Config::read(config_path)?;
-    if config.game_origin.is_some() || crate::games::has_retained_state(&config.database)? {
-        return Err("this node has game state; use a complete game-node checkpoint".into());
-    }
     let registry = foundation_registry(registry)?;
     let (root, required) = configuration(config_path, &config)?;
     // The configuration owner serializes this with local certificate renewal.
@@ -210,15 +229,37 @@ pub fn backup_with_registry(
     let lock = ConfigurationLock(lock);
     // Read again after the lock: renewal may have completed between the first read and acquisition.
     let frozen_config = Config::read(config_path)?;
-    if frozen_config.game_origin.is_some()
-        || crate::games::has_retained_state(&frozen_config.database)?
-    {
-        return Err("this node has game state; use a complete game-node checkpoint".into());
-    }
     if serde_json::to_vec(&config)? != serde_json::to_vec(&frozen_config)? {
         return Err("Configuration changed; retry backup".into());
     }
     regular(&config.database)?;
+    let database_path = config.database.canonicalize()?;
+    if with_games {
+        let data = database_path
+            .parent()
+            .ok_or("missing node data directory")?;
+        if database_path != config.database || data.starts_with(&root) || root.starts_with(data) {
+            return Err("use separate direct paths for game-node data and configuration".into());
+        }
+        let output_parent = destination
+            .parent()
+            .filter(|p| !p.as_os_str().is_empty())
+            .unwrap_or(Path::new("."));
+        for path in [staging_parent, output_parent] {
+            let path = path.canonicalize()?;
+            if path.starts_with(data) || path.starts_with(&root) {
+                return Err(
+                    "keep game-node staging and backup output outside live data and configuration"
+                        .into(),
+                );
+            }
+        }
+    }
+    if !with_games
+        && (config.game_origin.is_some() || crate::games::has_retained_state(&database_path)?)
+    {
+        return Err("this node has game state; use backup-game-node".into());
+    }
     bbsbox_storage::verify_exact_registry(&config.database, &registry)?;
     if NodeSigner::inspect_existing(&config.database)? != expected {
         return Err("Source node does not match the expected identity".into());
@@ -238,22 +279,47 @@ pub fn backup_with_registry(
     let recipient = recipient.clone();
     let created_at = i64::try_from(SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs())?;
     let writer = Writer::start(&config.database, registry.clone(), WriterConfig::default())?;
+    let game = if with_games {
+        let manifest = crate::games::bundled_manifest()?;
+        let (state_root, worker) = crate::games::bundled_worker(&database_path, &manifest, false)?;
+        Some((game_requirement(&manifest), state_root, worker))
+    } else {
+        None
+    };
     let result = writer
         .handle()
         .maintenance_service(move |database| {
-            snapshot::capture(
-                database, expected, &root, required, &tree, created_at, &registry,
-            )?;
-            let signer = NodeSigner::start_existing(database, expected)?;
-            let signed = archive::seal(
-                &tree,
-                &output,
-                &signer,
-                &recipient,
-                created_at,
-                Limits::default(),
-            )?;
-            Ok::<_, bbsbox_maintenance::Error>(signed)
+            let limits = Limits::default();
+            if let Some((game, state_root, mut worker)) = game {
+                let games = [game];
+                let mut workers = [checkpoints::Registration {
+                    game_id: &games[0].game_id,
+                    state_root: &state_root,
+                    worker: &mut worker,
+                }];
+                game_snapshot::capture_and_seal(
+                    database,
+                    game_snapshot::Capture {
+                        expected_node: expected,
+                        configuration: &root,
+                        required_configuration: required,
+                        created_at,
+                        migrations: &registry,
+                        games: &games,
+                        limits,
+                    },
+                    &mut workers,
+                    &tree,
+                    &output,
+                    &recipient,
+                )
+            } else {
+                snapshot::capture(
+                    database, expected, &root, required, &tree, created_at, &registry,
+                )?;
+                let signer = NodeSigner::start_existing(database, expected)?;
+                archive::seal(&tree, &output, &signer, &recipient, created_at, limits)
+            }
         })?
         .blocking_wait();
     let shutdown = writer.shutdown();
@@ -262,8 +328,15 @@ pub fn backup_with_registry(
     drop(stage);
     drop(lock);
     Ok(
-        serde_json::json!({"format":"bbsbox.node-backup/v1","node":expected.to_string(),"inventory_sha256":hex_id(signed.id()),"snapshot_time":created_at,"scope":"foundation-node","game_checkpoints":0}),
+        serde_json::json!({"format":"bbsbox.node-backup/v1","node":expected.to_string(),"inventory_sha256":hex_id(signed.id()),"snapshot_time":created_at,"scope":if with_games { "game-node" } else { "foundation-node" },"game_checkpoints":usize::from(with_games)}),
     )
+}
+fn game_requirement(manifest: &bbsbox_game_host::Manifest) -> game_snapshot::Requirement {
+    game_snapshot::Requirement {
+        game_id: manifest.game_id().into(),
+        worker_version: manifest.worker_version().into(),
+        state_schema: manifest.state_schema(),
+    }
 }
 fn hex_id(bytes: &[u8]) -> String {
     bytes.iter().map(|b| format!("{b:02x}")).collect()
@@ -304,6 +377,7 @@ pub fn restore_with_registry(
             registry,
             authorization,
             known_prefix: false,
+            with_games: false,
         },
     )
 }
@@ -311,6 +385,7 @@ struct RestoreSettings {
     registry: Vec<bbsbox_storage::Migration>,
     authorization: Option<bbsbox_maintenance::continuation::Authorization>,
     known_prefix: bool,
+    with_games: bool,
 }
 fn restore_with_settings(
     cipher: &Path,
@@ -330,6 +405,13 @@ fn restore_with_settings(
         &identity,
         Limits::default(),
     )?;
+    if settings.with_games {
+        let game = game_requirement(&crate::games::bundled_manifest()?);
+        let restored = game_snapshot::restore(&opened, destination, &registry, &[game])?;
+        return Ok(
+            serde_json::json!({"format":"bbsbox.node-restore/v1","node":expected.to_string(),"inventory_sha256":hex_id(opened.inventory().id()),"state":"recovery-required","database":restored.node().database(),"scope":"game-node","game_checkpoints":restored.games().len()}),
+        );
+    }
     let current_count = registry.len();
     let registry = if settings.known_prefix {
         let applied =
@@ -409,8 +491,10 @@ pub fn command_with_registry(
         "backup-public" => &["--identity-file"],
         "backup-check-recipient" => &["--recipient"],
         "migrate-existing" => &["--database", "--node"],
-        "backup" => &["--config", "--node", "--recipient", "--output", "--staging"],
-        "restore" => &[
+        "backup" | "backup-game-node" => {
+            &["--config", "--node", "--recipient", "--output", "--staging"]
+        }
+        "restore" | "restore-game-node" => &[
             "--archive",
             "--node",
             "--identity-file",
@@ -472,14 +556,15 @@ pub fn command_with_registry(
     if command == "migrate-existing" {
         return migrate_existing(path("--database"), expected, registry);
     }
-    if command == "backup" {
-        backup_with_registry(
+    if matches!(command, "backup" | "backup-game-node") {
+        backup_with_scope(
             path("--config"),
             expected,
             &recipient()?,
             path("--output"),
             path("--staging"),
             registry,
+            command == "backup-game-node",
         )
     } else {
         let authorization = if matches!(command, "restore-and-authorize" | "restore-compatible") {
@@ -512,6 +597,7 @@ pub fn command_with_registry(
                 registry,
                 authorization,
                 known_prefix: command == "restore-compatible",
+                with_games: command == "restore-game-node",
             },
         )
     }

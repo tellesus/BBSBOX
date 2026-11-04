@@ -4,7 +4,7 @@ use bbsbox_game_host::{
     protocol::{Move, Operation, Reason, Reply, Request, ResultBody, State, VERSION},
     sessions::PlayerId,
 };
-use rusqlite::{Connection, OptionalExtension, Transaction, params};
+use rusqlite::{Connection, OpenFlags, OptionalExtension, Transaction, params};
 use std::{
     error::Error,
     io,
@@ -27,9 +27,11 @@ fn main() {
 
 fn run() -> Result<(), Box<dyn Error>> {
     let mut arguments = std::env::args_os().skip(1);
-    if arguments.next().as_deref() != Some(std::ffi::OsStr::new("--state")) {
-        return Err("expected a worker state path".into());
-    }
+    let checkpoint_only = match arguments.next().as_deref().and_then(|arg| arg.to_str()) {
+        Some("--state") => false,
+        Some("--checkpoint-state") => true,
+        _ => return Err("expected a worker state path".into()),
+    };
     let state = PathBuf::from(arguments.next().ok_or("missing worker state path")?);
     if !state.is_absolute() || arguments.next().is_some() {
         return Err("invalid worker state path".into());
@@ -44,7 +46,7 @@ fn run() -> Result<(), Box<dyn Error>> {
         .open(lock_name)?;
     worker_lock.try_lock()?;
     let manifest = Manifest::parse(MANIFEST).map_err(|_| "invalid embedded manifest")?;
-    let mut db = open(&state)?;
+    let mut db = open(&state, checkpoint_only)?;
     let mut checkpoint =
         checkpoint::Manager::new(state.parent().ok_or("missing game state directory")?);
     let mut input = io::stdin().lock();
@@ -57,7 +59,9 @@ fn run() -> Result<(), Box<dyn Error>> {
                 Operation::Pause { fence } => checkpoint.pause(fence),
                 Operation::Checkpoint { fence } => checkpoint.capture(&db, &manifest, fence),
                 Operation::Resume { fence } => checkpoint.resume(fence),
-                Operation::Join { .. } | Operation::Act { .. } if checkpoint.paused() => {
+                Operation::Join { .. } | Operation::Act { .. }
+                    if checkpoint_only || checkpoint.paused() =>
+                {
                     refused(Reason::Paused)
                 }
                 operation => dispatch(&mut db, &manifest, operation)
@@ -76,12 +80,16 @@ fn run() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn open(path: &Path) -> rusqlite::Result<Connection> {
-    let mut db = Connection::open(path)?;
+fn open(path: &Path, checkpoint_only: bool) -> rusqlite::Result<Connection> {
+    let mut db = if checkpoint_only {
+        Connection::open_with_flags(path, OpenFlags::SQLITE_OPEN_READ_WRITE)?
+    } else {
+        Connection::open(path)?
+    };
     db.busy_timeout(Duration::from_secs(2))?;
     let app: i64 = db.pragma_query_value(None, "application_id", |row| row.get(0))?;
     let schema: i64 = db.pragma_query_value(None, "user_version", |row| row.get(0))?;
-    if app == 0 && schema == 0 {
+    if !checkpoint_only && app == 0 && schema == 0 {
         let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
         if tx.query_row("SELECT EXISTS(SELECT 1 FROM sqlite_schema)", [], |row| {
             row.get::<_, bool>(0)

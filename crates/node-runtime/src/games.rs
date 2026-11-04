@@ -35,11 +35,80 @@ pub(super) fn has_retained_state(database: &Path) -> std::io::Result<bool> {
     let parent = database
         .parent()
         .ok_or_else(|| std::io::Error::other("missing node data directory"))?;
-    match std::fs::symlink_metadata(parent.join("games").join(GAME_ID).join("state.sqlite")) {
+    match std::fs::symlink_metadata(parent.join("games")) {
         Ok(_) => Ok(true),
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(false),
         Err(error) => Err(error),
     }
+}
+
+pub(super) fn bundled_manifest() -> crate::Result<Manifest> {
+    let manifest = Manifest::parse(MANIFEST).map_err(|_| "invalid bundled game manifest")?;
+    if manifest.game_id() != GAME_ID {
+        return Err("wrong bundled game ID".into());
+    }
+    Ok(manifest)
+}
+
+pub(super) fn bundled_worker(
+    database: &Path,
+    manifest: &Manifest,
+    create: bool,
+) -> crate::Result<(PathBuf, Worker)> {
+    let filename = if cfg!(windows) {
+        "bbsbox-demo-worker.exe"
+    } else {
+        "bbsbox-demo-worker"
+    };
+    let executable = std::env::current_exe()?.with_file_name(filename);
+    let metadata = std::fs::symlink_metadata(&executable)?;
+    if !metadata.is_file() || metadata.file_type().is_symlink() {
+        return Err("the bundled demo worker must be a regular executable".into());
+    }
+    let root = database
+        .parent()
+        .ok_or("missing node data directory")?
+        .join("games");
+    let directory = root.join(manifest.game_id());
+    let builder = std::fs::DirBuilder::new();
+    #[cfg(unix)]
+    let builder = {
+        use std::os::unix::fs::DirBuilderExt;
+        let mut builder = builder;
+        builder.mode(0o700);
+        builder
+    };
+    for path in [&root, &directory] {
+        match std::fs::symlink_metadata(path) {
+            Ok(metadata) if metadata.file_type().is_dir() => (),
+            Err(error) if create && error.kind() == std::io::ErrorKind::NotFound => {
+                builder.create(path)?
+            }
+            Ok(_) => return Err("game state requires a private local directory".into()),
+            Err(error) => return Err(error.into()),
+        }
+    }
+    if !create {
+        for entry in std::fs::read_dir(&root)? {
+            if entry?.file_name() != manifest.game_id() {
+                return Err("unregistered game state prevents a complete backup".into());
+            }
+        }
+    }
+    let state_path = directory.join("state.sqlite");
+    match std::fs::symlink_metadata(&state_path) {
+        Ok(metadata) if metadata.file_type().is_file() => (),
+        Err(error) if create && error.kind() == std::io::ErrorKind::NotFound => (),
+        Ok(_) => return Err("game state must be a regular database".into()),
+        Err(error) => return Err(error.into()),
+    }
+    let launch = if create {
+        Worker::launch
+    } else {
+        Worker::launch_checkpoint
+    };
+    let worker = launch(&executable, &state_path, manifest, Duration::from_secs(3))?;
+    Ok((directory, worker))
 }
 
 pub(crate) struct Service {
@@ -54,50 +123,8 @@ pub(crate) struct Service {
 
 impl Service {
     pub fn start(origin: String, database: PathBuf, node: NodeId) -> crate::Result<Self> {
-        let manifest = Manifest::parse(MANIFEST).map_err(|_| "invalid bundled game manifest")?;
-        if manifest.game_id() != GAME_ID {
-            return Err("wrong bundled game ID".into());
-        }
-        let filename = if cfg!(windows) {
-            "bbsbox-demo-worker.exe"
-        } else {
-            "bbsbox-demo-worker"
-        };
-        let executable = std::env::current_exe()?.with_file_name(filename);
-        let metadata = std::fs::symlink_metadata(&executable)?;
-        if !metadata.is_file() || metadata.file_type().is_symlink() {
-            return Err("the bundled demo worker must be a regular executable".into());
-        }
-        let root = database
-            .parent()
-            .ok_or("missing node data directory")?
-            .join("games");
-        let directory = root.join(manifest.game_id());
-        let builder = std::fs::DirBuilder::new();
-        #[cfg(unix)]
-        let builder = {
-            use std::os::unix::fs::DirBuilderExt;
-            let mut builder = builder;
-            builder.mode(0o700);
-            builder
-        };
-        for path in [&root, &directory] {
-            match std::fs::symlink_metadata(path) {
-                Ok(metadata) if metadata.file_type().is_dir() => (),
-                Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
-                    builder.create(path)?
-                }
-                Ok(_) => return Err("game state requires a private local directory".into()),
-                Err(error) => return Err(error.into()),
-            }
-        }
-        let state_path = directory.join("state.sqlite");
-        if std::fs::symlink_metadata(&state_path)
-            .is_ok_and(|metadata| !metadata.is_file() || metadata.file_type().is_symlink())
-        {
-            return Err("game state must be a regular database".into());
-        }
-        let worker = Worker::launch(&executable, &state_path, &manifest, Duration::from_secs(3))?;
+        let manifest = bundled_manifest()?;
+        let (_, worker) = bundled_worker(&database, &manifest, true)?;
         Ok(Self {
             origin,
             database,

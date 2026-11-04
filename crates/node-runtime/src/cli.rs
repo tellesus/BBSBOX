@@ -29,7 +29,9 @@ pub async fn run(
             s.to_str(),
             Some(
                 "backup"
+                    | "backup-game-node"
                     | "restore"
+                    | "restore-game-node"
                     | "backup-keygen"
                     | "backup-public"
                     | "backup-check-recipient"
@@ -120,6 +122,8 @@ pub async fn run(
         );
         Ok(())
     } else if initialize {
+        let mut config = config;
+        config.game_origin = None;
         let runtime = match expected {
             Some(node) => {
                 crate::Runtime::start_existing_with_registry(&config, registry, node).await?

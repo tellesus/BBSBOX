@@ -13,7 +13,7 @@ use axum::{
 };
 use bbsbox_discussions::{self as boards, Change};
 use bbsbox_event_codec::EventId;
-use bbsbox_identity::{Role, session::csrf_from_cookie_header};
+use bbsbox_identity::{Account, Role, session::csrf_from_cookie_header};
 use bbsbox_storage::{Command, disk::Class, writer::Priority};
 use rand_core::{OsRng, RngCore};
 use serde::Deserialize;
@@ -34,6 +34,16 @@ pub(super) fn routes() -> Router<Sessions> {
         .route(
             "/discussions/{board}/{thread}/reply/",
             post(reply).layer(DefaultBodyLimit::max(160 * 1024)),
+        )
+        .route(
+            "/discussions/{board}/{thread}/{post}/edit/",
+            get(editor)
+                .post(edit)
+                .layer(DefaultBodyLimit::max(160 * 1024)),
+        )
+        .route(
+            "/discussions/{board}/{thread}/{post}/withdraw/",
+            post(withdraw).layer(DefaultBodyLimit::max(160 * 1024)),
         )
 }
 
@@ -119,11 +129,11 @@ async fn read<T: Send + 'static>(
 async fn form_access(
     state: &Sessions,
     headers: &HeaderMap,
-) -> Option<(Role, zeroize::Zeroizing<String>)> {
+) -> Option<(Account, zeroize::Zeroizing<String>)> {
     let account = current_account(state, headers).await.ok()?;
     let cookies = cookie_header(headers).ok()?;
     let csrf = csrf_from_cookie_header(&cookies).ok()?;
-    Some((account.role, zeroize::Zeroizing::new(csrf.to_owned())))
+    Some((account, zeroize::Zeroizing::new(csrf.to_owned())))
 }
 
 fn form(content: &mut String, action: &str, csrf: &str, label: &str, fields: &str) {
@@ -189,7 +199,9 @@ async fn list(
             );
         }
     }
-    if let Some((Role::Sysop, csrf)) = form_access(&state, &headers).await {
+    if let Some((account, csrf)) = form_access(&state, &headers).await
+        && account.role == Role::Sysop
+    {
         form(
             &mut content,
             "/discussions/",
@@ -289,7 +301,11 @@ async fn thread(
         let posts = boards::posts(&connection, &lookup, id, cursor)?
             .into_iter()
             .map(|post| {
-                let rendered = boards::render_markdown(&post.text);
+                let rendered = if post.withdrawn {
+                    "<p>Post withdrawn.</p>".to_owned()
+                } else {
+                    boards::render_markdown(&post.text)
+                };
                 (post, rendered)
             })
             .collect::<Vec<_>>();
@@ -308,6 +324,7 @@ async fn thread(
         );
     }
     let mut parents = format!("<option value=\"{key}\">Thread opener</option>");
+    let access = form_access(&state, &headers).await;
     for (row, rendered) in &rows {
         let post = event_key(row.id);
         let _ = write!(
@@ -328,7 +345,18 @@ async fn thread(
                 &post[..8]
             );
         }
-        let _ = write!(content, "{rendered}</article>");
+        content.push_str(rendered);
+        if !row.withdrawn
+            && access
+                .as_ref()
+                .is_some_and(|(account, _)| account.username == row.username)
+        {
+            let _ = write!(
+                content,
+                "<p><a href=\"/discussions/{board}/{key}/{post}/edit/\">Edit or withdraw post</a></p>"
+            );
+        }
+        content.push_str("</article>");
     }
     if rows.len() == boards::POST_PAGE_SIZE {
         let last = &rows.last().expect("full page").0;
@@ -339,7 +367,7 @@ async fn thread(
             event_key(last.id)
         );
     }
-    if let Some((_, csrf)) = form_access(&state, &headers).await {
+    if let Some((_, csrf)) = access {
         let fields = format!(
             "<label>Reply to <select name=\"parent\">{parents}</select></label><label>Reply <textarea name=\"text\" rows=\"6\" required></textarea></label>"
         );
@@ -366,6 +394,7 @@ struct Submission {
     title: Option<String>,
     text: Option<String>,
     parent: Option<String>,
+    previous: Option<String>,
 }
 
 #[derive(Clone, Copy)]
@@ -373,6 +402,114 @@ enum Kind {
     Board,
     Thread,
     Reply(EventId),
+    Edit(EventId, EventId),
+    Withdraw(EventId, EventId),
+}
+
+async fn editor(
+    State(state): State<Sessions>,
+    Path((board, thread, post)): Path<(String, String, String)>,
+    headers: HeaderMap,
+) -> Response {
+    let Some((account, csrf)) = form_access(&state, &headers).await else {
+        return problem(&state, StatusCode::UNAUTHORIZED);
+    };
+    let (Ok(thread_id), Ok(post_id)) = (event_id(&thread), event_id(&post)) else {
+        return problem(&state, StatusCode::NOT_FOUND);
+    };
+    let lookup = board.clone();
+    let result = read(&state, move |path| {
+        boards::current_post(
+            &bbsbox_storage::open_reader(path)?,
+            &lookup,
+            thread_id,
+            post_id,
+        )
+    })
+    .await;
+    let current = match result {
+        Ok(post) => post,
+        Err(status) => return problem(&state, status),
+    };
+    if current.username != account.username {
+        return problem(&state, StatusCode::FORBIDDEN);
+    }
+    if current.withdrawn {
+        return problem(&state, StatusCode::CONFLICT);
+    }
+    let target = format!("/discussions/{board}/{thread}/{post}");
+    let revision = format!(
+        "<input type=\"hidden\" name=\"previous\" value=\"{}\">",
+        event_key(current.revision)
+    );
+    let fields = format!(
+        "{revision}<label>Post <textarea name=\"text\" rows=\"8\" required>\n{}</textarea></label>",
+        escape(&current.text)
+    );
+    let mut content = format!(
+        "<p><a href=\"/discussions/{board}/{thread}/?focus={post}#post-{post}\">Return to post</a></p>"
+    );
+    form(
+        &mut content,
+        &format!("{target}/edit/"),
+        &csrf,
+        "Save edit",
+        &fields,
+    );
+    form(
+        &mut content,
+        &format!("{target}/withdraw/"),
+        &csrf,
+        "Withdraw post",
+        &revision,
+    );
+    render(&state, StatusCode::OK, "Edit post", &content)
+}
+
+async fn edit(
+    State(state): State<Sessions>,
+    Extension(origin): Extension<RequestOrigin>,
+    Path((board, thread, post)): Path<(String, String, String)>,
+    headers: HeaderMap,
+    form: Result<Form<Submission>, FormRejection>,
+) -> Response {
+    match (event_id(&thread), event_id(&post)) {
+        (Ok(thread), Ok(post)) => {
+            write_form(
+                state,
+                origin,
+                headers,
+                board,
+                Kind::Edit(thread, post),
+                form,
+            )
+            .await
+        }
+        _ => problem(&state, StatusCode::NOT_FOUND),
+    }
+}
+
+async fn withdraw(
+    State(state): State<Sessions>,
+    Extension(origin): Extension<RequestOrigin>,
+    Path((board, thread, post)): Path<(String, String, String)>,
+    headers: HeaderMap,
+    form: Result<Form<Submission>, FormRejection>,
+) -> Response {
+    match (event_id(&thread), event_id(&post)) {
+        (Ok(thread), Ok(post)) => {
+            write_form(
+                state,
+                origin,
+                headers,
+                board,
+                Kind::Withdraw(thread, post),
+                form,
+            )
+            .await
+        }
+        _ => problem(&state, StatusCode::NOT_FOUND),
+    }
 }
 
 async fn create_board(
@@ -432,6 +569,13 @@ async fn write_form(
                         event_key(thread)
                     )
                 }
+                Kind::Edit(thread, post) | Kind::Withdraw(thread, post) => {
+                    let post = event_key(post);
+                    format!(
+                        "/discussions/{board}/{}/?focus={post}#post-{post}",
+                        event_key(thread)
+                    )
+                }
             };
             Redirect::to(&target).into_response()
         }
@@ -457,23 +601,36 @@ async fn write_checked(
     let title = input.title.unwrap_or_default();
     let text = input.text.unwrap_or_default().replace("\r\n", "\n");
     let parent = input.parent.as_deref().map(event_id).transpose()?;
+    let previous = input.previous.as_deref().map(event_id).transpose()?;
     let operation = match kind {
         Kind::Board => "board",
         Kind::Thread => "thread",
         Kind::Reply(_) => "reply",
+        Kind::Edit(_, _) => "edit",
+        Kind::Withdraw(_, _) => "withdraw",
     };
     let route_thread = match kind {
         Kind::Reply(id) => Some(event_key(id)),
         _ => None,
     };
-    let fingerprint = serde_json::to_vec(&(
-        operation,
-        board,
-        &title,
-        &text,
-        route_thread,
-        parent.map(event_key),
-    ))
+    let fingerprint = match kind {
+        Kind::Edit(thread, post) | Kind::Withdraw(thread, post) => serde_json::to_vec(&(
+            operation,
+            board,
+            event_key(thread),
+            event_key(post),
+            previous.map(event_key),
+            &text,
+        )),
+        _ => serde_json::to_vec(&(
+            operation,
+            board,
+            &title,
+            &text,
+            route_thread,
+            parent.map(event_key),
+        )),
+    }
     .map_err(|_| StatusCode::BAD_REQUEST)?;
     let auth = state.auth.clone();
     let signer = state.signer.clone();
@@ -524,6 +681,21 @@ async fn write_checked(
                                 text: &text,
                             }
                         }
+                        Kind::Edit(thread, post) | Kind::Withdraw(thread, post) => {
+                            if boards::reply_thread(tx, &board, post)? != thread {
+                                return Err(boards::Error::MissingParent);
+                            }
+                            let previous = previous.ok_or(boards::Error::RevisionChanged)?;
+                            if matches!(kind, Kind::Edit(_, _)) {
+                                Change::Edit {
+                                    post,
+                                    previous,
+                                    text: &text,
+                                }
+                            } else {
+                                Change::Withdraw { post, previous }
+                            }
+                        }
                     };
                     service
                         .record(tx, &signer, &account, &board, change, now)
@@ -550,9 +722,10 @@ fn board_status(error: boards::Error) -> StatusCode {
         boards::Error::InvalidInput => StatusCode::UNPROCESSABLE_ENTITY,
         boards::Error::Forbidden => StatusCode::FORBIDDEN,
         boards::Error::MissingBoard | boards::Error::MissingParent => StatusCode::NOT_FOUND,
-        boards::Error::BoardExists | boards::Error::Storage(Storage::ReusedCommandId) => {
-            StatusCode::CONFLICT
-        }
+        boards::Error::BoardExists
+        | boards::Error::RevisionChanged
+        | boards::Error::NoChange
+        | boards::Error::Storage(Storage::ReusedCommandId) => StatusCode::CONFLICT,
         boards::Error::Storage(
             Storage::QueueFull
             | Storage::WriterClosed

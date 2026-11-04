@@ -272,7 +272,7 @@ fn local_operator_round_trip_keeps_identity_configuration_and_restore_block() {
         })
         .unwrap();
     let boards = bbsbox_discussions::Boards::new(&signer);
-    let thread = database
+    let (thread, revision) = database
         .write(bbsbox_storage::disk::Class::Content, 131072, |tx| {
             boards.record(
                 tx,
@@ -282,7 +282,7 @@ fn local_operator_round_trip_keeps_identity_configuration_and_restore_block() {
                 bbsbox_discussions::Change::Board { title: "General" },
                 1,
             )?;
-            boards.record(
+            let thread = boards.record(
                 tx,
                 &signer,
                 &author,
@@ -292,7 +292,20 @@ fn local_operator_round_trip_keeps_identity_configuration_and_restore_block() {
                     text: "Keep this post through recovery.",
                 },
                 2,
-            )
+            )?;
+            let revision = boards.record(
+                tx,
+                &signer,
+                &author,
+                "general",
+                bbsbox_discussions::Change::Edit {
+                    post: thread,
+                    previous: thread,
+                    text: "Keep the edited post through recovery.",
+                },
+                3,
+            )?;
+            Ok::<_, bbsbox_discussions::Error>((thread, revision))
         })
         .unwrap();
     drop(database);
@@ -310,7 +323,15 @@ fn local_operator_round_trip_keeps_identity_configuration_and_restore_block() {
     let reader = bbsbox_storage::open_reader(target.join("data/node.sqlite")).unwrap();
     let posts = bbsbox_discussions::posts(&reader, "general", thread, None).unwrap();
     assert_eq!(posts[0].id, thread);
-    assert_eq!(posts[0].text, "Keep this post through recovery.");
+    assert_eq!(posts[0].revision, revision);
+    assert_eq!(posts[0].text, "Keep the edited post through recovery.");
+    assert_eq!(
+        bbsbox_discussions::revision(&reader, "general", thread, thread)
+            .unwrap()
+            .text
+            .as_deref(),
+        Some("Keep this post through recovery.")
+    );
     drop(reader);
     assert_eq!(
         fs::read(target.join("configuration/tls/ca-key.pem")).unwrap(),

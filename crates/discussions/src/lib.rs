@@ -17,14 +17,23 @@ use rusqlite::{Connection, OptionalExtension, Transaction, params};
 use serde::{Deserialize, Serialize};
 
 mod markdown;
+mod revisions;
 pub use markdown::render_markdown;
+pub use revisions::{Revision, revision};
 
-pub fn migrations() -> [Migration; 1] {
-    [Migration {
-        module: "discussions",
-        version: 1,
-        sql: include_str!("schema.sql"),
-    }]
+pub fn migrations() -> [Migration; 2] {
+    [
+        Migration {
+            module: "discussions",
+            version: 1,
+            sql: include_str!("schema.sql"),
+        },
+        Migration {
+            module: "discussions",
+            version: 2,
+            sql: include_str!("revisions.sql"),
+        },
+    ]
 }
 
 const AUDIENCE: &str = "local-public";
@@ -43,6 +52,8 @@ pub enum Error {
     MissingBoard,
     BoardExists,
     MissingParent,
+    RevisionChanged,
+    NoChange,
     NotAccepted,
 }
 
@@ -63,9 +74,26 @@ impl From<rusqlite::Error> for Error {
 }
 
 pub enum Change<'a> {
-    Board { title: &'a str },
-    Thread { title: &'a str, text: &'a str },
-    Reply { parent: EventId, text: &'a str },
+    Board {
+        title: &'a str,
+    },
+    Thread {
+        title: &'a str,
+        text: &'a str,
+    },
+    Reply {
+        parent: EventId,
+        text: &'a str,
+    },
+    Edit {
+        post: EventId,
+        previous: EventId,
+        text: &'a str,
+    },
+    Withdraw {
+        post: EventId,
+        previous: EventId,
+    },
 }
 
 #[derive(Serialize, Deserialize)]
@@ -162,10 +190,18 @@ pub struct Boards {
     registry: Registry,
 }
 
+struct LocalDraft<'a> {
+    kind: &'static str,
+    board: &'a str,
+    dependencies: Vec<Dependency>,
+    time: i64,
+    body: Vec<u8>,
+}
+
 impl Boards {
     pub fn new(signer: &NodeSigner) -> Self {
         let registry = Registry::new(
-            [CREATE, THREAD, REPLY]
+            [CREATE, THREAD, REPLY, revisions::EDIT, revisions::WITHDRAW]
                 .map(|kind| KindRule {
                     kind: kind.into(),
                     schema: 1,
@@ -232,11 +268,57 @@ impl Boards {
                 payload.text = Some(text.to_owned());
                 (REPLY, required(board_id, payload.parent))
             }
+            change @ (Change::Edit { .. } | Change::Withdraw { .. }) => {
+                let (kind, dependencies, body) = revisions::prepare(
+                    tx,
+                    &account,
+                    board,
+                    current.ok_or(Error::MissingBoard)?,
+                    change,
+                )?;
+                return self.sign_local(
+                    tx,
+                    signer,
+                    LocalDraft {
+                        kind,
+                        board,
+                        dependencies,
+                        time,
+                        body,
+                    },
+                );
+            }
         };
         if !payload.valid(kind) {
             return Err(Error::InvalidInput);
         }
         let body = serde_json::to_vec(&payload).map_err(|_| Error::InvalidInput)?;
+        self.sign_local(
+            tx,
+            signer,
+            LocalDraft {
+                kind,
+                board,
+                dependencies,
+                time,
+                body,
+            },
+        )
+    }
+
+    fn sign_local(
+        &self,
+        tx: &Transaction<'_>,
+        signer: &NodeSigner,
+        draft: LocalDraft<'_>,
+    ) -> Result<EventId, Error> {
+        let LocalDraft {
+            kind,
+            board,
+            dependencies,
+            time,
+            body,
+        } = draft;
         if body.len() > codec::MAX_BODY {
             return Err(Error::InvalidInput);
         }
@@ -298,10 +380,12 @@ pub struct ThreadSummary {
 #[derive(Debug, PartialEq, Eq)]
 pub struct Post {
     pub id: EventId,
+    pub revision: EventId,
     pub parent: Option<EventId>,
     pub username: String,
     pub text: String,
     pub created_at: i64,
+    pub withdrawn: bool,
 }
 
 pub fn boards(connection: &Connection, after: Option<&str>) -> Result<Vec<BoardSummary>, Error> {
@@ -339,7 +423,7 @@ pub fn thread_title(
     }
     connection
         .query_row(
-            "SELECT title FROM discussions_entries WHERE id=?1 AND board=?2 AND kind='thread'",
+            "SELECT CASE WHEN r.withdrawn=1 THEN 'Withdrawn thread' ELSE e.title END FROM discussions_entries e LEFT JOIN discussions_heads h ON h.post=e.id LEFT JOIN discussions_revisions r ON r.id=h.revision WHERE e.id=?1 AND e.board=?2 AND e.kind='thread'",
             params![thread.bytes().as_slice(), board],
             |row| row.get(0),
         )
@@ -392,7 +476,7 @@ pub fn threads(
         .as_ref()
         .map(|(time, id)| (time, id.bytes().as_slice()));
     let mut query = connection.prepare(
-        "SELECT id,title,username,created_at FROM discussions_entries WHERE board=?1 AND kind='thread' AND (?2 IS NULL OR (created_at,id)<(?2,?3)) ORDER BY created_at DESC,id DESC LIMIT 100",
+        "SELECT e.id,CASE WHEN r.withdrawn=1 THEN 'Withdrawn thread' ELSE e.title END,e.username,e.created_at FROM discussions_entries e LEFT JOIN discussions_heads h ON h.post=e.id LEFT JOIN discussions_revisions r ON r.id=h.revision WHERE e.board=?1 AND e.kind='thread' AND (?2 IS NULL OR (e.created_at,e.id)<(?2,?3)) ORDER BY e.created_at DESC,e.id DESC LIMIT 100",
     )?;
     let rows = query.query_map(
         params![
@@ -429,7 +513,7 @@ pub fn posts(
         .as_ref()
         .map(|(time, id)| (time, id.bytes().as_slice()));
     let mut query = connection.prepare(
-        "SELECT id,parent,username,body,created_at FROM discussions_entries WHERE thread=?1 AND (?2 IS NULL OR (created_at,id)>(?2,?3)) ORDER BY created_at,id LIMIT ?4",
+        "SELECT e.id,e.parent,e.username,CASE WHEN r.id IS NULL THEN e.body WHEN r.withdrawn=1 THEN '' ELSE r.body END,e.created_at,coalesce(h.revision,e.id),coalesce(r.withdrawn,0) FROM discussions_entries e LEFT JOIN discussions_heads h ON h.post=e.id LEFT JOIN discussions_revisions r ON r.id=h.revision WHERE e.thread=?1 AND (?2 IS NULL OR (e.created_at,e.id)>(?2,?3)) ORDER BY e.created_at,e.id LIMIT ?4",
     )?;
     let rows = query.query_map(
         params![
@@ -445,10 +529,31 @@ pub fn posts(
                 username: row.get(2)?,
                 text: row.get(3)?,
                 created_at: row.get(4)?,
+                revision: EventId::from_bytes(row.get(5)?),
+                withdrawn: row.get(6)?,
             })
         },
     )?;
     Ok(rows.collect::<rusqlite::Result<_>>()?)
+}
+
+pub fn current_post(
+    connection: &Connection,
+    board: &str,
+    thread: EventId,
+    post: EventId,
+) -> Result<Post, Error> {
+    integration::ensure_projection_current(connection, "discussions")?;
+    if live_board(connection, board)?.is_none() {
+        return Err(Error::MissingBoard);
+    }
+    connection.query_row(
+        "SELECT e.id,e.parent,e.username,CASE WHEN r.id IS NULL THEN e.body WHEN r.withdrawn=1 THEN '' ELSE r.body END,e.created_at,coalesce(h.revision,e.id),coalesce(r.withdrawn,0) FROM discussions_entries e LEFT JOIN discussions_heads h ON h.post=e.id LEFT JOIN discussions_revisions r ON r.id=h.revision WHERE e.board=?1 AND e.thread=?2 AND e.id=?3",
+        params![board, thread.bytes().as_slice(), post.bytes().as_slice()], |row| Ok(Post {
+            id: EventId::from_bytes(row.get(0)?), parent: row.get::<_, Option<[u8; 32]>>(1)?.map(EventId::from_bytes),
+            username: row.get(2)?, text: row.get(3)?, created_at: row.get(4)?, revision: EventId::from_bytes(row.get(5)?), withdrawn: row.get(6)?,
+        }),
+    ).optional()?.ok_or(Error::MissingParent)
 }
 
 fn payload(event: &CompleteEvent) -> Option<Payload> {
@@ -491,10 +596,19 @@ impl Module for Boards {
         )? {
             return Ok(Decision::Deny("board_quarantined"));
         }
+        let current = live_board(connection, board)?;
+        if matches!(
+            metadata.kind.as_str(),
+            revisions::EDIT | revisions::WITHDRAW
+        ) {
+            return match current {
+                Some(board_id) => revisions::authorize(connection, board, board_id, event),
+                None => Ok(Decision::Missing(metadata.dependencies.clone())),
+            };
+        }
         let Some(body) = payload(event) else {
             return Ok(Decision::Deny("invalid_discussion_body"));
         };
-        let current = live_board(connection, board)?;
         if metadata.kind == CREATE {
             return Ok(if current.is_none() && metadata.dependencies.is_empty() {
                 Decision::Allow
@@ -536,11 +650,17 @@ impl Module for Boards {
     }
 
     fn dependency_effective(&self, connection: &Connection, id: EventId) -> events::Result<bool> {
-        Ok(connection.query_row("SELECT EXISTS(SELECT 1 FROM discussions_entries WHERE id=?1 AND board NOT IN (SELECT board FROM discussions_quarantined))", [id.bytes().as_slice()], |row| row.get(0))?)
+        Ok(connection.query_row("SELECT EXISTS(SELECT 1 FROM discussions_entries WHERE id=?1 AND board NOT IN (SELECT board FROM discussions_quarantined) UNION ALL SELECT 1 FROM discussions_revisions r JOIN discussions_entries e ON e.id=r.post WHERE r.id=?1 AND e.board NOT IN (SELECT board FROM discussions_quarantined))", [id.bytes().as_slice()], |row| row.get(0))?)
     }
 
     fn reduce(&self, tx: &Transaction<'_>, event: &CompleteEvent) -> events::Result<Relevance> {
         let metadata = event.metadata();
+        if matches!(
+            metadata.kind.as_str(),
+            revisions::EDIT | revisions::WITHDRAW
+        ) {
+            return revisions::reduce(tx, event);
+        }
         let board = metadata
             .scope
             .resource
@@ -575,7 +695,13 @@ impl Module for Boards {
     }
 
     fn invalidate_fork(&self, tx: &Transaction<'_>, fork: &Fork) -> events::Result<()> {
-        tx.execute("INSERT OR IGNORE INTO discussions_quarantined SELECT DISTINCT board FROM discussions_entries WHERE stream=?1", [fork.stream.as_slice()])?;
+        tx.execute("INSERT OR IGNORE INTO discussions_quarantined SELECT board FROM discussions_entries WHERE stream=?1 UNION SELECT e.board FROM discussions_revisions r JOIN discussions_entries e ON e.id=r.post WHERE r.stream=?1", [fork.stream.as_slice()])?;
         Ok(())
+    }
+}
+
+impl integration::ReplayModule for Boards {
+    fn project(&self, tx: &Transaction<'_>, event: &CompleteEvent) -> events::Result<()> {
+        self.reduce(tx, event).map(|_| ())
     }
 }

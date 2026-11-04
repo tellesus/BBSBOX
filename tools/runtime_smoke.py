@@ -225,12 +225,35 @@ def exercise(binary, state_root, host, isolated):
                     parent = thread_url.rstrip('/').rsplit('/', 1)[1]
                     reply_form = dict(discussion_proof(thread), parent=parent, text='Meet at six.')
                     with submit(thread_url + 'reply/', reply_form) as response:
-                        assert 'focus=' in response.geturl() and b'Meet at six.' in response.read()
+                        reply_url = urllib.parse.urlsplit(response.geturl())
+                        reply_id = urllib.parse.parse_qs(reply_url.query)['focus'][0]
+                        assert b'Meet at six.' in response.read()
                     try:
                         submit(thread_url + 'reply/', dict(reply_form, csrf='0' * 64))
                         raise AssertionError('Receipt replay bypassed CSRF')
                     except urllib.error.HTTPError as error:
                         assert error.code == 403
+                    edit_path = f'{thread_url}{reply_id}/edit/'
+                    withdraw_path = f'{thread_url}{reply_id}/withdraw/'
+                    def revision_form(page, path):
+                        form = page.split(f'<form action="{path}"', 1)[1].split('</form>', 1)[0]
+                        previous = re.search(r'name="previous" value="([0-9a-f]{64})"', form).group(1)
+                        return dict(discussion_proof(form), previous=previous)
+                    with request(edit_path) as response:
+                        editor = response.read().decode()
+                    with submit(edit_path, dict(revision_form(editor, edit_path), text='Meet at seven.')) as response:
+                        updated = response.read()
+                        assert b'Meet at seven.' in updated and b'Meet at six.' not in updated
+                    try:
+                        submit(withdraw_path, revision_form(editor, withdraw_path))
+                        raise AssertionError('Stale revision was withdrawn')
+                    except urllib.error.HTTPError as error:
+                        assert error.code == 409
+                    with request(edit_path) as response:
+                        editor = response.read().decode()
+                    with submit(withdraw_path, revision_form(editor, withdraw_path)) as response:
+                        withdrawn = response.read()
+                        assert b'Post withdrawn.' in withdrawn and b'Meet at seven.' not in withdrawn
                 # A new client without the local CA must fail certificate verification.
                 untrusted = urllib.request.build_opener(urllib.request.ProxyHandler({}), urllib.request.HTTPSHandler(context=ssl.create_default_context()))
                 try:
@@ -259,7 +282,7 @@ def exercise(binary, state_root, host, isolated):
                 text = trace.read_text(encoding='utf-8')
                 traces.append(audit.audit_trace(text))
                 (state_root/f'runtime-{"ipv6" if family == socket.AF_INET6 else "ipv4"}-{attempt}.trace').write_text(text, encoding='utf-8')
-        return dict(family='IPv6' if family == socket.AF_INET6 else 'IPv4', simultaneous_dual_stack=True, tls=True, untrusted_ca_rejected=True, local_assets=4, identity_preserved_after_restart=True, configured_alias_accepted=True, unexpected_authority_rejected=True, public_status_read_only=True, local_session_lifecycle=True, restart_invalidates_session=True, palette_preview_apply_reset=True, welcome_and_menu_settings=True, member_onboarding=True, unavailable_section_status=True, local_board_thread_reply=True, discussion_retry_and_csrf=True, initialization_audit=initial_audit, network_audit=traces)
+        return dict(family='IPv6' if family == socket.AF_INET6 else 'IPv4', simultaneous_dual_stack=True, tls=True, untrusted_ca_rejected=True, local_assets=4, identity_preserved_after_restart=True, configured_alias_accepted=True, unexpected_authority_rejected=True, public_status_read_only=True, local_session_lifecycle=True, restart_invalidates_session=True, palette_preview_apply_reset=True, welcome_and_menu_settings=True, member_onboarding=True, unavailable_section_status=True, local_board_thread_reply=True, discussion_retry_and_csrf=True, discussion_edit_and_withdraw=True, initialization_audit=initial_audit, network_audit=traces)
 
 
 def main():

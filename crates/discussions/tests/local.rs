@@ -69,8 +69,8 @@ fn local_board_authorization_signed_replies_and_fork_isolation() {
         record(&member, "general", Change::Board { title: "General" }, 0),
         Err(Error::Forbidden)
     ));
-    record(&sysop, "general", Change::Board { title: "General" }, 1).unwrap();
-    record(&sysop, "other", Change::Board { title: "Other" }, 2).unwrap();
+    let general = record(&sysop, "general", Change::Board { title: "General" }, 1).unwrap();
+    let other = record(&sysop, "other", Change::Board { title: "Other" }, 2).unwrap();
     let thread = record(
         &member,
         "general",
@@ -158,6 +158,103 @@ fn local_board_authorization_signed_replies_and_fork_isolation() {
             .unwrap()
             .module,
         "discussions"
+    );
+
+    assert!(matches!(
+        record(
+            &member,
+            "general",
+            Change::Edit {
+                post: reply,
+                previous: reply,
+                text: "Someone else's post"
+            },
+            7
+        ),
+        Err(Error::Forbidden)
+    ));
+    assert!(matches!(
+        record(
+            &sysop,
+            "general",
+            Change::Edit {
+                post: reply,
+                previous: reply,
+                text: "What time?"
+            },
+            7
+        ),
+        Err(Error::NoChange)
+    ));
+    let edited = record(
+        &sysop,
+        "general",
+        Change::Edit {
+            post: reply,
+            previous: reply,
+            text: "What time on Tuesday?",
+        },
+        7,
+    )
+    .unwrap();
+    let latest = posts(&reader, "general", thread, None).unwrap();
+    assert_eq!(latest[1].id, reply);
+    assert_eq!(latest[1].revision, edited);
+    assert_eq!(latest[1].text, "What time on Tuesday?");
+    assert!(matches!(
+        record(
+            &sysop,
+            "general",
+            Change::Withdraw {
+                post: reply,
+                previous: reply
+            },
+            8
+        ),
+        Err(Error::RevisionChanged)
+    ));
+    let withdrawn = record(
+        &sysop,
+        "general",
+        Change::Withdraw {
+            post: reply,
+            previous: edited,
+        },
+        8,
+    )
+    .unwrap();
+    let latest = posts(&reader, "general", thread, None).unwrap();
+    assert!(latest[1].withdrawn && latest[1].text.is_empty());
+    assert_eq!(latest[1].revision, withdrawn);
+    assert_eq!(latest[2].parent, Some(reply));
+    for (revision, text) in [
+        (reply, Some("What time?")),
+        (edited, Some("What time on Tuesday?")),
+        (withdrawn, None),
+    ] {
+        assert_eq!(
+            bbsbox_discussions::revision(&reader, "general", reply, revision)
+                .unwrap()
+                .text
+                .as_deref(),
+            text
+        );
+    }
+
+    let prior_receipt = integration::receipt(&reader, edited).unwrap().unwrap();
+    // Rebuild only this fixture's projection tables. The accepted journal and receipts remain intact.
+    database.write::<_, bbsbox_event_core::Error>(Class::Content, 128 * 1024, |tx| {
+        tx.execute_batch("DELETE FROM discussions_heads; DELETE FROM discussions_revisions; DELETE FROM discussions_entries;")?;
+        assert!(matches!(integration::replay(tx, withdrawn, &service, &no_credentials)?, integration::Integration::Staged(_)));
+        for id in [general, other, thread, reply, nested, edited, withdrawn] {
+            assert_eq!(integration::replay(tx, id, &service, &no_credentials)?, integration::Integration::Replayed);
+        }
+        Ok(())
+    }).unwrap();
+    assert_eq!(posts(&reader, "general", thread, None).unwrap(), latest);
+    assert_eq!(
+        integration::receipt(&reader, edited).unwrap().unwrap(),
+        prior_receipt
     );
 
     let fork = codec::sign(

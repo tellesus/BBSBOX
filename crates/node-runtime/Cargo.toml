@@ -11,6 +11,7 @@ path = "src/main.rs"
 
 [dependencies]
 bbsbox-storage = { path = "../storage" }
+bbsbox-settings = { path = "../settings" }
 bbsbox-identity = { path = "../identity" }
 bbsbox-event-core = { path = "../event-core" }
 bbsbox-maintenance = { path = "../maintenance" }

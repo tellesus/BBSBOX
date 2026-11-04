@@ -11,7 +11,10 @@ use axum::{
     response::{Html, IntoResponse, Redirect, Response},
     routing::{get, post},
 };
-use bbsbox_identity::session::{Login, csrf_from_cookie_header};
+use bbsbox_identity::{
+    Role,
+    session::{Login, csrf_from_cookie_header},
+};
 use serde::Deserialize;
 use zeroize::Zeroizing;
 
@@ -19,6 +22,7 @@ const HOME: &str = include_str!("../../../../web/shell/compiled/home.html");
 const SIGN_IN: &str = include_str!("../../../../web/shell/compiled/login.html");
 const ACCOUNT: &str = include_str!("../../../../web/shell/compiled/account.html");
 const STYLE: &str = include_str!("../../../../web/shell/static/shell.css");
+mod theme;
 
 pub(super) fn routes() -> Router<Sessions> {
     Router::new()
@@ -26,10 +30,7 @@ pub(super) fn routes() -> Router<Sessions> {
         .route("/login/", get(login_page).post(login_form))
         .route("/account/", get(account))
         .route("/account/sign-out/", post(sign_out_form))
-        .route(
-            "/assets/shell.css",
-            get(|| async { crate::asset(STYLE, "text/css; charset=utf-8") }),
-        )
+        .merge(theme::routes())
 }
 
 fn html(status: StatusCode, body: String) -> Response {
@@ -124,6 +125,14 @@ async fn account(
     let body = ACCOUNT
         .replace("__BBSBOX_CSRF__", csrf)
         .replace("__BBSBOX_ROLE__", role_name(account.role))
+        .replace(
+            "__BBSBOX_SYSOP_LINK__",
+            if account.role == Role::Sysop {
+                "<p><a href=\"/settings/theme/\">Theme settings</a></p>"
+            } else {
+                ""
+            },
+        )
         .replace("__BBSBOX_USERNAME__", &escape(&account.username));
     Ok(html(StatusCode::OK, body))
 }

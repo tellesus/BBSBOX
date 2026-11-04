@@ -74,7 +74,7 @@ def exercise_updates(pid,root,original_release):
     command('release-control-boot')
     # Seed valid independent idempotency namespaces sharing one command ID.
     guest.enter(pid,root,['/usr/bin/systemctl','stop','bbsbox.service'])
-    script="import sqlite3; c=sqlite3.connect('/var/lib/bbsbox/node.sqlite'); c.executemany('INSERT INTO core_command_receipts VALUES(?,?,?,?)',[(n,'same-id',bytes(32),b'kept') for n in ['fixture-one','fixture-two']]); c.commit(); c.close()"
+    script="import sqlite3; c=sqlite3.connect('/var/lib/bbsbox/node.sqlite'); c.executemany('INSERT INTO core_command_receipts VALUES(?,?,?,?)',[(n,'same-id',bytes(32),b'kept') for n in ['fixture-one','fixture-two']]); c.execute('INSERT INTO settings_theme VALUES (1, 1, ?, ?, ?, ?)', ('#111111','#FFFFFF','#73F7AB','#FEC566')); c.commit(); c.close()"
     guest.enter(pid,root,['runuser','-u','bbsbox','--','/usr/bin/python3','-c',script])
     guest.enter(pid,root,['/usr/bin/systemctl','reset-failed','bbsbox.service'])
     guest.enter(pid,root,['/usr/bin/systemctl','start','bbsbox.service'])
@@ -95,8 +95,9 @@ def exercise_updates(pid,root,original_release):
         installed=json.loads((root/'etc/bbsbox/installation.json').read_text())
         assert installed['node_id']==node and installed['release_id']==original_release
         with closing(sqlite3.connect('file:'+str(root/'var/lib/bbsbox/node.sqlite')+'?mode=ro',uri=True)) as database:
-            assert database.execute('SELECT count(*) FROM core_migrations').fetchone()[0]==7
+            assert database.execute('SELECT count(*) FROM core_migrations').fetchone()[0]==8
             assert database.execute("SELECT count(*) FROM core_command_receipts WHERE command_id='same-id' AND response=?",(b'kept',)).fetchone()[0]==2
+            assert database.execute('SELECT revision, background FROM settings_theme WHERE id=1').fetchone()==(1,'#111111')
         assert (root/'etc/bbsbox/maintenance/recovery.cose').is_file()
     verify_restored()
     # A real systemd operation/child group dies during a valid, expensive compiled SQL migration.
@@ -142,7 +143,7 @@ def exercise_updates(pid,root,original_release):
     assert json.loads((root/'etc/bbsbox/installation.json').read_text())['node_id']==node
     assert (root/'etc/bbsbox/tls/ca-key.pem').read_bytes()==original_ca
     with closing(sqlite3.connect('file:'+str(root/'var/lib/bbsbox/node.sqlite')+'?mode=ro',uri=True)) as database:
-        assert database.execute('SELECT count(*) FROM core_migrations').fetchone()[0]==9
+        assert database.execute('SELECT count(*) FROM core_migrations').fetchone()[0]==10
         assert database.execute('SELECT count(*) FROM events_upgrade_receipts').fetchone()[0]==2
     command('release-control-boot');guest.service_identity(pid,root)
     # Completion retry must preserve a write accepted after that update's snapshot/completion.
@@ -153,7 +154,7 @@ def exercise_updates(pid,root,original_release):
     assert repeated['state']=='completed'
     with closing(sqlite3.connect('file:'+str(root/'var/lib/bbsbox/node.sqlite')+'?mode=ro',uri=True)) as database:
         assert database.execute("SELECT response FROM core_command_receipts WHERE namespace='fixture-later'").fetchone()[0]==b'newer-write'
-        assert database.execute('SELECT count(*) FROM core_migrations').fetchone()[0]==9
+        assert database.execute('SELECT count(*) FROM core_migrations').fetchone()[0]==10
     stale=guest.enter(pid,root,[*updater,'recover','--operation',failed['operation'],*identity],check=False,timeout=120)
     assert stale.returncode!=0
     assert command('release-control-state','--directory',control)['state']==current
@@ -177,7 +178,7 @@ def exercise_updates(pid,root,original_release):
     assert retained['inventory_sha256']==plan['retained_inventory'] and retained['state']=='recovery-required'
     with closing(sqlite3.connect('file:'+str(root/'root/rollback-retained/data/node.sqlite')+'?mode=ro',uri=True)) as database:
         assert database.execute("SELECT response FROM core_command_receipts WHERE namespace='fixture-later'").fetchone()[0]==b'newer-write'
-        assert database.execute('SELECT count(*) FROM core_migrations').fetchone()[0]==9
+        assert database.execute('SELECT count(*) FROM core_migrations').fetchone()[0]==10
     with closing(sqlite3.connect('file:'+str(root/'var/lib/bbsbox-maintenance/release-control/release-trust.sqlite')+'?mode=ro',uri=True)) as database:
         evidence=json.loads(database.execute("SELECT detail FROM history WHERE action='begin-recovery' ORDER BY revision DESC LIMIT 1").fetchone()[0])['purpose']['evidence']
         assert evidence['reason']=='CI explicit matching historical recovery' and bytes(evidence['snapshot_inventory']).hex()==plan['snapshot']

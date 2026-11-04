@@ -80,7 +80,7 @@ impl Decision {
             && self
                 .module_owners
                 .iter()
-                .all(|m| matches!(m.as_str(), "identity" | "events"))
+                .all(|m| crate::foundation_owner(m))
             && self.module_owners.windows(2).all(|m| m[0] < m[1])
             && self.post_snapshot_writes == "not-reconciled"
             && self.client_recovery == "separate"
@@ -199,7 +199,7 @@ pub struct Prepared {
     report_path: PathBuf,
     report: RestoreReport,
 }
-/// Identity/events only, matching the current foundation CLI. Future module/game consumers must
+/// Core-only foundation owners. Future module/game consumers must
 /// extend the profile with their own validation/effect fences before claiming complete continuation.
 pub fn prepare(
     restored: &RestoredSnapshot,
@@ -211,7 +211,7 @@ pub fn prepare(
         || migrations.is_empty()
         || migrations
             .iter()
-            .any(|m| !matches!(m.module, "identity" | "events"))
+            .any(|m| !crate::foundation_owner(m.module))
     {
         return Err(Error::InvalidContinuation);
     }

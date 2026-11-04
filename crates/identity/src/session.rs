@@ -356,7 +356,7 @@ impl Auth {
         }
         Ok(self.session(tx, &actor.session_hash)?.account)
     }
-    pub(crate) fn require_sysop(&self, tx: &Transaction<'_>, actor: &Mutation) -> Result<Account> {
+    pub fn require_sysop(&self, tx: &Transaction<'_>, actor: &Mutation) -> Result<Account> {
         let account = self.mutation_account(tx, actor)?;
         if account.role != Role::Sysop {
             return Err(Error::Forbidden);

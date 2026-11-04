@@ -113,7 +113,7 @@ fn foundation_registry(
 ) -> Result<Vec<bbsbox_storage::Migration>> {
     if registry
         .iter()
-        .any(|m| !matches!(m.module, "identity" | "events"))
+        .any(|m| !bbsbox_maintenance::foundation_owner(m.module))
     {
         return Err(
             "This backup profile must be extended for the installed modules/checkpoints".into(),

@@ -133,7 +133,7 @@ async fn compiled_registry_drives_both_runtime_migrations_and_its_release_profil
             .query_row("SELECT count(*) FROM core_migrations", [], |r| r
                 .get::<_, i64>(0))
             .unwrap(),
-        7
+        8
     );
     drop(reader);
     let mut absent = config.clone();
@@ -500,6 +500,75 @@ async fn local_sysop_bootstrap_and_http_session_lifecycle() {
             .body(Body::empty())
             .unwrap()
     };
+    let theme_request = |action: &str, revision: i64, proof: &str, text: &str| {
+        Request::builder().uri(format!("/settings/theme/{action}/")).method("POST")
+            .header(header::HOST, alias).header(header::ORIGIN, &local_origin)
+            .header(header::COOKIE, format!("{session}; __Host-bbsbox_csrf={csrf}"))
+            .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
+            .body(Body::from(format!("revision={revision}&csrf={proof}&background=%23111111&text=%23{text}&accent=%2373F7AB&secondary=%23FEC566"))).unwrap()
+    };
+    let style = || {
+        Request::builder()
+            .uri("/assets/shell.css")
+            .header(header::HOST, alias)
+            .body(Body::empty())
+            .unwrap()
+    };
+    let preview = router
+        .clone()
+        .oneshot(theme_request("preview", 0, &csrf, "FFFFFF"))
+        .await
+        .unwrap();
+    assert_eq!(preview.status(), StatusCode::OK);
+    let preview = to_bytes(preview.into_body(), 8192).await.unwrap();
+    assert!(
+        std::str::from_utf8(&preview)
+            .unwrap()
+            .contains("/assets/shell.css?preview=%23111111")
+    );
+    assert_eq!(
+        router
+            .clone()
+            .oneshot(theme_request("apply", 0, &csrf, "111111"))
+            .await
+            .unwrap()
+            .status(),
+        StatusCode::UNPROCESSABLE_ENTITY
+    );
+    assert_eq!(
+        router
+            .clone()
+            .oneshot(theme_request("apply", 0, &"0".repeat(64), "FFFFFF"))
+            .await
+            .unwrap()
+            .status(),
+        StatusCode::FORBIDDEN
+    );
+    let before = to_bytes(
+        router.clone().oneshot(style()).await.unwrap().into_body(),
+        8192,
+    )
+    .await
+    .unwrap();
+    assert!(!std::str::from_utf8(&before).unwrap().contains("#111111"));
+    assert_eq!(
+        router
+            .clone()
+            .oneshot(theme_request("apply", 0, &csrf, "FFFFFF"))
+            .await
+            .unwrap()
+            .status(),
+        StatusCode::SEE_OTHER
+    );
+    assert_eq!(
+        router
+            .clone()
+            .oneshot(theme_request("reset", 0, &csrf, "FFFFFF"))
+            .await
+            .unwrap()
+            .status(),
+        StatusCode::CONFLICT
+    );
     for (origin, proof) in [(&c.origin, csrf.clone()), (&local_origin, "0".repeat(64))] {
         assert_eq!(
             router
@@ -540,4 +609,13 @@ async fn local_sysop_bootstrap_and_http_session_lifecycle() {
         StatusCode::UNAUTHORIZED
     );
     runtime.shutdown().await.unwrap();
+    let restarted = Runtime::start(&c).await.unwrap();
+    let after = app(&c, &restarted).unwrap().oneshot(style()).await.unwrap();
+    let after = to_bytes(after.into_body(), 8192).await.unwrap();
+    assert!(
+        std::str::from_utf8(&after)
+            .unwrap()
+            .contains("--background: #111111")
+    );
+    restarted.shutdown().await.unwrap();
 }

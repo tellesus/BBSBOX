@@ -4,7 +4,8 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 const pages = [
   ['index.html', 'home.html', ['NODE_NAME']],
   ['login/index.html', 'login.html', ['NODE_NAME', 'LOGIN_MESSAGE']],
-  ['account/index.html', 'account.html', ['USERNAME', 'ROLE', 'CSRF']]
+  ['account/index.html', 'account.html', ['USERNAME', 'ROLE', 'CSRF', 'SYSOP_LINK']],
+  ['settings/theme/index.html', 'theme.html', ['THEME_STATUS', 'THEME_REVISION', 'CSRF', 'BACKGROUND', 'TEXT', 'ACCENT', 'SECONDARY']]
 ];
 
 const verify = process.argv.includes('--check');

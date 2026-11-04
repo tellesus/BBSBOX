@@ -25,7 +25,9 @@ a { color: var(--accent); }
 .skip:not(:focus) { clip-path: inset(50%); }
 form { display: grid; gap: 1rem; max-width: 25rem; }
 label { display: grid; gap: .25rem; }
-input:not([type="hidden"]) { min-width: 0; width: 100%; min-height: 44px; border: 1px solid #888; border-radius: .25rem; background: var(--background); color: var(--text); padding: .5rem; font: inherit; }
+.actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+input[type="color"] { max-width: 7rem; }
+input:not([type="hidden"]) { min-width: 0; width: 100%; min-height: 44px; border: 1px solid var(--text); border-radius: .25rem; background: var(--background); color: var(--text); padding: .5rem; font: inherit; }
 button, .button { min-height: 44px; display: inline-flex; align-items: center; justify-self: start; padding: .5rem 1rem; border: 1px solid var(--accent); border-radius: .25rem; background: var(--background); color: var(--accent); font: inherit; cursor: pointer; }
 .error { color: var(--secondary-accent); }
 .error:empty { display: none; }

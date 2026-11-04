@@ -141,6 +141,25 @@ def exercise(binary, state_root, host, isolated):
                         assert response.headers['Cache-Control'] == 'no-store'
                     hidden = re.search(r'name="csrf" value="([0-9a-f]{64})"', account)
                     assert hidden is not None
+                    theme = dict(revision=0, csrf=hidden.group(1), background='#111111', text='#FFFFFF', accent='#73F7AB', secondary='#FEC566')
+                    encoded_theme = urllib.parse.urlencode(theme).encode()
+                    with request('/settings/theme/preview/', 'POST', form_headers, encoded_theme) as response:
+                        preview = response.read().decode()
+                        url = re.search(r'href="(/assets/shell.css\?preview=[^" ]+)"', preview)
+                        assert url is not None
+                    with request(url.group(1)) as response:
+                        assert b'--background: #111111' in response.read()
+                    with request('/assets/shell.css') as response:
+                        assert b'--background: #111111' not in response.read()
+                    with request('/settings/theme/apply/', 'POST', form_headers, encoded_theme) as response:
+                        assert response.geturl().endswith('/settings/theme/')
+                    with request('/assets/shell.css') as response:
+                        assert b'--background: #111111' in response.read()
+                    theme['revision'] = 1
+                    with request('/settings/theme/reset/', 'POST', form_headers, urllib.parse.urlencode(theme).encode()) as response:
+                        assert response.geturl().endswith('/settings/theme/')
+                    with request('/assets/shell.css') as response:
+                        assert b'--background: #111111' not in response.read()
                     payload = urllib.parse.urlencode(dict(csrf=hidden.group(1))).encode()
                     with request('/account/sign-out/', 'POST', form_headers, payload) as response:
                         assert response.geturl() == origin + '/'
@@ -174,7 +193,7 @@ def exercise(binary, state_root, host, isolated):
                 text = trace.read_text(encoding='utf-8')
                 traces.append(audit.audit_trace(text))
                 (state_root/f'runtime-{"ipv6" if family == socket.AF_INET6 else "ipv4"}-{attempt}.trace').write_text(text, encoding='utf-8')
-        return dict(family='IPv6' if family == socket.AF_INET6 else 'IPv4', simultaneous_dual_stack=True, tls=True, untrusted_ca_rejected=True, local_assets=2, identity_preserved_after_restart=True, configured_alias_accepted=True, unexpected_authority_rejected=True, public_status_read_only=True, local_session_lifecycle=True, restart_invalidates_session=True, initialization_audit=initial_audit, network_audit=traces)
+        return dict(family='IPv6' if family == socket.AF_INET6 else 'IPv4', simultaneous_dual_stack=True, tls=True, untrusted_ca_rejected=True, local_assets=3, identity_preserved_after_restart=True, configured_alias_accepted=True, unexpected_authority_rejected=True, public_status_read_only=True, local_session_lifecycle=True, restart_invalidates_session=True, palette_preview_apply_reset=True, initialization_audit=initial_audit, network_audit=traces)
 
 
 def main():

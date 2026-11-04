@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! M01 node lifecycle and HTTPS status surface. Community routes are owned by later modules.
+//! Local node lifecycle, HTTPS policy and browser entry points.
 use axum::{
     Json, Router,
     body::Body,
@@ -169,6 +169,7 @@ impl Config {
 pub fn migrations() -> Vec<Migration> {
     let mut migrations = bbsbox_identity::migrations();
     migrations.extend(bbsbox_event_core::migrations());
+    migrations.extend(bbsbox_settings::migrations());
     migrations
 }
 #[derive(Clone, Serialize)]

@@ -12,3 +12,7 @@
 *.rs text eol=lf
 *.lock text eol=lf
 /.gitignore text eol=lf
+web/shell/compiled/*.html text eol=lf
+web/shell/static/*.css text eol=lf
+web/shell/templates.mjs text eol=lf
+crates/settings/src/*.sql text eol=lf

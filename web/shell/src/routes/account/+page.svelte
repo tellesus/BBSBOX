@@ -6,6 +6,7 @@
   <dt>Username</dt><dd>__BBSBOX_USERNAME__</dd>
   <dt>Role</dt><dd>__BBSBOX_ROLE__</dd>
 </dl>
+__BBSBOX_SYSOP_LINK__
 <form action="/account/sign-out/" method="post">
   <input type="hidden" name="csrf" value="__BBSBOX_CSRF__">
   <button type="submit">Sign out</button>

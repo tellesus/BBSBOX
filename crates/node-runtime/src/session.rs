@@ -18,7 +18,10 @@ use bbsbox_storage::{
     writer::{Handle, Priority},
 };
 use serde::Deserialize;
-use std::{path::PathBuf, sync::Arc};
+use std::{
+    path::PathBuf,
+    sync::{Arc, RwLock},
+};
 use tokio::sync::Semaphore;
 use zeroize::Zeroizing;
 
@@ -34,6 +37,7 @@ struct Sessions {
     writer: Handle,
     workers: Arc<Semaphore>,
     node_name: Arc<str>,
+    theme: Arc<RwLock<bbsbox_settings::Theme>>,
 }
 
 pub(super) fn router(config: &crate::Config, writer: Handle) -> crate::Result<Router> {
@@ -43,12 +47,15 @@ pub(super) fn router(config: &crate::Config, writer: Handle) -> crate::Result<Ro
         Arc::new(SystemClock::default()),
         Default::default(),
     )?;
+    let reader = bbsbox_storage::open_reader(&config.database)?;
+    let theme = bbsbox_settings::theme(&reader)?;
     let state = Sessions {
         auth: Arc::new(auth),
         database: config.database.clone(),
         writer,
         workers: Arc::new(Semaphore::new(2)),
         node_name: Arc::from(config.name.as_str()),
+        theme: Arc::new(RwLock::new(theme)),
     };
     Ok(Router::new()
         .route(

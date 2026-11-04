@@ -16,10 +16,14 @@ struct Fixture {
 }
 impl Fixture {
     fn new() -> Self {
+        Self::with_registry(&migrations())
+    }
+
+    fn with_registry(registry: &[bbsbox_storage::Migration]) -> Self {
         let directory = tempfile::tempdir().unwrap();
         let root = directory.path().canonicalize().unwrap();
         let database = root.join("node.sqlite");
-        let mut db = Database::open(&database, &migrations()).unwrap();
+        let mut db = Database::open(&database, registry).unwrap();
         let node = NodeSigner::start(&mut db).unwrap().id();
         drop(db);
         let configuration = root.join("configuration");
@@ -58,6 +62,61 @@ impl Fixture {
             node,
         }
     }
+}
+
+#[test]
+fn known_foundation_backup_can_recover_before_the_theme_migration() {
+    let mut previous = migrations();
+    previous.retain(|migration| migration.module != "settings");
+    let fixture = Fixture::with_registry(&previous);
+    let identity = fixture.root.join("key.age");
+    let public = operator::keygen(&identity).unwrap();
+    let recipient = public["recipient"].as_str().unwrap().parse().unwrap();
+    let archive = fixture.root.join("before-settings.age");
+    operator::backup_with_registry(
+        &fixture.config,
+        fixture.node,
+        &recipient,
+        &archive,
+        &fixture.root,
+        previous,
+    )
+    .unwrap();
+    let output = fixture.root.join("recovered");
+    let arguments = [
+        "restore-compatible".into(),
+        "--archive".into(),
+        archive.into_os_string(),
+        "--node".into(),
+        fixture.node.to_string().into(),
+        "--identity-file".into(),
+        identity.into_os_string(),
+        "--output".into(),
+        output.clone().into_os_string(),
+        "--staging".into(),
+        fixture.root.clone().into_os_string(),
+        "--source".into(),
+        "retired".into(),
+        "--reason".into(),
+        "Preparing replacement hardware".into(),
+        "--at".into(),
+        "0".into(),
+    ];
+    let restored = operator::command(&arguments).unwrap();
+    assert_eq!(restored["migration_required"], true);
+    assert!(
+        restored["source_registry"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|entry| entry["module"] != "settings")
+    );
+    let database = output.join("data/node.sqlite");
+    operator::migrate_existing(&database, fixture.node, migrations()).unwrap();
+    let reader = bbsbox_storage::open_reader(database).unwrap();
+    let theme = bbsbox_settings::theme(&reader).unwrap();
+    assert_eq!(theme.revision, 0);
+    assert_eq!(theme.palette, bbsbox_settings::Palette::default());
 }
 
 #[test]

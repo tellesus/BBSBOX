@@ -343,6 +343,7 @@ dependencies = [
  "bbsbox-event-core",
  "bbsbox-identity",
  "bbsbox-maintenance",
+ "bbsbox-settings",
  "bbsbox-storage",
  "hex",
  "rand_core",
@@ -353,6 +354,14 @@ dependencies = [
  "tokio",
  "tower",
  "zeroize",
+]
+
+[[package]]
+name = "bbsbox-settings"
+version = "0.1.0"
+dependencies = [
+ "bbsbox-storage",
+ "rusqlite",
 ]
 
 [[package]]

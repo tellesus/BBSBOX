@@ -13,6 +13,7 @@ use axum::{
 };
 use bbsbox_gatherings::{
     self as events, Change, Details, Gathering, GatheringId, Occurrence, Schedule, ScheduleError,
+    invitations,
 };
 use bbsbox_profiles::components::{Link, Provider};
 use bbsbox_storage::{
@@ -31,6 +32,7 @@ const TEMPLATE: &str = include_str!("../../../../../web/shell/compiled/events.ht
 pub(super) fn routes() -> Router<Sessions> {
     Router::new()
         .route("/events/", get(index))
+        .route("/events/invitations/", get(inbox))
         .route(
             "/events/new/",
             get(new_page)
@@ -45,6 +47,7 @@ pub(super) fn routes() -> Router<Sessions> {
                 .layer(DefaultBodyLimit::max(56 * 1024)),
         )
         .route("/events/{id}/cancel/", post(cancel))
+        .route("/events/{id}/invite/", post(invite))
 }
 
 pub(in crate::session) fn profile_provider() -> Provider<Vec<Link>> {
@@ -114,7 +117,9 @@ async fn index(
     let rows = state
         .read(move |_, path| Ok(events::list(&open_reader(path)?, None, after)?))
         .await?;
-    let mut content = String::from("<p><a href=\"/events/new/\">Create an event</a></p>");
+    let mut content = String::from(
+        "<p><a href=\"/events/new/\">Create an event</a> · <a href=\"/events/invitations/\">Your invitations</a></p>",
+    );
     if rows.is_empty() {
         content.push_str("<p>No events to show.</p>");
     } else {
@@ -143,6 +148,59 @@ async fn index(
         }
     }
     Ok(page(&state, StatusCode::OK, "Events", &content))
+}
+
+async fn inbox(
+    State(state): State<Sessions>,
+    headers: HeaderMap,
+    Query(query): Query<Browse>,
+) -> Result<Response, StatusCode> {
+    let Some((account, _)) = form_access(&state, &headers).await else {
+        return Ok(login());
+    };
+    let before = match (query.time, query.id.as_deref()) {
+        (None, None) => None,
+        (Some(time), Some(event)) => Some((time, event_id(event)?)),
+        _ => return Err(StatusCode::BAD_REQUEST),
+    };
+    let rows = state
+        .read(move |_, path| {
+            Ok(invitations::received(
+                &open_reader(path)?,
+                account.id,
+                before,
+            )?)
+        })
+        .await?;
+    let mut content = String::from("<p><a href=\"/events/\">Events</a></p>");
+    if rows.is_empty() {
+        content.push_str("<p>No invitations to show.</p>");
+    } else {
+        content.push_str("<ul>");
+        for row in rows.iter().take(invitations::PAGE_SIZE) {
+            let cancelled = if row.cancelled { " · Cancelled" } else { "" };
+            let _ = write!(
+                content,
+                "<li><a href=\"/events/{}/\">{}</a> · Invited by {}{cancelled}</li>",
+                row.gathering,
+                escape(&row.title),
+                escape(&row.organizer)
+            );
+        }
+        content.push_str("</ul>");
+        if let Some(last) = rows
+            .get(invitations::PAGE_SIZE - 1)
+            .filter(|_| rows.len() > invitations::PAGE_SIZE)
+        {
+            let _ = write!(
+                content,
+                "<p><a href=\"?time={}&amp;id={}\">Older invitations</a></p>",
+                last.sent_at,
+                event_key(last.event)
+            );
+        }
+    }
+    Ok(page(&state, StatusCode::OK, "Your invitations", &content))
 }
 
 fn when(schedule: &Schedule) -> String {
@@ -199,6 +257,18 @@ async fn view(
         item.username
     );
     content.push_str(&bbsbox_discussions::render_markdown(&details.description));
+    if account.id.bytes() == &item.organizer {
+        let count = state
+            .read(move |_, path| {
+                Ok(invitations::sent_count(
+                    &open_reader(path)?,
+                    account.id,
+                    id,
+                )?)
+            })
+            .await?;
+        let _ = write!(content, "<p>Invitations sent on this node: {count}</p>");
+    }
     if account.id.bytes() == &item.organizer && !item.cancelled {
         let _ = write!(
             content,
@@ -215,8 +285,111 @@ async fn view(
             "Cancel event",
             &fields,
         );
+        form(
+            &mut content,
+            &format!("/events/{id}/invite/"),
+            &csrf,
+            "Send invitations",
+            "<label>Local usernames, separated by commas <input name=\"recipients\" maxlength=\"660\" required></label>",
+        );
     }
     Ok(page(&state, StatusCode::OK, &details.title, &content))
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct InviteInput {
+    #[serde(deserialize_with = "password")]
+    csrf: Zeroizing<String>,
+    request: String,
+    recipients: String,
+}
+
+async fn invite(
+    State(state): State<Sessions>,
+    Extension(origin): Extension<RequestOrigin>,
+    Path(id): Path<String>,
+    headers: HeaderMap,
+    input: Result<Form<InviteInput>, FormRejection>,
+) -> Result<Response, StatusCode> {
+    check_origin(&headers, &origin)?;
+    let Some((account, _)) = form_access(&state, &headers).await else {
+        return Ok(login());
+    };
+    let session = token(&headers)?;
+    let id = GatheringId::parse(&id).ok_or(StatusCode::NOT_FOUND)?;
+    let Form(input) = input.map_err(|error| error.status())?;
+    if input.request.len() != 32
+        || !input.request.bytes().all(|b| b.is_ascii_hexdigit())
+        || input.recipients.len() > 660
+        || input.recipients.split(',').count() > 20
+    {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+    let mut recipients = match input
+        .recipients
+        .split(',')
+        .map(|name| bbsbox_identity::normalize_username(name.trim()))
+        .collect::<bbsbox_identity::Result<Vec<_>>>()
+    {
+        Ok(names) => names,
+        Err(_) => {
+            return Ok(problem(
+                &state,
+                StatusCode::UNPROCESSABLE_ENTITY,
+                "Check the local usernames",
+            ));
+        }
+    };
+    recipients.sort_unstable();
+    recipients.dedup();
+    let fingerprint =
+        serde_json::to_vec(&("invite", id, &recipients)).map_err(|_| StatusCode::BAD_REQUEST)?;
+    let auth = state.auth.clone();
+    let signer = state.signer.clone();
+    let gatherings = state.gatherings.clone();
+    let result = state
+        .writer
+        .submit_service(Priority::Interactive, move |database| {
+            database.transaction_service_checked(
+                Command {
+                    namespace: &format!("gatherings:{}", account.id),
+                    id: &input.request,
+                    request: &fingerprint,
+                },
+                Class::Content,
+                128 * 1024,
+                |tx| -> Result<_, Failure> {
+                    let actor = auth
+                        .authorize_mutation(tx, &session, &input.csrf, &origin.0)
+                        .map_err(events::Error::Identity)?;
+                    let current = auth
+                        .mutation_account(tx, &actor)
+                        .map_err(events::Error::Identity)?;
+                    if current.id != account.id {
+                        return Err(events::Error::Forbidden.into());
+                    }
+                    Ok(current.id)
+                },
+                |tx, actor| {
+                    let now = SystemClock::default().wall_millis();
+                    for username in recipients {
+                        gatherings.invite(tx, &signer, actor, id, &username, now)?;
+                    }
+                    Ok(Vec::new())
+                },
+            )
+        })
+        .map_err(|error| error_response(error.into()).0)?
+        .wait()
+        .await;
+    match result {
+        Ok(_) => Ok(Redirect::to(&format!("/events/{id}/")).into_response()),
+        Err(error) => {
+            let (status, reason) = error_response(error);
+            Ok(problem(&state, status, reason))
+        }
+    }
 }
 
 fn editor(state: &Sessions, csrf: &str, item: Option<Gathering>) -> Response {
@@ -558,6 +731,9 @@ fn error_response(error: Failure) -> (StatusCode, &'static str) {
             (StatusCode::FORBIDDEN, "Only the host can change this event")
         }
         Failure::Event(events::Error::Missing) => (StatusCode::NOT_FOUND, "Event unavailable"),
+        Failure::Event(events::Error::Identity(bbsbox_identity::Error::AccountMissing)) => {
+            (StatusCode::NOT_FOUND, "A recipient account is unavailable")
+        }
         Failure::Event(events::Error::Identity(error)) => {
             (super::super::failure(error), "Event change refused")
         }

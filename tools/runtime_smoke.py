@@ -466,7 +466,26 @@ def exercise(binary, state_root, host, isolated):
                     with submit(event_path + 'edit/', edit) as response:
                         edited_event = response.read().decode()
                         assert 'Meeting room B' in edited_event and '(UTC-05:00)' in edited_event
-                    cancel_proof = discussion_proof(edited_event)
+                    def event_action(page, action):
+                        return discussion_proof(page.split(f'<form action="{event_path}{action}/"', 1)[1].split('</form>', 1)[0])
+
+                    invite_proof = event_action(edited_event, 'invite')
+                    try:
+                        submit(event_path + 'invite/', dict(invite_proof, recipients='Neighbor, unknown-account'))
+                        raise AssertionError('An invalid invitation batch was accepted')
+                    except urllib.error.HTTPError as error:
+                        assert error.code == 404
+                    with request(event_path) as response:
+                        event_view = response.read().decode()
+                        assert 'Invitations sent on this node: 0' in event_view
+                    invite = dict(event_action(event_view, 'invite'), recipients='Neighbor, neighbor')
+                    with submit(event_path + 'invite/', invite) as response:
+                        assert b'Invitations sent on this node: 1' in response.read()
+                    with submit(event_path + 'invite/', invite) as response:
+                        assert b'Invitations sent on this node: 1' in response.read()
+                    with request('/events/invitations/') as response:
+                        assert b'No invitations to show.' in response.read()
+                    cancel_proof = event_action(edited_event, 'cancel')
                     try:
                         submit(event_path + 'cancel/', dict(cancel_proof, previous=previous))
                         raise AssertionError('Stale event cancellation was accepted')
@@ -480,6 +499,10 @@ def exercise(binary, state_root, host, isolated):
                         assert b'<strong>Cancelled</strong>' in response.read()
                     sign_out()
                     sign_in(member['username'], member['password'])
+                    with request('/events/invitations/') as response:
+                        invitations = response.read()
+                        assert b'Local library game night' in invitations and b'Cancelled' in invitations
+                        assert b'Invited by other' in invitations
                     with request('/directory/other/') as response:
                         assert b'Local library game night (cancelled)' in response.read()
                     try:
@@ -487,6 +510,12 @@ def exercise(binary, state_root, host, isolated):
                         raise AssertionError('A different account could edit the event')
                     except urllib.error.HTTPError as error:
                         assert error.code == 403
+                    sign_out()
+                    sign_in('operator', password.decode())
+                    with request('/events/invitations/') as response:
+                        assert b'No invitations to show.' in response.read()
+                    with request(event_path) as response:
+                        assert b'Invitations sent on this node' not in response.read()
                 # A new client without the local CA must fail certificate verification.
                 untrusted = urllib.request.build_opener(urllib.request.ProxyHandler({}), urllib.request.HTTPSHandler(context=ssl.create_default_context()))
                 try:
@@ -515,7 +544,7 @@ def exercise(binary, state_root, host, isolated):
                 text = trace.read_text(encoding='utf-8')
                 traces.append(audit.audit_trace(text))
                 (state_root/f'runtime-{"ipv6" if family == socket.AF_INET6 else "ipv4"}-{attempt}.trace').write_text(text, encoding='utf-8')
-        return dict(family='IPv6' if family == socket.AF_INET6 else 'IPv4', simultaneous_dual_stack=True, tls=True, untrusted_ca_rejected=True, local_assets=4, identity_preserved_after_restart=True, configured_alias_accepted=True, unexpected_authority_rejected=True, public_status_read_only=True, local_session_lifecycle=True, restart_invalidates_session=True, palette_preview_apply_reset=True, welcome_and_menu_settings=True, member_onboarding=True, unavailable_section_status=True, local_board_thread_reply=True, discussion_retry_and_csrf=True, discussion_edit_and_withdraw=True, local_mail_participants=True, directory_and_profile_privacy=True, chronological_followed_feed=True, mutual_local_friendship=True, local_gathering_revisions=True, initialization_audit=initial_audit, network_audit=traces)
+        return dict(family='IPv6' if family == socket.AF_INET6 else 'IPv4', simultaneous_dual_stack=True, tls=True, untrusted_ca_rejected=True, local_assets=4, identity_preserved_after_restart=True, configured_alias_accepted=True, unexpected_authority_rejected=True, public_status_read_only=True, local_session_lifecycle=True, restart_invalidates_session=True, palette_preview_apply_reset=True, welcome_and_menu_settings=True, member_onboarding=True, unavailable_section_status=True, local_board_thread_reply=True, discussion_retry_and_csrf=True, discussion_edit_and_withdraw=True, local_mail_participants=True, directory_and_profile_privacy=True, chronological_followed_feed=True, mutual_local_friendship=True, local_gathering_revisions=True, recipient_addressed_invitations=True, initialization_audit=initial_audit, network_audit=traces)
 
 
 def main():

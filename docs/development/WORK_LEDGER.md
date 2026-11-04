@@ -17,7 +17,7 @@ Design review is complete and the first M00 prototype has real local implementat
 | [M05](modules/M05-interface-themes.md) | Approved | Complete | A–C: local HTTPS, Edge, signed Debian install/rebuild and settings restore; CI 41751474936 | Integrate real feature navigation, visual review and G1 device checks |
 | [M06](modules/M06-boards-mail.md) | Approved | Complete | A–C: signed discussions and participant-restricted mail pass Debian CI 41769646693 | G1 device checks and later complaint integration |
 | [M07](modules/M07-directory-profiles.md) | Approved | Complete | A–C: directory, profile privacy and component hooks pass signed Debian CI 41770621736 | Bind live providers in their owning modules |
-| [M08](modules/M08-friends-events.md) | Approved | In progress | Chosen feed, mutual friendship and public event editing pass local HTTPS | Address invitations, then calendar and RSVP |
+| [M08](modules/M08-friends-events.md) | Approved | In progress | A–B: chosen feed, friendship, event revisions and addressed invitations pass local HTTPS | Add calendar, RSVPs and local reminders |
 | [M09](modules/M09-clans-cohorts.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
 | [M10](modules/M10-local-files.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
 | [M11](modules/M11-local-games.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
@@ -578,3 +578,9 @@ IPv4 and IPv6 HTTPS cover request, refusal of self-acceptance, the addressee's a
 Gatherings migration 1 stores local public announcements and immutable signed revisions. The organizer edits against the current revision and cancellation preserves the event link and last details. A host can show their announcements on their public profile. Scheduling uses bundled [Jiff IANA timezone data](https://docs.rs/jiff/0.2.38/jiff/tz/struct.TimeZoneDatabase.html). A skipped time requires a different entry. For a repeated time the host chooses an occurrence. Each revision preserves the organizer's civil time, zone, UTC offset and resolved instant.
 
 Provider fixtures verify owner-only writes, stable IDs, cancellation and stale edits despite clock order. Local HTTPS checks duplicate create, edit, cancellation, the profile link, and timezone ambiguity. Signed Debian confirmation is pending. Recipient-addressed invitations are the remaining part of B, followed by calendar, RSVP and reminders.
+
+## 2026-11-03 — M08 B: recipient-addressed local invitations
+
+Gatherings migration 2 stores invitations signed by the local node on behalf of the authenticated organizer. Each invitation is scoped to one event and addressee. Selected accounts see them under Events. The organizer can see how many invitations are recorded on the node. The count describes sends, and the system records no read state. Cancellation remains visible in the invitation list.
+
+IPv4 and IPv6 HTTPS verify rollback of an invalid recipient batch, deduplication, delivery to a recipient who signs in later, a cancelled event in their invitation list, and an unrelated SysOp receiving neither the invite nor the organizer's count. An encrypted snapshot round trip preserves the invitation ID and intended recipient. Signed Debian confirmation is pending. M08 C is next.

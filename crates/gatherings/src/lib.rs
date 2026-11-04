@@ -17,6 +17,7 @@ use rand_core::{OsRng, RngCore};
 use rusqlite::{Connection, OptionalExtension, Transaction, params};
 use serde::{Deserialize, Serialize};
 
+pub mod invitations;
 mod schedule;
 pub use schedule::{Occurrence, Schedule, ScheduleError};
 
@@ -26,12 +27,19 @@ const CANCEL: &str = "gathering.cancel";
 const AUDIENCE: &str = "local-public";
 pub const PAGE_SIZE: usize = 30;
 
-pub fn migrations() -> [Migration; 1] {
-    [Migration {
-        module: "gatherings",
-        version: 1,
-        sql: include_str!("schema.sql"),
-    }]
+pub fn migrations() -> [Migration; 2] {
+    [
+        Migration {
+            module: "gatherings",
+            version: 1,
+            sql: include_str!("schema.sql"),
+        },
+        Migration {
+            module: "gatherings",
+            version: 2,
+            sql: include_str!("invitations.sql"),
+        },
+    ]
 }
 
 #[derive(Debug)]
@@ -180,7 +188,7 @@ pub struct Gatherings {
 
 impl Gatherings {
     pub fn new(signer: &NodeSigner) -> Self {
-        let rules = [CREATE, REVISE, CANCEL].map(|kind| KindRule {
+        let rules = [CREATE, REVISE, CANCEL, invitations::KIND].map(|kind| KindRule {
             kind: kind.into(),
             schema: 1,
             actor: Role::Node,
@@ -264,6 +272,16 @@ impl Gatherings {
             extensions: vec![],
         };
         let bytes = serde_json::to_vec(&body).map_err(|_| Error::InvalidInput)?;
+        Ok((gathering, self.sign(tx, signer, action, &bytes)?))
+    }
+
+    fn sign(
+        &self,
+        tx: &Transaction<'_>,
+        signer: &NodeSigner,
+        action: Action,
+        bytes: &[u8],
+    ) -> Result<EventId, Error> {
         let actor = Actor::root(Role::Node, signer.public(), *signer.incarnation())
             .map_err(events::Error::from)?;
         let event = authoring::author(
@@ -273,7 +291,7 @@ impl Gatherings {
                 action,
                 actor,
                 credential: None,
-                body: &bytes,
+                body: bytes,
                 delivery: &Delivery {
                     source: "local".into(),
                     transfer: "gatherings".into(),
@@ -288,7 +306,7 @@ impl Gatherings {
             },
         )?;
         match integration::integrate(tx, event.id(), self, &LocalResolver)? {
-            Integration::Accepted(_) => Ok((gathering, event.id())),
+            Integration::Accepted(_) => Ok(event.id()),
             _ => Err(Error::NotAccepted),
         }
     }
@@ -304,6 +322,9 @@ impl Module for Gatherings {
 
     fn action(&self, connection: &Connection, event: &CompleteEvent) -> events::Result<Decision> {
         let metadata = event.metadata();
+        if metadata.kind == invitations::KIND {
+            return invitations::authorize(connection, event, self.node);
+        }
         let Some(body) = body(event) else {
             return Ok(Decision::Deny("invalid_gathering_body"));
         };
@@ -360,6 +381,9 @@ impl Module for Gatherings {
     }
 
     fn reduce(&self, tx: &Transaction<'_>, event: &CompleteEvent) -> events::Result<Relevance> {
+        if event.metadata().kind == invitations::KIND {
+            return invitations::reduce(tx, event);
+        }
         let body = body(event).ok_or(events::Error::CorruptRecord)?;
         let key = body.gathering.0.as_slice();
         let revision = event.id();
@@ -391,6 +415,7 @@ impl Module for Gatherings {
             "INSERT OR IGNORE INTO gatherings_quarantined SELECT gathering FROM gatherings_revisions WHERE stream=?1",
             [fork.stream.as_slice()],
         )?;
+        invitations::invalidate_fork(tx, fork)?;
         Ok(())
     }
 }

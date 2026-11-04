@@ -390,6 +390,26 @@ fn local_operator_round_trip_keeps_identity_configuration_and_restore_block() {
             )
         })
         .unwrap();
+    let (event, invitation) = database
+        .write(bbsbox_storage::disk::Class::Content, 131072, |tx| {
+            let gatherings = bbsbox_gatherings::Gatherings::new(&signer);
+            let (event, _) = gatherings.record(
+                tx,
+                &signer,
+                member.id,
+                bbsbox_gatherings::Change::Create(bbsbox_gatherings::Details {
+                    title: "Restore game night".into(),
+                    place: "Library".into(),
+                    description: String::new(),
+                    schedule: bbsbox_gatherings::Schedule::resolve("2026-11-07T18:30", "UTC", None)
+                        .unwrap(),
+                }),
+                6,
+            )?;
+            let invitation = gatherings.invite(tx, &signer, member.id, event, "operator", 7)?;
+            Ok::<_, bbsbox_gatherings::Error>((event, invitation))
+        })
+        .unwrap();
     drop(database);
     let secret = f.root.join("operator.key");
     let generated = operator::keygen(&secret).unwrap();
@@ -438,6 +458,15 @@ fn local_operator_round_trip_keeps_identity_configuration_and_restore_block() {
         bbsbox_social::posts(&reader, bbsbox_social::Feed::Following(author.id), None).unwrap();
     assert_eq!(feed[0].id, update);
     assert_eq!(feed[0].text, "Local updates survive a node recovery.");
+    let invitations = bbsbox_gatherings::invitations::received(&reader, author.id, None).unwrap();
+    assert_eq!(invitations[0].event, invitation);
+    assert_eq!(invitations[0].gathering, event);
+    assert_eq!(invitations[0].title, "Restore game night");
+    assert!(
+        bbsbox_gatherings::invitations::received(&reader, member.id, None)
+            .unwrap()
+            .is_empty()
+    );
     drop(reader);
     assert_eq!(
         fs::read(target.join("configuration/tls/ca-key.pem")).unwrap(),

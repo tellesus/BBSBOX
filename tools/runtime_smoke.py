@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 """Exercise real HTTPS startup/restart; --isolated also audits both families in a Linux namespace."""
 import argparse
+import http.cookiejar
 import importlib.util
 import json
 import os
@@ -47,6 +48,13 @@ def exercise(binary, state_root, host, isolated):
             initialize=['strace','-f','-s','256','-e','trace=network','-o',str(init_trace),*initialize]
         initialized=json.loads(subprocess.check_output(initialize,timeout=15,creationflags=subprocess.CREATE_NO_WINDOW if os.name=='nt' else 0))
         assert initialized['format']=='bbsbox.node-init/v1'
+        password = b'fixture password for local HTTPS only'
+        bootstrapped = json.loads(subprocess.check_output(
+            [str(binary), '--config', str(config_path), '--bootstrap-sysop', 'operator'],
+            input=password + b'\n', timeout=15,
+            creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0,
+        ))
+        assert bootstrapped['username'] == 'operator'
         initial_audit=[]
         if isolated:
             text=init_trace.read_text(encoding='utf-8')
@@ -54,9 +62,10 @@ def exercise(binary, state_root, host, isolated):
             (state_root/f'runtime-{"ipv6" if family==socket.AF_INET6 else "ipv4"}-initialization.trace').write_text(text,encoding='utf-8')
         subprocess.run([sys.executable, str(ROOT/'spikes/m00/tools/init_tls.py'), '--state', str(state)], check=True, capture_output=True)
         context = ssl.create_default_context(cafile=str(state/'tls/ca.pem'))
-        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), urllib.request.HTTPSHandler(context=context))
-        def request(path, method='GET', headers=None):
-            return opener.open(urllib.request.Request(origin+path, method=method, headers=headers or {}), timeout=2)
+        cookies = http.cookiejar.CookieJar()
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), urllib.request.HTTPSHandler(context=context), urllib.request.HTTPCookieProcessor(cookies))
+        def request(path, method='GET', headers=None, data=None):
+            return opener.open(urllib.request.Request(origin+path, method=method, headers=headers or {}, data=data), timeout=3)
         identity = initialized['node_id']
         traces = []
         for attempt in range(2):
@@ -101,6 +110,22 @@ def exercise(binary, state_root, host, isolated):
                         raise AssertionError('Forbidden request was accepted')
                     except urllib.error.HTTPError as error:
                         assert error.code == expected
+                session_path = '/api/v1/session'
+                try:
+                    request(session_path)
+                    raise AssertionError('Read accepted without a current session')
+                except urllib.error.HTTPError as error:
+                    assert error.code == 401
+                credentials = json.dumps(dict(username='operator', password=password.decode())).encode()
+                with request(session_path, 'POST', {'Origin': origin, 'Content-Type': 'application/json'}, credentials) as response:
+                    assert json.load(response)['role'] == 'sysop'
+                with request(session_path) as response:
+                    assert json.load(response)['username'] == 'operator'
+                proof = next(cookie.value for cookie in cookies if cookie.name == '__Host-bbsbox_csrf')
+                if attempt == 1:
+                    with request(session_path, 'DELETE', {'Origin': origin, 'X-BBSBOX-CSRF': proof}) as response:
+                        assert response.status == 204
+                    assert not any(cookie.name.startswith('__Host-bbsbox_') for cookie in cookies)
                 # A new client without the local CA must fail certificate verification.
                 untrusted = urllib.request.build_opener(urllib.request.ProxyHandler({}), urllib.request.HTTPSHandler(context=ssl.create_default_context()))
                 try:
@@ -129,7 +154,7 @@ def exercise(binary, state_root, host, isolated):
                 text = trace.read_text(encoding='utf-8')
                 traces.append(audit.audit_trace(text))
                 (state_root/f'runtime-{"ipv6" if family == socket.AF_INET6 else "ipv4"}-{attempt}.trace').write_text(text, encoding='utf-8')
-        return dict(family='IPv6' if family == socket.AF_INET6 else 'IPv4', simultaneous_dual_stack=True, tls=True, untrusted_ca_rejected=True, local_assets=2, identity_preserved_after_restart=True, configured_alias_accepted=True, unexpected_authority_rejected=True, mutation_route_absent=True, initialization_audit=initial_audit, network_audit=traces)
+        return dict(family='IPv6' if family == socket.AF_INET6 else 'IPv4', simultaneous_dual_stack=True, tls=True, untrusted_ca_rejected=True, local_assets=2, identity_preserved_after_restart=True, configured_alias_accepted=True, unexpected_authority_rejected=True, public_status_read_only=True, local_session_lifecycle=True, restart_invalidates_session=True, initialization_audit=initial_audit, network_audit=traces)
 
 
 def main():

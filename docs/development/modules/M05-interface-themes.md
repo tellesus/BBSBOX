@@ -1,8 +1,8 @@
 # M05 — Browser shell, navigation and SysOp themes
 
-Brief revision 1.1.1 · 2026-10-30 · Roadmap baseline 1.1.0 · Product baseline 0.6.0.
+Brief revision 1.1.2 · 2026-11-03 · Roadmap baseline 1.1.0 · Product baseline 0.6.0.
 
-**State:** Approved for implementation under U19; unstarted. Runtime and hardware evidence remains pending.
+**State:** In progress. Slice A local bootstrap/session transport passes local HTTPS. Landing/login UI and G1 device evidence remain pending.
 
 ## Read only this packet
 
@@ -17,7 +17,7 @@ Look up only decision rows T03, T07 in [DECISIONS](../DECISIONS.md). Dependency 
 
 Provide modern phone/tablet/desktop navigation with a shipped vibrant-on-black dark theme, regardless of device light preference. SysOps customize the local place.
 
-Under the user's copy direction, shipped UI text is short and functional: labels, actions and status descriptions. Omit motivational headlines, slogans and aspirational filler. The M00 prototype follows this direction; M05 implementation remains unstarted.
+Use short labels, actions and status descriptions. Omit motivational headlines, slogans and aspirational filler. The visual design gets a separate review once the working flow is available.
 
 ## Locked implementation
 
@@ -27,7 +27,7 @@ Use SvelteKit/TypeScript with static adapter output served by the node; all asse
 
 Planned web/shell/, web/theme/ and crates/settings/; local theme/navigation config, welcome art and node identity presentation. Consumes feature navigation/profile contributions without owning their data.
 
-Paths above are planned implementation locations, not existing code. Consume the contracts in the reading packet; changes to them need affected-consumer updates. A disabled optional module retains its data and does not break unrelated local services.
+The [runtime](../../../crates/node-runtime/README.md#local-account-access) owns HTTP sessions and private first-SysOp setup. The shell consumes that API. A disabled optional module retains its data and does not break unrelated local services.
 
 ## Sequential work slices
 

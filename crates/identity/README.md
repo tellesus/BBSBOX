@@ -30,7 +30,7 @@ Defaults: seven-day absolute/twelve-hour idle duration, 32 sessions per account.
 
 Run `cargo test --locked --offline --workspace`, `cargo fmt --check --all` and `cargo clippy --locked --offline --workspace --all-targets -- -D warnings` from the repository root (fetch locked dependencies once first). Windows uses the shell-local environment in `spikes/m00/tools/local-env.ps1`; storage file-finalization tests require normal file permissions.
 
-Real crypto/SQLite tests cover account/session boundaries, root/device issuance, recovery and destination linking. The root workspace suite and independent Node vectors run in CI. Actual HTTP/browser enforcement remains M05; M04 owns causal/scoped-counter integration and M13 owns MLS/native-client integration. Core provider evidence does not establish those consumer journeys or shipped client trust.
+Real crypto/SQLite tests cover account/session boundaries, root/device issuance, recovery and destination linking. The root workspace suite and independent Node vectors run in CI. M05's [runtime session transport](../node-runtime/README.md#local-account-access) exercises local HTTP enforcement. Browser interaction and phone testing follow in M05 and G1. M04 owns causal/scoped-counter integration and M13 owns MLS/native-client integration.
 
 ## Account linking (C)
 

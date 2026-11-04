@@ -1,6 +1,6 @@
 {
   "openapi": "3.1.0",
-  "info": {"title": "BBSBOX local node status", "version": "0.1.0"},
+  "info": {"title": "BBSBOX local node HTTP", "version": "0.2.0"},
   "paths": {
     "/api/v1/node": {
       "get": {
@@ -11,10 +11,78 @@
           "421": {"description": "Request authority does not match this configured node"}
         }
       }
+    },
+    "/api/v1/session": {
+      "get": {
+        "operationId": "currentSession",
+        "security": [{"LocalSession": []}],
+        "responses": {
+          "200": {"$ref": "#/components/responses/CurrentSession"},
+          "401": {"description": "No valid local session"},
+          "503": {"description": "Local authentication busy"}
+        }
+      },
+      "post": {
+        "operationId": "signIn",
+        "parameters": [{"$ref": "#/components/parameters/Origin"}],
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {
+          "type": "object", "additionalProperties": false, "required": ["username", "password"],
+          "properties": {"username": {"type": "string"}, "password": {"type": "string", "writeOnly": true}}
+        }}}},
+        "responses": {
+          "200": {"description": "Session committed. Sets the host-only session and CSRF cookies.", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/LocalAccount"}}}},
+          "401": {"description": "Invalid username or password"},
+          "403": {"description": "Origin does not match the addressed node origin"},
+          "429": {"description": "Local login cooldown"},
+          "503": {"description": "Local authentication or storage temporarily unavailable"}
+        }
+      },
+      "patch": {
+        "operationId": "refreshSession",
+        "security": [{"LocalSession": []}],
+        "parameters": [{"$ref": "#/components/parameters/Origin"}, {"$ref": "#/components/parameters/Csrf"}],
+        "responses": {
+          "204": {"description": "Session activity recorded within its absolute lifetime"},
+          "401": {"description": "No valid local session"},
+          "403": {"description": "Origin or CSRF proof rejected"},
+          "503": {"description": "Local storage temporarily unavailable"}
+        }
+      },
+      "delete": {
+        "operationId": "signOut",
+        "security": [{"LocalSession": []}],
+        "parameters": [{"$ref": "#/components/parameters/Origin"}, {"$ref": "#/components/parameters/Csrf"}],
+        "responses": {
+          "204": {"description": "Session revoked and both cookies expired"},
+          "401": {"description": "No valid local session"},
+          "403": {"description": "Origin or CSRF proof rejected"},
+          "503": {"description": "Local storage temporarily unavailable"}
+        }
+      }
     }
   },
   "components": {
+    "securitySchemes": {
+      "LocalSession": {"type": "apiKey", "in": "cookie", "name": "__Host-bbsbox_session"}
+    },
+    "parameters": {
+      "Origin": {"name": "Origin", "in": "header", "required": true, "description": "Exact HTTPS origin of the addressed node", "schema": {"type": "string"}},
+      "Csrf": {"name": "X-BBSBOX-CSRF", "in": "header", "required": true, "description": "Value of this session's __Host-bbsbox_csrf cookie", "schema": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}
+    },
+    "responses": {
+      "CurrentSession": {"description": "Current local account", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/LocalAccount"}}}}
+    },
     "schemas": {
+      "LocalAccount": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["format", "username", "role"],
+        "properties": {
+          "format": {"type": "string", "const": "bbsbox.local-session/v1"},
+          "username": {"type": "string", "pattern": "^[a-z0-9_-]{1,32}$"},
+          "role": {"type": "string", "enum": ["member", "sysop"]}
+        }
+      },
       "NodeInfo": {
         "type": "object",
         "additionalProperties": false,

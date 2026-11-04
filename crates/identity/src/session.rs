@@ -121,7 +121,7 @@ struct Attempt {
 }
 pub struct Auth {
     boot: [u8; 16],
-    origin: String,
+    origins: Vec<String>,
     clock: Arc<dyn Clock>,
     policy: Policy,
     engine: Engine,
@@ -140,7 +140,22 @@ struct SessionRow {
 impl Auth {
     /// One shared instance per node process. A fresh boot intentionally invalidates old browser sessions.
     pub fn new(expected_origin: &str, clock: Arc<dyn Clock>, policy: Policy) -> Result<Self> {
-        let origin = origin(expected_origin)?;
+        Self::with_origins([expected_origin], clock, policy)
+    }
+    /// The HTTP transport also binds each request to its exact addressed origin.
+    pub fn with_origins<'a>(
+        expected_origins: impl IntoIterator<Item = &'a str>,
+        clock: Arc<dyn Clock>,
+        policy: Policy,
+    ) -> Result<Self> {
+        let origins = expected_origins
+            .into_iter()
+            .take(10)
+            .map(origin)
+            .collect::<Result<Vec<_>>>()?;
+        if origins.is_empty() || origins.len() > 9 {
+            return Err(Error::InvalidConfiguration);
+        }
         if millis(policy.idle_lifetime)? > millis(policy.absolute_lifetime)?
             || policy.absolute_lifetime.as_secs() == 0
             || policy.attempts_per_window == 0
@@ -157,7 +172,7 @@ impl Auth {
         ))?;
         Ok(Self {
             boot,
-            origin,
+            origins,
             clock,
             policy,
             engine,
@@ -176,7 +191,7 @@ impl Auth {
         Ok(now)
     }
     fn check_origin(&self, request_origin: &str) -> Result<()> {
-        if origin(request_origin).ok().as_ref() != Some(&self.origin) {
+        if !origin(request_origin).is_ok_and(|origin| self.origins.contains(&origin)) {
             return Err(Error::CsrfDenied);
         }
         Ok(())

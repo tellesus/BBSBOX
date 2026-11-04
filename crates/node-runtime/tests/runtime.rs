@@ -188,7 +188,7 @@ async fn status_surface_uses_exact_authority_and_exposes_no_private_state_or_mut
         "https://bbsbox-test.home.arpa:8443".into(),
     ];
     let runtime = Runtime::start(&c).await.unwrap();
-    let router = app(&c, runtime.info().clone()).unwrap();
+    let router = app(&c, &runtime).unwrap();
     let request = |path: &str, host: &str, method: &str| {
         Request::builder()
             .uri(path)
@@ -345,5 +345,196 @@ async fn offline_initialization_prepares_identity_without_tls_or_a_listener_and_
     assert!(!c.certificate_key.exists());
     let runtime = Runtime::start(&c).await.unwrap();
     assert_eq!(initialized["node_id"], runtime.info().node_id);
+    runtime.shutdown().await.unwrap();
+}
+
+#[tokio::test]
+async fn local_sysop_bootstrap_and_http_session_lifecycle() {
+    use std::{
+        io::Write,
+        process::{Command, Stdio},
+    };
+
+    let temp = tempfile::tempdir().unwrap();
+    let mut c = config(temp.path());
+    let alias = "127.0.0.1:8443";
+    let local_origin = format!("https://{alias}");
+    c.additional_origins.push(local_origin.clone());
+    let config_path = temp.path().join("config.json");
+    std::fs::write(&config_path, serde_json::to_vec(&c).unwrap()).unwrap();
+    let password = "operator test passphrase";
+    let bootstrap = |name: &str| {
+        let mut child = Command::new(env!("CARGO_BIN_EXE_bbsbox-node"))
+            .arg("--config")
+            .arg(&config_path)
+            .args(["--bootstrap-sysop", name])
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .unwrap();
+        let _ = writeln!(child.stdin.take().unwrap(), "{password}");
+        child.wait_with_output().unwrap()
+    };
+
+    assert!(!bootstrap("admin").status.success());
+    assert!(!c.database.exists());
+    let live = Runtime::start(&c).await.unwrap();
+    let expected = live.info().node_id.clone();
+    assert!(!bootstrap("admin").status.success());
+    live.shutdown().await.unwrap();
+
+    let output = bootstrap("Admin");
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let json: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(
+        json,
+        serde_json::json!({"format":"bbsbox.sysop-bootstrap/v1", "username":"admin"})
+    );
+    assert!(!bootstrap("another_admin").status.success());
+    assert_eq!(
+        bbsbox_identity::node::NodeSigner::inspect_existing(&c.database)
+            .unwrap()
+            .to_string(),
+        expected
+    );
+    assert!(!c.certificate.exists());
+
+    let runtime = Runtime::start(&c).await.unwrap();
+    let router = app(&c, &runtime).unwrap();
+    let request = |method: &str, origin: Option<&str>| {
+        let builder = Request::builder()
+            .uri("/api/v1/session")
+            .method(method)
+            .header(header::HOST, alias);
+        match origin {
+            Some(origin) => builder.header(header::ORIGIN, origin),
+            None => builder,
+        }
+    };
+    let login = |origin: Option<&str>, password: &str| {
+        request("POST", origin)
+            .header(header::CONTENT_TYPE, "application/json")
+            .body(Body::from(
+                serde_json::json!({"username":"Admin","password":password}).to_string(),
+            ))
+            .unwrap()
+    };
+    for origin in [None, Some(c.origin.as_str())] {
+        let response = router
+            .clone()
+            .oneshot(login(origin, password))
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::FORBIDDEN);
+        assert!(!response.headers().contains_key(header::SET_COOKIE));
+    }
+    assert_eq!(
+        router
+            .clone()
+            .oneshot(login(Some(&local_origin), "incorrect"))
+            .await
+            .unwrap()
+            .status(),
+        StatusCode::UNAUTHORIZED
+    );
+    let response = router
+        .clone()
+        .oneshot(login(Some(&local_origin), password))
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(response.headers()[header::CACHE_CONTROL], "no-store");
+    let cookies = response
+        .headers()
+        .get_all(header::SET_COOKIE)
+        .iter()
+        .map(|cookie| cookie.to_str().unwrap())
+        .collect::<Vec<_>>();
+    assert_eq!(cookies.len(), 2);
+    assert!(cookies.iter().all(|cookie| cookie.contains("Secure")
+        && cookie.contains("SameSite=Strict")
+        && !cookie.contains("Domain=")));
+    assert!(cookies[0].contains("HttpOnly") && !cookies[1].contains("HttpOnly"));
+    let session = cookies[0].split(';').next().unwrap().to_owned();
+    let csrf = cookies[1]
+        .split(';')
+        .next()
+        .unwrap()
+        .strip_prefix("__Host-bbsbox_csrf=")
+        .unwrap()
+        .to_owned();
+    let get = || {
+        request("GET", None)
+            .header(header::COOKIE, &session)
+            .body(Body::empty())
+            .unwrap()
+    };
+    let current = router.clone().oneshot(get()).await.unwrap();
+    assert_eq!(current.status(), StatusCode::OK);
+    let bytes = to_bytes(current.into_body(), 1024).await.unwrap();
+    assert_eq!(
+        serde_json::from_slice::<serde_json::Value>(&bytes).unwrap(),
+        serde_json::json!({"format":"bbsbox.local-session/v1","username":"admin","role":"sysop"})
+    );
+    let duplicate = request("GET", None)
+        .header(header::COOKIE, &session)
+        .header(header::COOKIE, &session)
+        .body(Body::empty())
+        .unwrap();
+    assert_eq!(
+        router.clone().oneshot(duplicate).await.unwrap().status(),
+        StatusCode::UNAUTHORIZED
+    );
+    let change = |method: &str, origin: &str, proof: &str| {
+        request(method, Some(origin))
+            .header(header::COOKIE, &session)
+            .header("x-bbsbox-csrf", proof)
+            .body(Body::empty())
+            .unwrap()
+    };
+    for (origin, proof) in [(&c.origin, csrf.clone()), (&local_origin, "0".repeat(64))] {
+        assert_eq!(
+            router
+                .clone()
+                .oneshot(change("DELETE", origin, &proof))
+                .await
+                .unwrap()
+                .status(),
+            StatusCode::FORBIDDEN
+        );
+    }
+    assert_eq!(
+        router
+            .clone()
+            .oneshot(change("PATCH", &local_origin, &csrf))
+            .await
+            .unwrap()
+            .status(),
+        StatusCode::NO_CONTENT
+    );
+    let response = router
+        .clone()
+        .oneshot(change("DELETE", &local_origin, &csrf))
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::NO_CONTENT);
+    assert_eq!(
+        response
+            .headers()
+            .get_all(header::SET_COOKIE)
+            .iter()
+            .filter(|cookie| cookie.to_str().unwrap().contains("Max-Age=0"))
+            .count(),
+        2
+    );
+    assert_eq!(
+        router.oneshot(get()).await.unwrap().status(),
+        StatusCode::UNAUTHORIZED
+    );
     runtime.shutdown().await.unwrap();
 }

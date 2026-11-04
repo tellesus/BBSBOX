@@ -26,6 +26,7 @@ pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + S
 pub mod cli;
 pub mod operator;
 pub mod release_operator;
+mod session;
 /// No filesystem, identity or listener is opened when reporting compiled compatibility.
 pub fn release_profile() -> bbsbox_maintenance::release_payload::RuntimeProfile {
     release_profile_for_registry(&migrations())
@@ -246,7 +247,7 @@ impl Runtime {
 async fn health(State(state): State<AppState>) -> Json<NodeInfo> {
     Json(state.info.as_ref().clone())
 }
-async fn policy(State(state): State<AppState>, request: Request, next: Next) -> Response {
+async fn policy(State(state): State<AppState>, mut request: Request, next: Next) -> Response {
     let authority = request.uri().authority().map(|a| a.as_str()).or_else(|| {
         request
             .headers()
@@ -258,17 +259,20 @@ async fn policy(State(state): State<AppState>, request: Request, next: Next) -> 
         .get_all(header::HOST)
         .iter()
         .any(|value| value.to_str().ok() != authority);
-    let known = authority.is_some_and(|value| state.authorities.iter().any(|a| a == value));
+    let known = authority.filter(|value| state.authorities.iter().any(|a| a == value));
     let invalid_scheme = request.uri().scheme_str().is_some_and(|s| s != "https");
-    let mut response = if conflicting_host || !known || invalid_scheme {
-        (
-            StatusCode::MISDIRECTED_REQUEST,
-            "Unknown local node address.",
-        )
-            .into_response()
-    } else {
-        next.run(request).await
-    };
+    let mut response =
+        if let Some(authority) = known.filter(|_| !conflicting_host && !invalid_scheme) {
+            let origin = session::RequestOrigin(format!("https://{authority}"));
+            request.extensions_mut().insert(origin);
+            next.run(request).await
+        } else {
+            (
+                StatusCode::MISDIRECTED_REQUEST,
+                "Unknown local node address.",
+            )
+                .into_response()
+        };
     let headers = response.headers_mut();
     headers.insert(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));
     headers.insert(header::CONTENT_SECURITY_POLICY,HeaderValue::from_static("default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"));
@@ -288,9 +292,9 @@ fn asset(content: &'static str, mime: &'static str) -> Response {
         .body(Body::from(content))
         .expect("fixed asset headers")
 }
-pub fn app(config: &Config, info: NodeInfo) -> Result<Router> {
+pub fn app(config: &Config, runtime: &Runtime) -> Result<Router> {
     let state = AppState {
-        info: Arc::new(info),
+        info: Arc::new(runtime.info().clone()),
         authorities: config.authorities()?.into(),
     };
     Ok(Router::new()
@@ -305,6 +309,7 @@ pub fn app(config: &Config, info: NodeInfo) -> Result<Router> {
             get(|| async { asset(include_str!("status.js"), "text/javascript; charset=utf-8") }),
         )
         .with_state(state.clone())
+        .merge(session::router(config, runtime.writer.handle())?)
         .layer(middleware::from_fn_with_state(state, policy)))
 }
 async fn stop_signal() -> Result<()> {
@@ -352,7 +357,7 @@ pub async fn serve_existing_with_registry(
         handles.push(handle);
     }
     let runtime = Runtime::start_existing_with_registry(&config, registry, expected).await?;
-    let router = app(&config, runtime.info().clone())?;
+    let router = app(&config, &runtime)?;
     let mut servers = tokio::task::JoinSet::new();
     for server in prepared {
         let service = router.clone().into_make_service();

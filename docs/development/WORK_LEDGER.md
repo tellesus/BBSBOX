@@ -1,6 +1,6 @@
 # Development work ledger
 
-Version 1.1.0 · 2026-10-25 · Locked roadmap. M01–M04 and M12 software providers Complete. M00 In progress. Other modules Unstarted. Execution updated 2026-11-03.
+Version 1.1.0 · 2026-10-25 · Locked roadmap. M01–M04 and M12 software providers Complete. M00 and M05 In progress. Other modules Unstarted. Execution updated 2026-11-03.
 
 Evidence log — not an independent source of scope authority. Current choices live in the canonical roadmap and user instructions.
 
@@ -14,7 +14,7 @@ Design review is complete and the first M00 prototype has real local implementat
 | [M03](modules/M03-identity-access.md) | Approved | Complete | A–C: 68 Windows/70 Linux workspace checks and independent vectors; CI 41172025063 passed | Consumers integrate current v2/legacy v1 profiles; native/HTTP/MLS gates remain downstream |
 | [M04](modules/M04-signed-events.md) | Approved | Complete | A–C: 15 codec/33 core tests, independent vectors, all 120 arrival orders; CI 41245899257 passed | Feature modules prove actual policies/views; M13/M15/M16 complete AC07 integration |
 | [M12](modules/M12-maintenance-recovery.md) | Approved | Complete | A–C: Debian signed install/update/rollback, fresh recovery, scheduled backup and retention; CI 41718200103 | Begin M05 A. M11 owns real game adapter acceptance. G1 physical tests remain |
-| [M05](modules/M05-interface-themes.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
+| [M05](modules/M05-interface-themes.md) | Approved | In progress | A: private SysOp bootstrap and local session transport pass Windows router/HTTPS checks | Connect the landing and sign-in UI to the session API |
 | [M06](modules/M06-boards-mail.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
 | [M07](modules/M07-directory-profiles.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
 | [M08](modules/M08-friends-events.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
@@ -500,3 +500,9 @@ The [fresh-recovery retry](https://github.com/tellesus/BBSBOX/actions/runs/41715
 M12 closes as a software provider at brief 1.1.22. M11 still integrates actual game workers, and device acceptance remains at G1. If fresh install or recovery stops after admission, keep the pending record for inspection and retry on fresh media. Signed in-place update and recorded rollback have their own resumable paths. The product baseline and shared schemas are unchanged.
 
 Next is M05 A. A local SvelteKit experiment prerendered landing and sign-in pages with an external stylesheet under the node's current security policy. Edge exercised the keyboard route and black default at 360 pixels with the browser set to light mode. A fresh offline npm cache seeded with lockfile-verified tarballs reproduced both HTML pages byte for byte. The experiment did not attach accounts or replace the running node's pages.
+
+## 2026-11-03 — M05 A: local SysOp setup and HTTP sessions
+
+Sources R01/R02/R03/R06/P03/AC03, T03/T07, roadmap 1.1.0 and product 0.6.0. The private CLI bootstraps the first SysOp through a bounded password pipe on an initialized, stopped node. It reuses M03 password handling and the exclusive M02 writer. The local HTTPS API signs in, reads, refreshes and revokes browser sessions. Origin checks bind each mutation to its exact configured address, including on a node with multiple aliases. The node shares one boot session state and cooldown across those aliases. Host-only cookies, CSRF proofs and session state use the existing M03 implementation.
+
+Windows router tests passed cold-only setup, repeat refusal, exact-origin enforcement, cookie and CSRF checks, refresh and revocation. The local real-process smoke passed IPv4/IPv6 TLS, sign-in, session expiry on restart and sign-out. Linux evidence awaits the containing run. The HTTP reference advances to 0.2.0, with existing public node status and shared data schemas intact. Next attach the landing/sign-in pages. Defer visual polish per the user, with theme controls in slice B and phone testing at G1.

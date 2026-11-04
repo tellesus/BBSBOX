@@ -2,9 +2,26 @@
 
 Implementation reference for [M01](../../docs/development/modules/M01-offline-appliance.md) and [C01](../../docs/development/contracts/C01-storage-runtime.md). Product canon remains the roadmap and current user instructions. M01 is complete as a software provider; [deployment evidence](../../deploy/README.md) covers actual Debian installation, network provisioning and B/C lifecycle checks. Physical router/radio/phone acceptance remains G1.
 
-`bbsbox-node --config <node.json>` starts the real M02 single writer with M03 identity and M04 event migrations, activates the node signer, and serves bundled status assets plus `/api/v1/node` over TLS. Node identity survives restart; restored recovery-marked storage cannot activate. The runtime retains the signing capability privately. Its read-only public status exposes format/name/node ID/software version/readiness, with no private state or account provisioning endpoint. M05 owns the community shell/authentication routes.
+`bbsbox-node --config <node.json>` starts the M02 single writer with M03 identity and M04 event migrations, activates the node signer, and serves bundled status assets and local account sessions over TLS. Node identity survives restart. Recovery-marked storage stays blocked. The runtime keeps signing capability private. Public `/api/v1/node` reports format, name, node ID, software version and readiness.
 
-[The OpenAPI contract](../../protocol/http/node-runtime.openapi.json) describes that versioned status response; its required fields are checked against the actual route response.
+[The OpenAPI contract](../../protocol/http/node-runtime.openapi.json) describes public status and local account sessions.
+
+## Local account access
+
+On the Debian appliance, stop `bbsbox.service` and run first-account setup as the existing `bbsbox` service user. Supply the password as one UTF-8 line through a private stdin pipe. The example reads the password from the terminal with echo disabled.
+
+```sh
+sudo -v
+sudo systemctl stop bbsbox.service
+python3 -c 'import getpass; print(getpass.getpass())' | \
+  sudo -n -u bbsbox /opt/bbsbox/current/bbsbox-node \
+    --config /etc/bbsbox/node.json --bootstrap-sysop admin
+sudo systemctl start bbsbox.service
+```
+
+Setup is available only on an existing initialized node, uses its exclusive writer and succeeds once. Keep passwords out of shell arguments and history. Restart the service after setup or a failed setup attempt.
+
+`POST /api/v1/session` accepts the username and password in JSON. It sets the host-only session and CSRF cookies after commit. `GET` reads the current account. `PATCH` records activity and `DELETE` revokes the session. Both require the value of `__Host-bbsbox_csrf` in `X-BBSBOX-CSRF`. All three mutations require an `Origin` that exactly matches the addressed HTTPS origin. Node aliases share cooldown and boot state. Restart expires existing sessions. M05 will attach the landing and sign-in pages to these endpoints.
 
 ## Local verification
 
@@ -33,7 +50,7 @@ The existing independently tested M00 syscall auditor requires actual listener/a
 
 [The example](../../deploy/node.example.json) uses explicit loopback port 8443. Config format `bbsbox.node-config/v1` is bounded to 64 KiB, rejects unknown fields, and requires distinct absolute database/certificate/key paths. Listener addresses must be literal loopback/private/link-local addresses on an unprivileged port; wildcard/public binds fail. Optional `additional_binds` admits up to eight unique additional addresses on that same port, supporting simultaneous IPv4/IPv6. Every listener binds successfully before HTTP activation; stop/error drains all listeners and the shared writer.
 
-The primary `origin` and up to eight optional `additional_origins` must be unique bare HTTPS origins on the listening port. Existing configuration without either additional field remains valid. Requests must match one exact configured authority; conflicting Host/URI addresses are rejected even when both are configured aliases. TLS material must cover each advertised address and parse before storage/listener startup. The bundled status page uses self-hosted CSS/JavaScript, text-only DOM assignment, dark colors on black and a restrictive content policy. The server performs no DNS lookup, time synchronization, ACME request, update fetch or telemetry. M05 must enforce origin/session policy on its eventual account routes; address aliases alone grant no account access.
+The primary `origin` and up to eight optional `additional_origins` must be unique bare HTTPS origins on the listening port. Existing configuration without either additional field remains valid. Requests must match one exact configured authority. The runtime rejects conflicting Host/URI addresses even when both are configured aliases. TLS material must cover each advertised address and parse before storage/listener startup. The bundled status page uses self-hosted CSS/JavaScript, text-only DOM assignment, dark colors on black and a restrictive content policy. The server performs no DNS lookup, time synchronization, ACME request, update fetch or telemetry.
 
 [The systemd unit](../../deploy/systemd/bbsbox.service) uses the `/opt/bbsbox/current`, `/etc/bbsbox` and `/var/lib/bbsbox` layout, unprivileged user, private state and a 20-second service stop bound around the runtime's 10-second connection drain. Install/user creation/TLS ownership and actual unit execution/restarts/reboots pass the Debian fixture. M12 owns signed release/update and coordinated recovery activation.
 

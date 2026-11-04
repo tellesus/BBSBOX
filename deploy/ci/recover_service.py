@@ -73,7 +73,7 @@ def exercise(source,fixture,verifier,root,output):
     assert ticket['source']=='lost' and ticket['minimum_sequence']==5 and ticket['inventory_sha256']==plan['snapshot']
     assert candidate.materials.file_digest(root/'etc/bbsbox/maintenance/recovery.cose')==ticket['decision_sha256']
     with closing(sqlite3.connect('file:'+str(root/'var/lib/bbsbox/node.sqlite')+'?mode=ro',uri=True)) as database:
-        assert database.execute('SELECT count(*) FROM core_migrations').fetchone()[0]==23
+        assert database.execute('SELECT count(*) FROM core_migrations').fetchone()[0]==24
         assert database.execute("SELECT count(*) FROM core_command_receipts WHERE command_id='same-id' AND response=?",(b'kept',)).fetchone()[0]==2
         assert database.execute('SELECT count(*) FROM events_upgrade_receipts').fetchone()[0]==2
         assert database.execute('SELECT revision, background FROM settings_theme WHERE id=1').fetchone()==(1,'#111111')

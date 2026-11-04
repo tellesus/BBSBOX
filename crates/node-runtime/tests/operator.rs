@@ -70,7 +70,14 @@ fn known_foundation_backup_can_recover_before_the_theme_migration() {
     previous.retain(|migration| {
         !matches!(
             migration.module,
-            "settings" | "discussions" | "mail" | "profiles" | "social" | "gatherings" | "groups"
+            "settings"
+                | "discussions"
+                | "mail"
+                | "profiles"
+                | "social"
+                | "gatherings"
+                | "groups"
+                | "files"
         )
     });
     let fixture = Fixture::with_registry(&previous);
@@ -439,6 +446,60 @@ fn local_operator_round_trip_keeps_identity_configuration_and_restore_block() {
             Ok::<_, bbsbox_groups::Error>(group)
         })
         .unwrap();
+    let file = bbsbox_files::FileId::generate();
+    database
+        .write(bbsbox_storage::disk::Class::Control, 65536, |tx| {
+            bbsbox_files::configure(
+                tx,
+                "staff",
+                author.id,
+                None,
+                &bbsbox_files::Policy {
+                    title: "Staff files".into(),
+                    download: bbsbox_files::Access::Sysops,
+                    upload: bbsbox_files::Access::Sysops,
+                    quota: 1024 * 1024,
+                },
+            )
+        })
+        .unwrap();
+    let blob = bbsbox_storage::blobs::Info {
+        digest: "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824".into(),
+        size: 5,
+    };
+    database
+        .transaction_blob_checked(
+            bbsbox_storage::blobs::BlobCommand {
+                command: bbsbox_storage::Command {
+                    namespace: "test/files",
+                    id: "one",
+                    request: b"fixture",
+                },
+                namespace: bbsbox_files::BLOB_NAMESPACE,
+                key: &file.to_string(),
+                expected: &blob,
+            },
+            &b"hello"[..],
+            |tx| {
+                bbsbox_files::allow_upload(tx, "staff", author.id)?;
+                Ok::<_, bbsbox_files::Error>(author.id)
+            },
+            |tx, actor, info| {
+                bbsbox_files::publish(
+                    tx,
+                    actor,
+                    bbsbox_files::Upload {
+                        id: file,
+                        area: "staff",
+                        filename: "hello.txt",
+                        media_type: "text/plain",
+                    },
+                    info,
+                )?;
+                Ok(Vec::new())
+            },
+        )
+        .unwrap();
     drop(database);
     let secret = f.root.join("operator.key");
     let generated = operator::keygen(&secret).unwrap();
@@ -505,6 +566,27 @@ fn local_operator_round_trip_keeps_identity_configuration_and_restore_block() {
     assert!(!restored_group.group.details.public_roster);
     assert_eq!(restored_group.roster.unwrap().len(), 2);
     drop(tx);
+    let entry = bbsbox_files::get(&reader, file, author.id).unwrap();
+    assert_eq!(entry.filename, "hello.txt");
+    assert_eq!(entry.digest, blob.digest);
+    assert_eq!(
+        fs::read(
+            target
+                .join("data/node.sqlite.blobs/data")
+                .join(&blob.digest)
+        )
+        .unwrap(),
+        b"hello"
+    );
+    assert!(matches!(
+        bbsbox_files::get(&reader, file, member.id),
+        Err(bbsbox_files::Error::Missing)
+    ));
+    assert!(
+        bbsbox_event_core::integration::accepted(&reader, "files", None, 16)
+            .unwrap()
+            .is_empty()
+    );
     drop(reader);
     assert_eq!(
         fs::read(target.join("configuration/tls/ca-key.pem")).unwrap(),

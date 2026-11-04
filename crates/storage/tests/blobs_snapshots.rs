@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 use bbsbox_storage::{
     Command, Database, Error, Migration,
-    blobs::{remove_reference, set_reference},
+    blobs::{BlobCommand, Info, remove_reference, set_reference},
     disk::{Budget, Class, SpaceProbe},
     jobs::{JobSpec, Retry},
     open_reader, snapshot,
@@ -99,6 +99,78 @@ fn blobs_deduplicate_and_only_explicitly_released_references_can_be_collected() 
         db.get_blob("../node.sqlite"),
         Err(Error::InvalidBlob)
     ));
+}
+
+#[test]
+fn checked_blob_command_commits_feature_metadata_reference_and_receipt_together() {
+    struct NeverRead;
+    impl Read for NeverRead {
+        fn read(&mut self, _: &mut [u8]) -> io::Result<usize> {
+            panic!("checked replay or refusal read bytes")
+        }
+    }
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("node.sqlite");
+    let mut db = Database::open(&path, &migrations()).unwrap();
+    let info = Info {
+        digest: "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824".into(),
+        size: 5,
+    };
+    let input = || BlobCommand {
+        command: command("atomic"),
+        namespace: "files",
+        key: "entry",
+        expected: &info,
+    };
+    let denied = db.transaction_blob_checked(
+        input(),
+        NeverRead,
+        |_| Err(Error::InvalidBlob),
+        |_, (), _| unreachable!(),
+    );
+    assert!(matches!(denied, Err(Error::InvalidBlob)));
+    let invalid =
+        db.transaction_blob_checked(input(), &b"wrong"[..], |_| Ok(()), |_, _, _| unreachable!());
+    assert!(matches!(invalid, Err(Error::CorruptBlob)));
+    let failed = db.transaction_blob_checked(
+        input(),
+        &b"hello"[..],
+        |_| Ok(()),
+        |tx, _, _| {
+            tx.execute("INSERT INTO fixture_values VALUES(1)", [])?;
+            Err(Error::InvalidBlob)
+        },
+    );
+    assert!(matches!(failed, Err(Error::InvalidBlob)));
+    assert_eq!(count(&path, "core_blobs"), 0);
+    assert_eq!(count(&path, "core_blob_refs"), 0);
+    assert_eq!(count(&path, "fixture_values"), 0);
+    assert_eq!(db.recover_blob_orphans(64).unwrap(), 0);
+    let accepted = db
+        .transaction_blob_checked(
+            input(),
+            &b"hello"[..],
+            |_| Ok(()),
+            |tx, _, _| {
+                tx.execute("INSERT INTO fixture_values VALUES(1)", [])?;
+                Ok::<_, Error>(b"file-accepted".to_vec())
+            },
+        )
+        .unwrap();
+    let replayed = db
+        .transaction_blob_checked(
+            input(),
+            NeverRead,
+            |_| Ok(()),
+            |_, _, _| -> Result<_, Error> { unreachable!() },
+        )
+        .unwrap();
+    assert!(!accepted.replayed);
+    assert!(replayed.replayed);
+    assert_eq!(accepted.bytes, replayed.bytes);
+    assert_eq!(count(&path, "core_blob_refs"), 1);
+    assert_eq!(count(&path, "fixture_values"), 1);
+    assert_eq!(read(db.get_blob(&info.digest).unwrap()), b"hello");
 }
 struct FailingReader(bool);
 impl Read for FailingReader {

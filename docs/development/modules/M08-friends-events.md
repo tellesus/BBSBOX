@@ -1,8 +1,8 @@
 # M08 — Chosen feeds, gatherings and invitations
 
-Brief revision 1.1.5 · 2026-11-03 · Roadmap baseline 1.1.0 · Product baseline 0.6.0.
+Brief revision 1.1.6 · 2026-11-04 · Roadmap baseline 1.1.0 · Product baseline 0.6.0.
 
-**State:** In progress. A–C pass locally. Signed Debian confirmation is pending for the full module.
+**State:** Complete for the software provider. A–C pass local HTTPS and signed Debian CI.
 
 ## Read only this packet
 

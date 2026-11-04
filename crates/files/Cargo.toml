@@ -1,0 +1,13 @@
+[package]
+name = "bbsbox-files"
+version = "0.1.0"
+edition = "2024"
+license = "AGPL-3.0-or-later"
+publish = false
+
+[dependencies]
+bbsbox-identity = { path = "../identity" }
+bbsbox-storage = { path = "../storage" }
+hex = "0.4"
+rand_core = { version = "0.6", features = ["getrandom"] }
+rusqlite = "0.41"

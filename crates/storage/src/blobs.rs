@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Content-addressed local bytes. Only the storage writer mutates this directory.
-use crate::{Database, Error, Result, disk::Class, valid_key};
+use crate::{
+    Command, Database, Error, Receipt, Result,
+    disk::{Admission, Class},
+    valid_key,
+};
 use rusqlite::{OptionalExtension, Transaction, params};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -108,20 +112,20 @@ pub fn remove_reference(tx: &Transaction<'_>, namespace: &str, key: &str) -> Res
         [namespace, key],
     )? == 1)
 }
-impl Database {
-    /// Stream a bounded upload, finalize bytes, then commit metadata and its protecting reference.
-    pub fn put_blob(&mut self, namespace: &str, key: &str, mut source: impl Read) -> Result<Info> {
-        if !valid_key(namespace) || !valid_key(key) {
-            return Err(Error::InvalidBlob);
-        }
-        self.admit(Class::Content, 65536)?;
-        let root = root(&self.path);
-        let data = root.join("data");
-        let staging = root.join("staging");
+struct BlobStage {
+    root: PathBuf,
+    admission: Admission,
+}
+
+impl BlobStage {
+    fn finalize(&self, mut source: impl Read, created: &mut Option<String>) -> Result<Info> {
+        self.admission.check(65536)?;
+        let data = self.root.join("data");
+        let staging = self.root.join("staging");
         create_private_directory(&data, true)?;
         create_private_directory(&staging, true)?;
-        sync_directory(self.directory())?;
-        sync_directory(&root)?;
+        sync_directory(&self.admission.path)?;
+        sync_directory(&self.root)?;
         let mut temporary = tempfile::NamedTempFile::new_in(&staging)?;
         let mut hash = Sha256::new();
         let mut size = 0u64;
@@ -132,10 +136,10 @@ impl Database {
                 break;
             }
             size = size.checked_add(count as u64).ok_or(Error::BlobTooLarge)?;
-            if size > self.budget.max_blob_bytes {
+            if size > self.admission.budget.max_blob_bytes {
                 return Err(Error::BlobTooLarge);
             }
-            self.admit(Class::Content, count as u64 + 65536)?;
+            self.admission.check(count as u64 + 65536)?;
             temporary.write_all(&buffer[..count])?;
             hash.update(&buffer[..count]);
         }
@@ -151,30 +155,110 @@ impl Database {
             temporary
                 .persist_noclobber(&destination)
                 .map_err(|error| Error::Io(error.error))?;
+            *created = Some(info.digest.clone());
             sync_directory(&data)?;
         }
+        Ok(info)
+    }
+}
+
+fn register(tx: &Transaction<'_>, namespace: &str, key: &str, info: &Info) -> Result<()> {
+    let old: Option<u64> = tx
+        .query_row(
+            "SELECT size FROM core_blobs WHERE digest=?1",
+            [&info.digest],
+            |r| read_size(r, 0),
+        )
+        .optional()?;
+    if old.is_some_and(|old| old != info.size) {
+        return Err(Error::CorruptBlob);
+    }
+    tx.execute(
+        "INSERT OR IGNORE INTO core_blobs VALUES(?1,?2)",
+        params![info.digest, info.size as i64],
+    )?;
+    set_reference(tx, namespace, key, &info.digest)
+}
+
+pub struct BlobCommand<'a> {
+    pub command: Command<'a>,
+    pub namespace: &'a str,
+    pub key: &'a str,
+    pub expected: &'a Info,
+}
+
+impl Database {
+    fn blob_stage(&self) -> BlobStage {
+        BlobStage {
+            root: root(&self.path),
+            admission: self.admission(Class::Content),
+        }
+    }
+
+    /// Stream a bounded upload, finalize bytes, then commit metadata and its protecting reference.
+    pub fn put_blob(&mut self, namespace: &str, key: &str, source: impl Read) -> Result<Info> {
+        if !valid_key(namespace) || !valid_key(key) {
+            return Err(Error::InvalidBlob);
+        }
+        let info = self.blob_stage().finalize(source, &mut None)?;
         self.admit(Class::Content, 65536)?;
         let directory = self.directory().to_owned();
         let tx = self.connection.transaction()?;
-        let old: Option<u64> = tx
-            .query_row(
-                "SELECT size FROM core_blobs WHERE digest=?1",
-                [&info.digest],
-                |r| read_size(r, 0),
-            )
-            .optional()?;
-        if old.is_some_and(|old| old != info.size) {
-            return Err(Error::CorruptBlob);
-        }
-        tx.execute(
-            "INSERT OR IGNORE INTO core_blobs VALUES(?1,?2)",
-            params![info.digest, info.size as i64],
-        )?;
-        set_reference(&tx, namespace, key, &info.digest)?;
+        register(&tx, namespace, key, &info)?;
         self.budget
             .admit(self.space.as_ref(), &directory, Class::Content, 0)?;
         tx.commit()?;
         Ok(info)
+    }
+
+    /// Finalize a verified spool only for a new authorized command. The reference, feature
+    /// metadata and receipt become durable together. A crash can leave an unregistered file.
+    pub fn transaction_blob_checked<A, E: From<Error>>(
+        &mut self,
+        input: BlobCommand<'_>,
+        source: impl Read,
+        authorize: impl FnOnce(&Transaction<'_>) -> std::result::Result<A, E>,
+        work: impl FnOnce(&Transaction<'_>, A, &Info) -> std::result::Result<Vec<u8>, E>,
+    ) -> std::result::Result<Receipt, E> {
+        if !valid_key(input.namespace)
+            || !valid_key(input.key)
+            || !valid_digest(&input.expected.digest)
+        {
+            return Err(Error::InvalidBlob.into());
+        }
+        let stage = self.blob_stage();
+        let mut created = None;
+        let result = self.transaction_service_checked(
+            input.command,
+            Class::Content,
+            65536,
+            authorize,
+            |tx, actor| {
+                let info = stage.finalize(source, &mut created)?;
+                if &info != input.expected {
+                    return Err(Error::CorruptBlob.into());
+                }
+                register(tx, input.namespace, input.key, &info)?;
+                work(tx, actor, &info)
+            },
+        );
+        if result.is_err()
+            && let Some(digest) = created
+        {
+            let registered = self.connection.query_row(
+                "SELECT EXISTS(SELECT 1 FROM core_blobs WHERE digest=?1)",
+                [&digest],
+                |row| row.get::<_, bool>(0),
+            );
+            // Keep the original command error. Startup orphan recovery covers failed cleanup.
+            if matches!(registered, Ok(false)) {
+                let directory = stage.root.join("data");
+                if fs::remove_file(directory.join(digest)).is_ok() {
+                    let _ = sync_directory(&directory);
+                }
+            }
+        }
+        result
     }
     pub fn get_blob(&self, digest: &str) -> Result<File> {
         if !valid_digest(digest) {

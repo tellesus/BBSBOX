@@ -14,6 +14,7 @@ const pages = [
   ['feeds/index.html', 'feeds.html', ['FEED_TITLE', 'FEED_CONTENT']],
   ['events/index.html', 'events.html', ['EVENTS_TITLE', 'EVENTS_CONTENT']],
   ['groups/index.html', 'groups.html', ['GROUPS_TITLE', 'GROUPS_CONTENT']],
+  ['files/index.html', 'files.html', ['FILES_TITLE', 'FILES_CONTENT']],
   ['unavailable/index.html', 'unavailable.html', ['PAGE_TITLE', 'PAGE_MESSAGE']]
 ];
 

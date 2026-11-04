@@ -176,6 +176,7 @@ pub fn migrations() -> Vec<Migration> {
     migrations.extend(bbsbox_social::migrations());
     migrations.extend(bbsbox_gatherings::migrations());
     migrations.extend(bbsbox_groups::migrations());
+    migrations.extend(bbsbox_files::migrations());
     migrations
 }
 #[derive(Clone, Serialize)]
@@ -224,9 +225,18 @@ impl Runtime {
         let writer = Writer::start(&config.database, registry, WriterConfig::default())?;
         let signer = writer
             .handle()
-            .submit_service(Priority::Interactive, move |database| match expected {
-                Some(node) => NodeSigner::start_existing(database, node),
-                None => NodeSigner::start(database),
+            .submit_service(Priority::Interactive, move |database| {
+                let signer = match expected {
+                    Some(node) => NodeSigner::start_existing(database, node),
+                    None => NodeSigner::start(database),
+                }?;
+                if let Err(error) = database
+                    .collect_blobs(64)
+                    .and_then(|_| database.recover_blob_orphans(64))
+                {
+                    eprintln!("Local blob cleanup will be retried at startup: {error}");
+                }
+                Ok::<_, bbsbox_identity::Error>(signer)
             })?
             .wait()
             .await?;

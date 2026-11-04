@@ -31,6 +31,7 @@ const SHELL_STATE: &str = include_str!("../../../../web/shell/static/shell-state
 mod accounts;
 mod discussions;
 pub(super) mod feeds;
+mod files;
 pub(super) mod gatherings;
 mod groups;
 mod mail;
@@ -51,6 +52,7 @@ pub(super) fn routes() -> Router<Sessions> {
         .merge(accounts::routes())
         .merge(discussions::routes())
         .merge(feeds::routes())
+        .merge(files::routes())
         .merge(gatherings::routes())
         .merge(groups::routes())
         .merge(mail::routes())
@@ -85,6 +87,7 @@ fn template(state: &Sessions, mut source: &str, slots: &[(&str, &str)]) -> Strin
             body.push_str("<a href=\"/feeds/\">Feed</a>");
             body.push_str("<a href=\"/events/\">Events</a>");
             body.push_str("<a href=\"/groups/\">Groups</a>");
+            body.push_str("<a href=\"/files/\">Files</a>");
         } else {
             body.push_str(
                 slots
@@ -128,13 +131,17 @@ async fn form_access(
 }
 
 fn form(content: &mut String, action: &str, csrf: &str, label: &str, fields: &str) {
-    let mut request = [0; 16];
-    OsRng.fill_bytes(&mut request);
-    let request = hex::encode(request);
+    let request = command_nonce();
     let _ = write!(
         content,
         "<h2>{label}</h2><form action=\"{action}\" method=\"post\"><input type=\"hidden\" name=\"csrf\" value=\"{csrf}\"><input type=\"hidden\" name=\"request\" value=\"{request}\">{fields}<button type=\"submit\">{label}</button></form>"
     );
+}
+
+fn command_nonce() -> String {
+    let mut request = [0; 16];
+    OsRng.fill_bytes(&mut request);
+    hex::encode(request)
 }
 
 fn html(status: StatusCode, body: String) -> Response {

@@ -1,6 +1,6 @@
 # Development work ledger
 
-Version 1.1.0 · 2026-10-25 · Locked roadmap. M01–M07 and M12 software providers Complete. M00, M08 and M09 In progress. Other modules Unstarted. Execution updated 2026-11-04.
+Version 1.1.0 · 2026-10-25 · Locked roadmap. M01–M08 and M12 software providers Complete. M00, M09 and M10 In progress. Other modules Unstarted. Execution updated 2026-11-04.
 
 Evidence log — not an independent source of scope authority. Current choices live in the canonical roadmap and user instructions.
 
@@ -17,9 +17,9 @@ Design review is complete and the first M00 prototype has real local implementat
 | [M05](modules/M05-interface-themes.md) | Approved | Complete | A–C: local HTTPS, Edge, signed Debian install/rebuild and settings restore; CI 41751474936 | Integrate real feature navigation, visual review and G1 device checks |
 | [M06](modules/M06-boards-mail.md) | Approved | Complete | A–C: signed discussions and participant-restricted mail pass Debian CI 41769646693 | G1 device checks and later complaint integration |
 | [M07](modules/M07-directory-profiles.md) | Approved | Complete | A–C: directory, profile privacy and component hooks pass signed Debian CI 41770621736 | Bind live providers in their owning modules |
-| [M08](modules/M08-friends-events.md) | Approved | In progress | A–C: feed, friendship, events, invitations and calendar pass local HTTPS | Confirm full signed Debian run |
+| [M08](modules/M08-friends-events.md) | Approved | Complete | A–C: local feeds, friendships, events, invitations and calendar pass signed Debian CI 41808835341 | Promote verified commit when GitHub branch update succeeds |
 | [M09](modules/M09-clans-cohorts.md) | Approved | In progress | A–C: roster privacy, invitations, handover and game membership lookup pass locally | Confirm signed Debian. Bind games in M11/M18 |
-| [M10](modules/M10-local-files.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
+| [M10](modules/M10-local-files.md) | Approved | In progress | A–C: local permissions, streaming, quota and restore tests pass | Confirm signed Debian. M15/M16 own actual exchange tests |
 | [M11](modules/M11-local-games.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
 | [M13](modules/M13-encrypted-forums.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
 | [M14](modules/M14-complaints-moderation.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
@@ -602,3 +602,11 @@ IPv4 and IPv6 HTTPS create both types, verify duplicate submission, change roste
 Groups migration 2 records pending invitations, membership revisions and dissolved groups. Acceptance binds the displayed roster policy. Members can leave, and managers can appoint another manager or hand over their own role. A sole active manager must hand over or dissolve. Dissolution hides the group and closes its pending invitations while preserving its stored identity.
 
 Local IPv4 and IPv6 HTTPS check member consent, a private roster before acceptance, the last-manager guard, handover and voluntary departure. Fixtures refuse a stale joining notice and check that the typed game lookup returns only active membership on the group's own node. The encrypted recovery test preserves membership and roster policy. Signed Debian confirmation is pending. M11/M18 own real game bindings.
+
+## 2026-11-04 — M08 signed confirmation and M10 file library
+
+[Signed Debian CI](https://github.com/tellesus/BBSBOX/actions/runs/41808835341) passed for the full M08 provider at `e02224c`. G1 device acceptance remains pending. The verified commits remain on the development branch while GitHub's default-branch update returns errors.
+
+Files migration 1 adds area permissions, quota accounting and local file entries. The browser streams uploads to a private disk spool. The storage writer rechecks access, verifies the staged bytes and publishes the file entry, blob reference and retry receipt in one transaction. Downloads require current area access and use attachment headers. Owners and SysOps can remove permitted files. Cleanup follows the reference and recovery rules in C01.
+
+Local IPv4 and IPv6 HTTPS verify member upload/download permission, denial for a SysOp-only area, interrupted multipart submission, duplicate upload, quota refusal, a UTF-8 attachment filename and removal. Storage tests verify rollback and orphan cleanup. Encrypted restore preserves the bytes and area permissions. The local event inventory contains no file-library events. M15/M16 own real exchange exclusion tests. Signed Debian confirmation is pending.

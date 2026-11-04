@@ -8,6 +8,7 @@ import json
 import os
 from pathlib import Path
 import re
+import secrets
 import signal
 import socket
 import ssl
@@ -170,7 +171,7 @@ def exercise(binary, state_root, host, isolated):
                         updated = response.read().decode()
                         assert 'Neighbors &lt;welcome&gt;' in updated and '&lt;text art&gt;' in updated
                         menu = updated.split('<nav aria-label="Main">', 1)[1].split('</nav>', 1)[0]
-                        assert re.findall(r'<a href="([^"]+)"', menu) == ['/status/', '/', '/account/', '/discussions/', '/mail/', '/directory/', '/feeds/', '/events/', '/groups/']
+                        assert re.findall(r'<a href="([^"]+)"', menu) == ['/status/', '/', '/account/', '/discussions/', '/mail/', '/directory/', '/feeds/', '/events/', '/groups/', '/files/']
                     def discussion_proof(page):
                         return {key: re.search(r'name="'+key+r'" value="([0-9a-f]+)"', page).group(1) for key in ['csrf', 'request']}
                     def submit(path, fields):
@@ -649,6 +650,92 @@ def exercise(binary, state_root, host, isolated):
                     with request(cohort_path) as response:
                         new_manager = response.read().decode()
                         assert 'Edit group' in new_manager and '/directory/other/' not in new_manager
+                    sign_out()
+                    sign_in('operator', password.decode())
+                    def create_area(slug, title, download, upload):
+                        with request('/files/new/') as response:
+                            proof = discussion_proof(response.read().decode())
+                        with submit('/files/new/', dict(proof, slug=slug, title=title, download=download, upload=upload, quota=1)) as response:
+                            return urllib.parse.urlsplit(response.geturl()).path, response.read().decode()
+
+                    shared_area, shared_page = create_area('share', 'Shared files', 'member', 'sysop')
+                    closed_area, closed_page = create_area('staff', 'Staff files', 'sysop', 'sysop')
+                    def upload(path, proof, name, data, finish=True):
+                        boundary = b'bbsbox-fixture-upload'
+                        body = b''
+                        for key in ('csrf', 'request'):
+                            body += b'--'+boundary+b'\r\nContent-Disposition: form-data; name="'+key.encode()+b'"\r\n\r\n'+proof[key].encode()+b'\r\n'
+                        body += b'--'+boundary+b'\r\nContent-Disposition: form-data; name="file"; filename="'+name.encode()+b'"\r\nContent-Type: text/html\r\n\r\n'+data
+                        if finish:
+                            body += b'\r\n--'+boundary+b'--\r\n'
+                        return request(path+'upload/', 'POST', {'Origin': origin, 'Content-Type': 'multipart/form-data; boundary='+boundary.decode()}, body)
+
+                    with upload(closed_area, discussion_proof(closed_page), 'staff.html', b'Private fixture content') as response:
+                        private_file = re.search(r'href="(/files/download/[0-9a-f]{32}/)"', response.read().decode()).group(1)
+                    sign_out()
+                    sign_in(member['username'], member['password'])
+                    with request('/files/') as response:
+                        available_areas = response.read()
+                        assert b'Shared files' in available_areas and b'Staff files' not in available_areas
+                    with request(shared_area) as response:
+                        assert b'Upload a file' not in response.read()
+                    csrf = next(cookie.value for cookie in cookies if cookie.name == '__Host-bbsbox_csrf')
+                    try:
+                        upload(shared_area, dict(csrf=csrf, request=secrets.token_hex(16)), 'denied.html', b'denied')
+                        raise AssertionError('Member could upload without area permission')
+                    except urllib.error.HTTPError as error:
+                        assert error.code == 403
+                    try:
+                        request(private_file)
+                        raise AssertionError('Member could download a SysOp-only file')
+                    except urllib.error.HTTPError as error:
+                        assert error.code == 404
+                    sign_out()
+                    sign_in('operator', password.decode())
+                    with request(shared_area+'settings/') as response:
+                        file_editor = response.read().decode()
+                    revision = re.search(r'name="revision" value="([0-9]+)"', file_editor).group(1)
+                    with submit(shared_area+'settings/', dict(discussion_proof(file_editor), revision=revision, title='Shared files', download='member', upload='member', quota=1)) as response:
+                        assert response.geturl().endswith(shared_area)
+                    sign_out()
+                    sign_in(member['username'], member['password'])
+                    with request(shared_area) as response:
+                        upload_form = discussion_proof(response.read().decode())
+                    try:
+                        upload(shared_area, upload_form, 'interrupted.html', b'partial content', finish=False)
+                        raise AssertionError('Incomplete multipart upload was accepted')
+                    except urllib.error.HTTPError as error:
+                        assert error.code == 400
+                    payload = b'<script>raw attachment</script>' + b'a' * 196608
+                    with upload(shared_area, upload_form, 'sheet-å.html', payload) as response:
+                        listing = response.read().decode()
+                        file_path = re.search(r'href="(/files/download/[0-9a-f]{32}/)"', listing).group(1)
+                    with upload(shared_area, upload_form, 'sheet-å.html', payload) as response:
+                        assert response.read().decode().count('sheet-å.html') == 1
+                    with request(file_path) as response:
+                        assert response.headers['Content-Type'] == 'application/octet-stream'
+                        assert response.headers['Content-Disposition'].startswith('attachment;')
+                        assert "filename*=UTF-8''sheet-%C3%A5.html" in response.headers['Content-Disposition']
+                        assert response.headers['Cache-Control'] == 'no-store'
+                        assert int(response.headers['Content-Length']) == len(payload)
+                        assert response.read() == payload
+                    fresh_upload = discussion_proof(listing)
+                    try:
+                        upload(shared_area, fresh_upload, 'over-quota.html', b'z' * 1048576)
+                        raise AssertionError('An over-quota file was published')
+                    except urllib.error.HTTPError as error:
+                        assert error.code == 507
+                    remove_path = file_path.replace('/download/', '/remove/')
+                    remove_form = listing.split(f'<form action="{remove_path}"', 1)[1].split('</form>', 1)[0]
+                    with submit(remove_path, discussion_proof(remove_form)) as response:
+                        empty = response.read()
+                        assert b'No files to show.' in empty
+                        assert b'interrupted.html' not in empty and b'over-quota.html' not in empty
+                    try:
+                        request(file_path)
+                        raise AssertionError('Removed file remained downloadable')
+                    except urllib.error.HTTPError as error:
+                        assert error.code == 404
                 # A new client without the local CA must fail certificate verification.
                 untrusted = urllib.request.build_opener(urllib.request.ProxyHandler({}), urllib.request.HTTPSHandler(context=ssl.create_default_context()))
                 try:
@@ -677,7 +764,7 @@ def exercise(binary, state_root, host, isolated):
                 text = trace.read_text(encoding='utf-8')
                 traces.append(audit.audit_trace(text))
                 (state_root/f'runtime-{"ipv6" if family == socket.AF_INET6 else "ipv4"}-{attempt}.trace').write_text(text, encoding='utf-8')
-        return dict(family='IPv6' if family == socket.AF_INET6 else 'IPv4', simultaneous_dual_stack=True, tls=True, untrusted_ca_rejected=True, local_assets=4, identity_preserved_after_restart=True, configured_alias_accepted=True, unexpected_authority_rejected=True, public_status_read_only=True, local_session_lifecycle=True, restart_invalidates_session=True, palette_preview_apply_reset=True, welcome_and_menu_settings=True, member_onboarding=True, unavailable_section_status=True, local_board_thread_reply=True, discussion_retry_and_csrf=True, discussion_edit_and_withdraw=True, local_mail_participants=True, directory_and_profile_privacy=True, chronological_followed_feed=True, mutual_local_friendship=True, local_gathering_revisions=True, recipient_addressed_invitations=True, local_calendar_rsvp_and_reminders=True, local_groups_and_roster_privacy=True, local_group_membership_lifecycle=True, initialization_audit=initial_audit, network_audit=traces)
+        return dict(family='IPv6' if family == socket.AF_INET6 else 'IPv4', simultaneous_dual_stack=True, tls=True, untrusted_ca_rejected=True, local_assets=4, identity_preserved_after_restart=True, configured_alias_accepted=True, unexpected_authority_rejected=True, public_status_read_only=True, local_session_lifecycle=True, restart_invalidates_session=True, palette_preview_apply_reset=True, welcome_and_menu_settings=True, member_onboarding=True, unavailable_section_status=True, local_board_thread_reply=True, discussion_retry_and_csrf=True, discussion_edit_and_withdraw=True, local_mail_participants=True, directory_and_profile_privacy=True, chronological_followed_feed=True, mutual_local_friendship=True, local_gathering_revisions=True, recipient_addressed_invitations=True, local_calendar_rsvp_and_reminders=True, local_groups_and_roster_privacy=True, local_group_membership_lifecycle=True, local_file_library=True, initialization_audit=initial_audit, network_audit=traces)
 
 
 def main():

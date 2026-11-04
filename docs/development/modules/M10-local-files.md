@@ -1,8 +1,8 @@
 # M10 — Local file library
 
-Version 1.1.0 · 2026-10-25 · Locked development baseline · Product baseline 0.6.0.
+Brief revision 1.1.1 · 2026-11-04 · Roadmap baseline 1.1.0 · Product baseline 0.6.0.
 
-**State:** Approved for implementation under U19; unstarted. Runtime and hardware evidence remains pending.
+**State:** In progress. A–C pass locally. Signed Debian confirmation is pending.
 
 ## Read only this packet
 
@@ -23,9 +23,9 @@ Store bytes by content hash and keep owner/name/media type/size/access metadata 
 
 ## Ownership and interfaces
 
-Planned crates/files/; file-area metadata and blob lifecycle through C01. No federated event kind advertises library bytes for automatic retrieval.
+`crates/files/` owns file areas and metadata. C01 owns storage and blob references. The library publishes no events for exchange.
 
-Paths above are planned implementation locations, not existing code. Consume the contracts in the reading packet; changes to them need affected-consumer updates. A disabled optional module retains its data and does not break unrelated local services.
+Use the listed contracts. Disabling a module retains its data.
 
 ## Sequential work slices
 
@@ -41,7 +41,7 @@ Paths above are planned implementation locations, not existing code. Consume the
 
 ## Locked defaults and verification
 
-SysOps create file areas and set upload privileges/quotas. Default members can download permitted areas; uploads require the configured permission. Stream bytes and finalize before metadata; safe download disposition, no executable previews. Quotas are configured from measured disk budget, with no automatic library replication. M12 owns restore integration and M15/M16 own actual exchange-exclusion checks.
+SysOps set each area's download, upload and quota policy. A new area defaults to member downloads, SysOp uploads and a 64 MiB quota. A file is capped at 16 MiB. Uploads stream to disk before metadata is published. Downloads are attachments. M12 owns restore integration. M15/M16 verify exclusion from actual exchanges.
 
 ## Handoff
 

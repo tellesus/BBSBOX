@@ -25,6 +25,7 @@ pub fn foundation_owner(module: &str) -> bool {
             | "social"
             | "gatherings"
             | "groups"
+            | "files"
     )
 }
 pub use age::secrecy as age_secret;

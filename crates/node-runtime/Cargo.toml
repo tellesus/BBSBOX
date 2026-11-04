@@ -22,17 +22,20 @@ bbsbox-profiles = { path = "../profiles" }
 bbsbox-social = { path = "../social" }
 bbsbox-gatherings = { path = "../gatherings" }
 bbsbox-groups = { path = "../groups" }
+bbsbox-files = { path = "../files" }
 bbsbox-credentials = { path = "../credentials" }
 tempfile = "3"
 zeroize = "1"
 hex = "0.4"
 rand_core = { version = "0.6", features = ["getrandom"] }
-axum = "0.8"
+axum = { version = "0.8", features = ["multipart"] }
 axum-server = { version = "0.8", features = ["tls-rustls-no-provider"] }
 rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-tokio = { version = "1", features = ["macros", "rt-multi-thread", "signal"] }
+sha2 = "0.10"
+tokio = { version = "1", features = ["fs", "io-util", "macros", "rt-multi-thread", "signal", "time"] }
+tokio-util = { version = "0.7", features = ["io"] }
 
 [dev-dependencies]
 tower = { version = "0.5", features = ["util"] }

@@ -22,3 +22,4 @@ crates/profiles/src/*.sql text eol=lf
 crates/social/src/*.sql text eol=lf
 crates/gatherings/src/*.sql text eol=lf
 crates/groups/src/*.sql text eol=lf
+crates/files/src/*.sql text eol=lf

@@ -55,20 +55,28 @@ enum Kind {
     Session,
 }
 
-struct Grant {
+struct Grant<P> {
     game: String,
     account: LocalAccountId,
     player: PlayerId,
+    parent: P,
     expires: i64,
     kind: Kind,
 }
 
-pub struct Registry {
+pub struct Registry<P> {
     clock: Arc<dyn Clock>,
-    grants: BTreeMap<[u8; 32], Grant>,
+    grants: BTreeMap<[u8; 32], Grant<P>>,
 }
 
-impl Registry {
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Authorized<P> {
+    pub account: LocalAccountId,
+    pub player: PlayerId,
+    pub parent: P,
+}
+
+impl<P: Clone> Registry<P> {
     pub fn new(clock: Arc<dyn Clock>) -> Self {
         Self {
             clock,
@@ -82,6 +90,7 @@ impl Registry {
         node: NodeId,
         game: &Manifest,
         account: LocalAccountId,
+        parent: P,
     ) -> Result<Secret, Error> {
         if !game.valid() {
             return Err(Error::InvalidManifest);
@@ -95,6 +104,7 @@ impl Registry {
             game: game.game_id().into(),
             account,
             player: PlayerId::for_account(node, game, account),
+            parent,
             expires: now.saturating_add(TICKET_AGE),
             kind: Kind::Ticket,
         }))
@@ -109,16 +119,14 @@ impl Registry {
         Ok(self.issue(grant))
     }
 
-    pub fn authorize(&self, game: &Manifest, bearer: &str) -> Result<PlayerId, Error> {
+    pub fn authorize(&self, game: &Manifest, bearer: &str) -> Result<Authorized<P>, Error> {
         let key = token_key(bearer)?;
-        Ok(self.lookup(game, key, Kind::Session)?.player)
-    }
-
-    /// The core uses this only for authorized queries about the session's own local account.
-    pub fn local_account(&self, game: &Manifest, bearer: &str) -> Result<LocalAccountId, Error> {
-        Ok(self
-            .lookup(game, token_key(bearer)?, Kind::Session)?
-            .account)
+        let grant = self.lookup(game, key, Kind::Session)?;
+        Ok(Authorized {
+            account: grant.account,
+            player: grant.player,
+            parent: grant.parent.clone(),
+        })
     }
 
     pub fn revoke(&mut self, game: &Manifest, bearer: &str) -> Result<(), Error> {
@@ -128,7 +136,7 @@ impl Registry {
         Ok(())
     }
 
-    fn lookup(&self, game: &Manifest, key: [u8; 32], kind: Kind) -> Result<&Grant, Error> {
+    fn lookup(&self, game: &Manifest, key: [u8; 32], kind: Kind) -> Result<&Grant<P>, Error> {
         self.grants
             .get(&key)
             .filter(|grant| {
@@ -139,7 +147,7 @@ impl Registry {
             .ok_or(Error::Denied)
     }
 
-    fn issue(&mut self, grant: Grant) -> Secret {
+    fn issue(&mut self, grant: Grant<P>) -> Secret {
         let mut bytes = Zeroizing::new([0; 32]);
         loop {
             OsRng.fill_bytes(bytes.as_mut());

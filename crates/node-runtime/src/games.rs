@@ -11,10 +11,10 @@ use bbsbox_credentials::NodeId;
 use bbsbox_game_host::{
     Component, Manifest,
     protocol::{Move, Operation, Reason, ResultBody, State as GameState},
-    sessions::{PlayerId, Registry, Secret},
+    sessions::{Authorized, PlayerId, Registry, Secret},
     worker::Worker,
 };
-use bbsbox_identity::LocalAccountId;
+use bbsbox_identity::{Auth, LocalAccountId, session::Mutation};
 use bbsbox_profiles::components::{Link, Provider};
 use bbsbox_storage::clock::SystemClock;
 use serde::{Deserialize, Serialize};
@@ -117,8 +117,29 @@ pub(crate) struct Service {
     node: NodeId,
     manifest: Manifest,
     worker: Arc<Mutex<Worker>>,
-    sessions: Mutex<Registry>,
+    sessions: Mutex<Registry<Arc<LaunchAuthority>>>,
     work: Arc<Semaphore>,
+}
+
+struct LaunchAuthority {
+    auth: Arc<Auth>,
+    actor: Mutation,
+}
+
+type Scope = Authorized<Arc<LaunchAuthority>>;
+
+fn check_authority(database: &Path, scope: &Scope) -> Result<(), StatusCode> {
+    let authority = &scope.parent;
+    let unavailable = |_| StatusCode::SERVICE_UNAVAILABLE;
+    let reader = bbsbox_storage::open_reader(database).map_err(unavailable)?;
+    let tx = reader
+        .unchecked_transaction()
+        .map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?;
+    match authority.auth.mutation_account(&tx, &authority.actor) {
+        Ok(current) if current.id == scope.account => Ok(()),
+        Ok(_) | Err(bbsbox_identity::Error::InvalidSession) => Err(StatusCode::UNAUTHORIZED),
+        Err(_) => Err(StatusCode::SERVICE_UNAVAILABLE),
+    }
 }
 
 impl Service {
@@ -136,15 +157,25 @@ impl Service {
         })
     }
 
-    pub fn ticket(&self, node: NodeId, account: LocalAccountId) -> Result<Secret, StatusCode> {
+    pub fn ticket(
+        &self,
+        account: LocalAccountId,
+        auth: Arc<Auth>,
+        actor: Mutation,
+    ) -> Result<Secret, StatusCode> {
         self.sessions
             .lock()
             .map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?
-            .launch(node, &self.manifest, account)
+            .launch(
+                self.node,
+                &self.manifest,
+                account,
+                Arc::new(LaunchAuthority { auth, actor }),
+            )
             .map_err(|_| StatusCode::SERVICE_UNAVAILABLE)
     }
 
-    fn player(&self, headers: &HeaderMap) -> Result<PlayerId, StatusCode> {
+    fn scope(&self, headers: &HeaderMap) -> Result<Scope, StatusCode> {
         let bearer = bearer(headers)?;
         self.sessions
             .lock()
@@ -153,15 +184,17 @@ impl Service {
             .map_err(|_| StatusCode::UNAUTHORIZED)
     }
 
-    async fn call(&self, operation: Operation) -> Result<GameState, Problem> {
+    async fn call(&self, scope: Scope, operation: Operation) -> Result<GameState, Problem> {
         let permit = self
             .work
             .clone()
             .try_acquire_owned()
             .map_err(|_| Problem::Unavailable)?;
         let worker = self.worker.clone();
+        let database = self.database.clone();
         let result = tokio::task::spawn_blocking(move || {
             let _permit = permit;
+            check_authority(&database, &scope).map_err(Problem::Access)?;
             worker
                 .lock()
                 .map_err(|_| Problem::Unavailable)?
@@ -264,12 +297,7 @@ async fn groups(
     headers: HeaderMap,
     Query(page): Query<GroupPage>,
 ) -> Result<Json<Memberships>, StatusCode> {
-    let account = service
-        .sessions
-        .lock()
-        .map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?
-        .local_account(&service.manifest, bearer(&headers)?)
-        .map_err(|_| StatusCode::UNAUTHORIZED)?;
+    let scope = service.scope(&headers)?;
     let database = service.database.clone();
     let node = service.node;
     let permit = service
@@ -279,17 +307,14 @@ async fn groups(
         .map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?;
     let rows = tokio::task::spawn_blocking(move || {
         let _permit = permit;
-        let reader = bbsbox_storage::open_reader(database)?;
-        Ok::<_, bbsbox_storage::Error>(bbsbox_groups::membership::local_memberships(
-            &reader,
-            node,
-            account,
-            page.before,
-        )?)
+        check_authority(&database, &scope)?;
+        let reader =
+            bbsbox_storage::open_reader(database).map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?;
+        bbsbox_groups::membership::local_memberships(&reader, node, scope.account, page.before)
+            .map_err(|_| StatusCode::SERVICE_UNAVAILABLE)
     })
     .await
-    .map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?
-    .map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?;
+    .map_err(|_| StatusCode::SERVICE_UNAVAILABLE)??;
     let next = rows
         .get(bbsbox_groups::PAGE_SIZE - 1)
         .filter(|_| rows.len() > bbsbox_groups::PAGE_SIZE)
@@ -336,7 +361,7 @@ async fn exchange(
 ) -> Result<Response, StatusCode> {
     require_origin(&headers, &service)?;
     let ticket = zeroize::Zeroizing::new(input.ticket);
-    let (session, player) = {
+    let (session, scope) = {
         let mut grants = service
             .sessions
             .lock()
@@ -344,12 +369,13 @@ async fn exchange(
         let session = grants
             .exchange(&service.manifest, &ticket)
             .map_err(|_| StatusCode::UNAUTHORIZED)?;
-        let player = grants
+        let scope = grants
             .authorize(&service.manifest, session.expose())
             .map_err(|_| StatusCode::UNAUTHORIZED)?;
-        (session, player)
+        (session, scope)
     };
-    match service.call(Operation::Join { player }).await {
+    let player = scope.player;
+    match service.call(scope, Operation::Join { player }).await {
         Ok(state) => Ok(Json(Opened {
             session: session.expose(),
             state,
@@ -368,11 +394,14 @@ async fn read(
     State(service): State<Arc<Service>>,
     headers: HeaderMap,
 ) -> Result<Response, StatusCode> {
-    let player = service.player(&headers)?;
-    Ok(match service.call(Operation::Read { player }).await {
-        Ok(state) => Json(state).into_response(),
-        Err(problem) => problem.into_response(),
-    })
+    let scope = service.scope(&headers)?;
+    let player = scope.player;
+    Ok(
+        match service.call(scope, Operation::Read { player }).await {
+            Ok(state) => Json(state).into_response(),
+            Err(problem) => problem.into_response(),
+        },
+    )
 }
 
 #[derive(Deserialize)]
@@ -388,7 +417,8 @@ async fn play(
     Json(input): Json<Play>,
 ) -> Result<Response, StatusCode> {
     require_origin(&headers, &service)?;
-    let player = service.player(&headers)?;
+    let scope = service.scope(&headers)?;
+    let player = scope.player;
     if input.command.len() != 32
         || !input
             .command
@@ -401,11 +431,14 @@ async fn play(
     hex::decode_to_slice(&input.command, &mut command).map_err(|_| StatusCode::BAD_REQUEST)?;
     Ok(
         match service
-            .call(Operation::Act {
-                player,
-                command,
-                action: input.action,
-            })
+            .call(
+                scope,
+                Operation::Act {
+                    player,
+                    command,
+                    action: input.action,
+                },
+            )
             .await
         {
             Ok(state) => Json(state).into_response(),
@@ -416,12 +449,14 @@ async fn play(
 
 enum Problem {
     Unavailable,
+    Access(StatusCode),
     Game(Reason),
 }
 
 impl IntoResponse for Problem {
     fn into_response(self) -> Response {
         let (code, message) = match self {
+            Self::Access(code) => return code.into_response(),
             Self::Unavailable | Self::Game(Reason::Unavailable) => {
                 (StatusCode::SERVICE_UNAVAILABLE, "Game worker unavailable")
             }

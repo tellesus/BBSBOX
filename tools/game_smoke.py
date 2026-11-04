@@ -88,7 +88,7 @@ def fixture(binary, directory):
                 urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()),
             )
 
-        def request(self, origin, path, value=None, headers=None):
+        def request(self, origin, path, value=None, headers=None, method=None):
             headers = dict(headers or {})
             if value is not None:
                 headers.setdefault('Origin', origin)
@@ -100,7 +100,7 @@ def fixture(binary, directory):
                     data = json.dumps(value).encode()
             else:
                 data = None
-            return self.opener.open(urllib.request.Request(origin+path, data=data, headers=headers), timeout=4)
+            return self.opener.open(urllib.request.Request(origin+path, data=data, headers=headers, method=method), timeout=4)
 
         def csrf(self, path):
             with self.request(core, path) as response:
@@ -200,6 +200,19 @@ def fixture(binary, directory):
                     state = json.load(response)
                     assert state['chamber'] == attempt+1
             refused(401, lambda: Client().request(game, '/game/v1/state'))
+            if attempt == 1:
+                stale_ticket = one.launch()
+                stale = {'Authorization': 'Bearer '+first['session']}
+                with one.request(core, '/api/v1/session', headers={
+                    'Origin': core, 'X-BBSBOX-CSRF': one.csrf('/games/'),
+                }, method='DELETE') as response:
+                    assert response.status == 204
+                refused(401, lambda: one.request(game, '/game/v1/state', headers=stale))
+                refused(401, lambda: one.request(game, '/game/v1/groups', headers=stale))
+                refused(401, lambda: one.request(game, '/game/v1/play', dict(command='ab'*16, action='explore'), stale))
+                one.login('operator')
+                refused(401, lambda: one.request(game, '/game/v1/exchange', dict(ticket=stale_ticket)))
+                assert one.exchange(one.launch())['state']['chamber'] == 2
         finally:
             if process.poll() is None:
                 process.terminate()

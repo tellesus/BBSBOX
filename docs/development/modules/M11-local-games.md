@@ -1,6 +1,6 @@
 # M11 — Game host and local multiplayer example
 
-Brief revision 1.1.7 · Roadmap baseline 1.1.0 · 2026-11-04 · Locked scope · Product baseline 0.6.0.
+Brief revision 1.1.8 · Roadmap baseline 1.1.0 · 2026-11-04 · Locked scope · Product baseline 0.6.0.
 
 **State:** In progress. Development browser, worker, profile, group and isolated game-node restore pass. Signed worker packaging awaits Debian confirmation. Appliance worker isolation and recovery activation remain pending.
 
@@ -41,6 +41,7 @@ Use the listed contracts. Disabling a game retains its state.
 
 - Two users play through the browser while a third uses local boards.
 - A command retry changes game state once.
+- Logging out invalidates outstanding tickets and sessions from that sign-in.
 - Profile settings hide game/character summaries; local groups remain local.
 
 ## Locked defaults and verification

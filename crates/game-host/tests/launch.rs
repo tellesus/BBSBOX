@@ -51,7 +51,7 @@ fn launch_ticket_is_single_use_and_bearer_is_bound_to_one_game_and_local_player(
     assert!(Manifest::parse(&manifest("demo", "https://remote.invalid/index.html")).is_err());
     let clock = Arc::new(ClockFixture::default());
     let mut grants = Registry::new(clock.clone());
-    let ticket = grants.launch(node, &game, account).unwrap();
+    let ticket = grants.launch(node, &game, account, 1).unwrap();
     assert!(matches!(
         grants.exchange(&other_game, ticket.expose()),
         Err(Error::Denied)
@@ -66,20 +66,22 @@ fn launch_ticket_is_single_use_and_bearer_is_bound_to_one_game_and_local_player(
         grants.authorize(&other_game, bearer.expose()),
         Err(Error::Denied)
     );
-    let player = grants.authorize(&game, bearer.expose()).unwrap();
+    let authorized = grants.authorize(&game, bearer.expose()).unwrap();
+    let player = authorized.player;
+    assert_eq!((authorized.account, authorized.parent), (account, 1));
     assert_eq!(player, PlayerId::for_account(node, &game, account));
     assert_ne!(player, PlayerId::for_account(node, &other_game, account));
     assert_ne!(
         player,
         PlayerId::for_account(NodeId::from_digest([3; 32]), &game, account)
     );
-    let expired = grants.launch(node, &game, account).unwrap();
+    let expired = grants.launch(node, &game, account, 2).unwrap();
     clock.0.store(120_000, Ordering::Relaxed);
     assert!(matches!(
         grants.exchange(&game, expired.expose()),
         Err(Error::Denied)
     ));
-    assert_eq!(grants.authorize(&game, bearer.expose()), Ok(player));
+    assert_eq!(grants.authorize(&game, bearer.expose()), Ok(authorized));
     clock.0.store(900_000, Ordering::Relaxed);
     assert_eq!(grants.authorize(&game, bearer.expose()), Err(Error::Denied));
 }

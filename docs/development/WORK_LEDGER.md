@@ -638,3 +638,5 @@ The offline rebuild produces the worker from the committed source and records it
 ## 2026-11-04 — M11 isolated worker socket fixture
 
 The host can connect over a Unix socket with the same manifest handshake, framing and request deadline as the development child. The Debian fixture starts a separate worker account with a private state directory and no new network sockets. It plays a turn through the filesystem socket as the node account, checks that an unrelated account cannot connect, checks the worker's actual identity and view of core paths, and waits for it to exit after disconnect. The Windows pipe regressions pass. Linux transport and systemd fixture results are pending. Appliance installation, configuration and recovery activation are still separate work.
+
+The game host now rechecks the originating local sign-in before ticket exchange, state, play and membership requests. The worker still sees only its game player ID. The HTTPS fixture logs out after two moves, confirms the active grant and an unused ticket both fail, then signs back in and resumes the same saved state with a fresh ticket.

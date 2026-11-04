@@ -57,14 +57,14 @@ async fn launch(
     let game = state.game.as_ref().ok_or(StatusCode::NOT_FOUND)?;
     check_origin(&headers, &origin)?;
     let session = token(&headers)?;
-    let account = state
+    let (account, actor) = state
         .read(move |auth, path| {
             let reader = bbsbox_storage::open_reader(path)?;
             let tx = reader.unchecked_transaction()?;
             let actor = auth.authorize_mutation(&tx, &session, &launch.csrf, &origin.0)?;
-            auth.mutation_account(&tx, &actor)
+            Ok((auth.mutation_account(&tx, &actor)?.id, actor))
         })
         .await?;
-    let secret = game.ticket(state.signer.id(), account.id)?;
+    let secret = game.ticket(account, state.auth.clone(), actor)?;
     Ok(Redirect::to(&format!("{}/#ticket={}", game.origin, secret.expose())).into_response())
 }

@@ -423,6 +423,7 @@ dependencies = [
  "bbsbox-identity",
  "bbsbox-storage",
  "hex",
+ "rand_core",
  "rusqlite",
  "serde",
  "serde_json",

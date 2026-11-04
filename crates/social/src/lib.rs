@@ -15,23 +15,33 @@ use bbsbox_storage::Migration;
 use rusqlite::{Connection, Transaction, params};
 use serde::{Deserialize, Serialize};
 
+pub mod friends;
+
 const KIND: &str = "social.update";
 const AUDIENCE: &str = "local-public";
 pub const PAGE_SIZE: usize = 30;
 const CLOCK_LABEL_MILLIS: i64 = 5 * 60 * 1000;
 
-pub fn migrations() -> [Migration; 1] {
-    [Migration {
-        module: "social",
-        version: 1,
-        sql: include_str!("schema.sql"),
-    }]
+pub fn migrations() -> [Migration; 2] {
+    [
+        Migration {
+            module: "social",
+            version: 1,
+            sql: include_str!("schema.sql"),
+        },
+        Migration {
+            module: "social",
+            version: 2,
+            sql: include_str!("friends.sql"),
+        },
+    ]
 }
 
 #[derive(Debug)]
 pub enum Error {
     InvalidInput,
     Forbidden,
+    Conflict,
     NotAccepted,
     Identity(bbsbox_identity::Error),
     Storage(bbsbox_storage::Error),

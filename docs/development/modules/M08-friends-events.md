@@ -1,8 +1,8 @@
 # M08 — Chosen feeds, gatherings and invitations
 
-Brief revision 1.1.1 · 2026-11-03 · Roadmap baseline 1.1.0 · Product baseline 0.6.0.
+Brief revision 1.1.2 · 2026-11-03 · Roadmap baseline 1.1.0 · Product baseline 0.6.0.
 
-**State:** In progress. A passes locally. Events and invitations are next.
+**State:** In progress. A and the local friendship flow pass locally. Events and invitations are next.
 
 ## Read only this packet
 
@@ -30,7 +30,7 @@ Follow the listed contracts. A disabled optional module retains its data and lea
 ## Sequential work slices
 
 1. A: chosen public feed and follow/unfollow, with chronological fixtures.
-2. B: create/update/cancel an event and address invitations; expose profile links.
+2. B: confirm friendships, create/update/cancel gatherings and address invitations. Expose profile links.
 3. C: add calendar/RSVP/local reminders and stale-state labels.
 
 ## Completion evidence

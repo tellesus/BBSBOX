@@ -12,6 +12,7 @@ bbsbox-event-core = { path = "../event-core" }
 bbsbox-identity = { path = "../identity" }
 bbsbox-storage = { path = "../storage" }
 hex = "0.4"
+rand_core = { version = "0.6", features = ["getrandom"] }
 rusqlite = "0.41"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

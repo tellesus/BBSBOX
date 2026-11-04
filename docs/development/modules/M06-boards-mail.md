@@ -1,8 +1,8 @@
 # M06 — Local boards and private mail
 
-Brief revision 1.1.4 · 2026-11-03 · Roadmap baseline 1.1.0 · Product baseline 0.6.0.
+Brief revision 1.1.5 · 2026-11-03 · Roadmap baseline 1.1.0 · Product baseline 0.6.0.
 
-**State:** In progress. A–C pass local HTTPS tests. Signed Debian confirmation is pending.
+**State:** Complete for the software provider. A–C pass local HTTPS and signed Debian CI. G1 device acceptance is pending.
 
 ## Read only this packet
 

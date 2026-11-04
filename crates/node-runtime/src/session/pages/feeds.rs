@@ -14,6 +14,7 @@ use axum::{
 use bbsbox_event_codec::EventId;
 use bbsbox_identity::{Account, account_by_username, normalize_username};
 use bbsbox_profiles::components::{Link, Provider};
+use bbsbox_social::friends;
 use bbsbox_social::{self as social, Error, Feed, Timing};
 use bbsbox_storage::{
     Command,
@@ -39,6 +40,8 @@ pub(super) fn routes() -> Router<Sessions> {
         )
         .route("/feeds/{username}/", get(author))
         .route("/feeds/{username}/follow/", post(follow))
+        .route("/feeds/{username}/friend/", post(friend))
+        .route("/friends/", get(friend_list))
 }
 
 pub(in crate::session) fn profile_provider() -> Provider<Option<Link>> {
@@ -114,7 +117,7 @@ async fn timeline(
         })
         .await?;
     let mut content = format!(
-        "<p><a href=\"/feeds/{}/\">Your public updates</a></p><form action=\"/feeds/\" method=\"get\"><label>Username <input name=\"username\" maxlength=\"32\" required></label><button type=\"submit\">Find updates</button></form>",
+        "<p><a href=\"/feeds/{}/\">Your public updates</a> · <a href=\"/friends/\">Friends</a></p><form action=\"/feeds/\" method=\"get\"><label>Username <input name=\"username\" maxlength=\"32\" required></label><button type=\"submit\">Find updates</button></form>",
         account.username
     );
     form(&mut content, "/feeds/", &csrf, "Post an update", COMPOSE);
@@ -149,15 +152,16 @@ async fn author(
                 Err(error) => return Err(error),
             };
             let following = social::is_following(&tx, viewer.id, target.id)?;
+            let friendship = friends::relationship(&tx, viewer.id, target.id)?;
             let selection = match focus {
                 Some(post) => Feed::Post(target.id, post),
                 None => Feed::Author(target.id),
             };
             let posts = social::posts(&tx, selection, before)?;
-            Ok(Some((target, following, posts)))
+            Ok(Some((target, following, friendship, posts)))
         })
         .await?;
-    let Some((author, following, posts)) = result else {
+    let Some((author, following, friendship, posts)) = result else {
         return Ok(unavailable(&state));
     };
     if focus.is_some() && posts.is_empty() {
@@ -183,6 +187,9 @@ async fn author(
             &format!("<input type=\"hidden\" name=\"follow\" value=\"{action}\">"),
         );
     }
+    if viewer.id != author.id {
+        friend_forms(&mut content, &author, friendship, &csrf);
+    }
     if focus.is_some() {
         let _ = write!(
             content,
@@ -199,6 +206,96 @@ async fn author(
         &format!("{username}'s updates"),
         &content,
     ))
+}
+
+fn friend_forms(
+    content: &mut String,
+    author: &Account,
+    relationship: Option<friends::Relationship>,
+    csrf: &str,
+) {
+    use friends::Status;
+    let generation = relationship
+        .as_ref()
+        .map(|row| hex::encode(row.generation))
+        .unwrap_or_default();
+    let choices: &[(&str, &str)] = match relationship.map(|row| row.status) {
+        Some(Status::Friends) => &[("remove", "Remove friend")],
+        Some(Status::Outgoing) => &[("cancel", "Cancel friend request")],
+        Some(Status::Incoming) if author.active => &[
+            ("accept", "Accept friend request"),
+            ("decline", "Decline friend request"),
+        ],
+        Some(Status::Incoming) => &[("decline", "Decline friend request")],
+        None if author.active => &[("request", "Send friend request")],
+        None => &[],
+    };
+    let path = format!("/feeds/{}/friend/", author.username);
+    for (action, label) in choices {
+        let fields = format!(
+            "<input type=\"hidden\" name=\"friend\" value=\"{action}\"><input type=\"hidden\" name=\"generation\" value=\"{generation}\">"
+        );
+        form(content, &path, csrf, label, &fields);
+    }
+}
+
+#[derive(Deserialize)]
+struct FriendList {
+    after: Option<String>,
+}
+
+async fn friend_list(
+    State(state): State<Sessions>,
+    headers: HeaderMap,
+    Query(query): Query<FriendList>,
+) -> Result<Response, StatusCode> {
+    let Some((account, _)) = form_access(&state, &headers).await else {
+        return Ok(Redirect::to("/login/").into_response());
+    };
+    let after = query
+        .after
+        .as_deref()
+        .map(normalize_username)
+        .transpose()
+        .map_err(|_| StatusCode::BAD_REQUEST)?;
+    let rows = state
+        .read(move |_, path| {
+            Ok(friends::list(
+                &open_reader(path)?,
+                account.id,
+                after.as_deref(),
+            )?)
+        })
+        .await?;
+    let mut content = String::from(
+        "<p><a href=\"/feeds/\">Your feed</a> · <a href=\"/directory/\">Directory</a></p>",
+    );
+    if rows.is_empty() {
+        content.push_str("<p>No friendships or requests to show.</p>");
+    } else {
+        content.push_str("<ul>");
+        for row in rows.iter().take(50) {
+            let label = match row.status {
+                friends::Status::Incoming => "Incoming request",
+                friends::Status::Outgoing => "Request sent",
+                friends::Status::Friends => "Friends",
+            };
+            let _ = write!(
+                content,
+                "<li><a href=\"/feeds/{}/\">{}</a> · {label}</li>",
+                row.username, row.username
+            );
+        }
+        content.push_str("</ul>");
+        if rows.len() > 50 {
+            let _ = write!(
+                content,
+                "<p><a href=\"?after={}\">More connections</a></p>",
+                rows[49].username
+            );
+        }
+    }
+    Ok(page(&state, StatusCode::OK, "Friends", &content))
 }
 
 fn render_posts(content: &mut String, posts: &[social::Post]) {
@@ -243,11 +340,21 @@ struct Submission {
     request: String,
     text: Option<String>,
     follow: Option<String>,
+    friend: Option<String>,
+    generation: Option<String>,
 }
 
 enum Action {
     Publish(String),
-    Follow { username: String, selected: bool },
+    Follow {
+        username: String,
+        selected: bool,
+    },
+    Friend {
+        username: String,
+        choice: friends::Action,
+        generation: Option<[u8; 16]>,
+    },
 }
 
 async fn publish(
@@ -260,7 +367,7 @@ async fn publish(
     let text = form
         .text
         .take()
-        .filter(|_| form.follow.is_none())
+        .filter(|_| form.follow.is_none() && form.friend.is_none() && form.generation.is_none())
         .ok_or(StatusCode::BAD_REQUEST)?;
     submit(
         state,
@@ -280,9 +387,14 @@ async fn follow(
     form: Result<Form<Submission>, FormRejection>,
 ) -> Result<Response, StatusCode> {
     let Form(form) = form.map_err(|error| error.status())?;
-    let selected = match (form.follow.as_deref(), form.text.as_deref()) {
-        (Some("yes"), None) => true,
-        (Some("no"), None) => false,
+    let selected = match (
+        form.follow.as_deref(),
+        form.text.as_deref(),
+        form.friend.as_deref(),
+        form.generation.as_deref(),
+    ) {
+        (Some("yes"), None, None, None) => true,
+        (Some("no"), None, None, None) => false,
         _ => return Err(StatusCode::BAD_REQUEST),
     };
     let username = normalize_username(&username).map_err(|_| StatusCode::NOT_FOUND)?;
@@ -292,6 +404,46 @@ async fn follow(
         headers,
         form,
         Action::Follow { username, selected },
+    )
+    .await
+}
+
+async fn friend(
+    State(state): State<Sessions>,
+    Extension(origin): Extension<RequestOrigin>,
+    Path(username): Path<String>,
+    headers: HeaderMap,
+    payload: Result<Form<Submission>, FormRejection>,
+) -> Result<Response, StatusCode> {
+    let Form(form) = payload.map_err(|error| error.status())?;
+    if form.follow.is_some() || form.text.is_some() {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+    let choice = form
+        .friend
+        .as_deref()
+        .and_then(friends::Action::parse)
+        .ok_or(StatusCode::BAD_REQUEST)?;
+    let generation = match form.generation.as_deref() {
+        Some("") => None,
+        Some(value) if value.len() == 32 => {
+            let mut bytes = [0; 16];
+            hex::decode_to_slice(value, &mut bytes).map_err(|_| StatusCode::BAD_REQUEST)?;
+            Some(bytes)
+        }
+        _ => return Err(StatusCode::BAD_REQUEST),
+    };
+    let username = normalize_username(&username).map_err(|_| StatusCode::NOT_FOUND)?;
+    submit(
+        state,
+        origin,
+        headers,
+        form,
+        Action::Friend {
+            username,
+            choice,
+            generation,
+        },
     )
     .await
 }
@@ -320,6 +472,15 @@ async fn submit(
         Action::Follow { username, selected } => (
             format!("/feeds/{username}/"),
             serde_json::to_vec(&("follow", username, selected)),
+            false,
+        ),
+        Action::Friend {
+            username,
+            generation,
+            ..
+        } => (
+            format!("/feeds/{username}/"),
+            serde_json::to_vec(&("friend", username, &form.friend, generation)),
             false,
         ),
     };
@@ -358,6 +519,15 @@ async fn submit(
                     Action::Follow { username, selected } => {
                         let target = account_by_username(tx, &username).map_err(Error::Identity)?;
                         social::set_following(tx, current.id, target.id, selected)?;
+                        Ok(Vec::new())
+                    }
+                    Action::Friend {
+                        username,
+                        choice,
+                        generation,
+                    } => {
+                        let target = account_by_username(tx, &username).map_err(Error::Identity)?;
+                        friends::change(tx, current.id, target.id, choice, generation)?;
                         Ok(Vec::new())
                     }
                 },
@@ -402,7 +572,7 @@ fn status(error: Error) -> StatusCode {
         Error::Forbidden => StatusCode::FORBIDDEN,
         Error::Identity(bbsbox_identity::Error::AccountMissing) => StatusCode::NOT_FOUND,
         Error::Identity(error) => super::super::failure(error),
-        Error::Storage(Storage::ReusedCommandId) => StatusCode::CONFLICT,
+        Error::Conflict | Error::Storage(Storage::ReusedCommandId) => StatusCode::CONFLICT,
         Error::Storage(
             Storage::QueueFull
             | Storage::WriterClosed

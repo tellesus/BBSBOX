@@ -1,6 +1,6 @@
 # Development work ledger
 
-Version 1.1.0 · 2026-10-25 · Locked roadmap. M01–M05 and M12 software providers Complete. M00 and M06–M08 In progress. Other modules Unstarted. Execution updated 2026-11-03.
+Version 1.1.0 · 2026-10-25 · Locked roadmap. M01–M06 and M12 software providers Complete. M00, M07 and M08 In progress. Other modules Unstarted. Execution updated 2026-11-03.
 
 Evidence log — not an independent source of scope authority. Current choices live in the canonical roadmap and user instructions.
 
@@ -15,9 +15,9 @@ Design review is complete and the first M00 prototype has real local implementat
 | [M04](modules/M04-signed-events.md) | Approved | Complete | A–C: 15 codec/33 core tests, independent vectors, all 120 arrival orders; CI 41245899257 passed | Feature modules prove actual policies/views; M13/M15/M16 complete AC07 integration |
 | [M12](modules/M12-maintenance-recovery.md) | Approved | Complete | A–C: Debian signed install/update/rollback, fresh recovery, scheduled backup and retention; CI 41718200103 | Begin M05 A. M11 owns real game adapter acceptance. G1 physical tests remain |
 | [M05](modules/M05-interface-themes.md) | Approved | Complete | A–C: local HTTPS, Edge, signed Debian install/rebuild and settings restore; CI 41751474936 | Integrate real feature navigation, visual review and G1 device checks |
-| [M06](modules/M06-boards-mail.md) | Approved | In progress | A–C: signed local discussions and participant-restricted mail pass local HTTPS | Confirm signed Debian |
+| [M06](modules/M06-boards-mail.md) | Approved | Complete | A–C: signed discussions and participant-restricted mail pass Debian CI 41769646693 | G1 device checks and later complaint integration |
 | [M07](modules/M07-directory-profiles.md) | Approved | In progress | A–C: directory, profile privacy and component hooks pass local checks | Confirm signed Debian. Bind live providers in their owning modules |
-| [M08](modules/M08-friends-events.md) | Approved | In progress | A: chosen chronological local feed passes local HTTPS | Confirm signed Debian. Build gatherings and invitations |
+| [M08](modules/M08-friends-events.md) | Approved | In progress | A and friendship: chosen feed and mutual consent pass local HTTPS | Confirm signed Debian. Build gatherings and invitations |
 | [M09](modules/M09-clans-cohorts.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
 | [M10](modules/M10-local-files.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
 | [M11](modules/M11-local-games.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
@@ -547,7 +547,7 @@ Local IPv4 and IPv6 HTTPS exercised author edits, stale withdrawal refusal and a
 
 Mail migration 1 adds conversations and messages to the core node snapshot. Signed starts and replies carry a local-only participant scope. Participants can use the mailbox and follow stable message references. An unrelated SysOp sees no mail in the ordinary browser endpoints. The mailbox explains that the operator can access stored messages.
 
-Local IPv4 and IPv6 HTTPS checks sent mail between members, checked duplicate-send handling and signed-out redirects, refused an unaddressed SysOp, delivered a member's operator contact, and returned a reply to the original sender. Provider tests also refuse replies from outsiders or another conversation. An encrypted restore preserved the original message ID and both mailbox views. [Signed Debian confirmation](https://github.com/tellesus/BBSBOX/actions/runs/41769646693) is pending.
+Local IPv4 and IPv6 HTTPS checks sent mail between members, checked duplicate-send handling and signed-out redirects, refused an unaddressed SysOp, delivered a member's operator contact, and returned a reply to the original sender. Provider tests also refuse replies from outsiders or another conversation. An encrypted restore preserved the original message ID and both mailbox views. [Signed Debian CI](https://github.com/tellesus/BBSBOX/actions/runs/41769646693) passed at `7eead0a`, promoted to main.
 
 ## 2026-11-03 — M07 A: local account directory and profile privacy
 
@@ -566,3 +566,9 @@ Fixtures check an older profile migrating with its field choices intact, baselin
 Social migration 1 stores local follow choices, the projection of signed public updates and the node's first-seen times. A resident can post to the signed-in local audience, open a stable update link, follow another account or unfollow it. The chosen timeline uses authored time and event ID. The UI labels arrivals delayed by at least five minutes and clocks that are at least five minutes ahead of observation. These times affect display only.
 
 The browser test verifies that a follow selects updates, an unfollow removes them and retrying an older follow form leaves the unfollow in effect. It also checks duplicate publish, Markdown, and the live feed link when the profile owner explicitly publishes it. The provider fixture covers late arrivals, tied times, cursor ordering and clock uncertainty. Debian confirmation is pending. M08 B owns events, causal revisions and recipient-addressed invitations.
+
+## 2026-11-03 — M08 B: mutual local friendships
+
+Social migration 2 stores friendship requests and confirmation. Only the addressee can accept or decline. The requester can cancel, and either person can remove a confirmed connection. An older form cannot act on a replacement request. Both accounts see their own relationship state in Friends. The ordinary list does not show anyone else's relationships, including when a SysOp opens it. Following remains separate.
+
+IPv4 and IPv6 HTTPS cover request, refusal of self-acceptance, the addressee's acceptance, the unrelated SysOp's empty list, and removal. The relationship is local account state. M13 owns the encrypted audience adapter. Signed Debian confirmation is pending. Next are public gatherings and separately addressed invitations.

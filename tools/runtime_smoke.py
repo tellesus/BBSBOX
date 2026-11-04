@@ -376,6 +376,50 @@ def exercise(binary, state_root, host, isolated):
                         assert b'href="/directory/neighbor/"' in response.read()
                     with request('/feeds/') as response:
                         assert b'No updates from accounts you follow.' in response.read()
+                    def friend_proof(page, action):
+                        for form in page.split('<form ')[1:]:
+                            form = form.split('</form>', 1)[0]
+                            if f'name="friend" value="{action}"' in form:
+                                generation = re.search(r'name="generation" value="([0-9a-f]*)"', form).group(1)
+                                return dict(discussion_proof(form), friend=action, generation=generation)
+                        raise AssertionError(f'Missing friendship action {action}')
+
+                    with request('/feeds/neighbor/') as response:
+                        author = response.read().decode()
+                    with submit('/feeds/neighbor/friend/', friend_proof(author, 'request')) as response:
+                        outgoing = response.read().decode()
+                        assert 'Cancel friend request' in outgoing
+                    try:
+                        submit('/feeds/neighbor/friend/', dict(friend_proof(outgoing, 'cancel'), friend='accept'))
+                        raise AssertionError('Requester could accept their own friend request')
+                    except urllib.error.HTTPError as error:
+                        assert error.code == 403
+                    with request('/friends/') as response:
+                        assert b'Request sent' in response.read()
+                    sign_out()
+                    sign_in('operator', password.decode())
+                    with request('/friends/') as response:
+                        assert b'No friendships or requests to show.' in response.read()
+                    sign_out()
+                    sign_in(member['username'], member['password'])
+                    with request('/friends/') as response:
+                        incoming = response.read()
+                        assert b'Incoming request' in incoming and b'/feeds/other/' in incoming
+                    with request('/feeds/other/') as response:
+                        target = response.read().decode()
+                    accept = friend_proof(target, 'accept')
+                    with submit('/feeds/other/friend/', accept) as response:
+                        confirmed = response.read().decode()
+                        assert 'Remove friend' in confirmed
+                    sign_out()
+                    sign_in(other['username'], other['password'])
+                    with request('/feeds/neighbor/') as response:
+                        confirmed = response.read().decode()
+                        assert 'Remove friend' in confirmed and 'Unfollow' not in confirmed
+                    with submit('/feeds/neighbor/friend/', friend_proof(confirmed, 'remove')) as response:
+                        assert b'Send friend request' in response.read()
+                    with request('/friends/') as response:
+                        assert b'No friendships or requests to show.' in response.read()
                     with request('/feeds/?username=Neighbor') as response:
                         author = response.read().decode()
                         assert response.geturl().endswith('/feeds/neighbor/')
@@ -421,7 +465,7 @@ def exercise(binary, state_root, host, isolated):
                 text = trace.read_text(encoding='utf-8')
                 traces.append(audit.audit_trace(text))
                 (state_root/f'runtime-{"ipv6" if family == socket.AF_INET6 else "ipv4"}-{attempt}.trace').write_text(text, encoding='utf-8')
-        return dict(family='IPv6' if family == socket.AF_INET6 else 'IPv4', simultaneous_dual_stack=True, tls=True, untrusted_ca_rejected=True, local_assets=4, identity_preserved_after_restart=True, configured_alias_accepted=True, unexpected_authority_rejected=True, public_status_read_only=True, local_session_lifecycle=True, restart_invalidates_session=True, palette_preview_apply_reset=True, welcome_and_menu_settings=True, member_onboarding=True, unavailable_section_status=True, local_board_thread_reply=True, discussion_retry_and_csrf=True, discussion_edit_and_withdraw=True, local_mail_participants=True, directory_and_profile_privacy=True, chronological_followed_feed=True, initialization_audit=initial_audit, network_audit=traces)
+        return dict(family='IPv6' if family == socket.AF_INET6 else 'IPv4', simultaneous_dual_stack=True, tls=True, untrusted_ca_rejected=True, local_assets=4, identity_preserved_after_restart=True, configured_alias_accepted=True, unexpected_authority_rejected=True, public_status_read_only=True, local_session_lifecycle=True, restart_invalidates_session=True, palette_preview_apply_reset=True, welcome_and_menu_settings=True, member_onboarding=True, unavailable_section_status=True, local_board_thread_reply=True, discussion_retry_and_csrf=True, discussion_edit_and_withdraw=True, local_mail_participants=True, directory_and_profile_privacy=True, chronological_followed_feed=True, mutual_local_friendship=True, initialization_audit=initial_audit, network_audit=traces)
 
 
 def main():

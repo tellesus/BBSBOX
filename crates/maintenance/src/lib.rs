@@ -14,7 +14,7 @@ pub mod snapshot;
 
 /// Foundation owners have all durable state inside the coordinated core snapshot.
 pub fn foundation_owner(module: &str) -> bool {
-    matches!(module, "identity" | "events" | "settings")
+    matches!(module, "identity" | "events" | "settings" | "discussions")
 }
 pub use age::secrecy as age_secret;
 pub use age::x25519::{Identity as BackupIdentity, Recipient as BackupRecipient};

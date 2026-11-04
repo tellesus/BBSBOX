@@ -170,6 +170,7 @@ pub fn migrations() -> Vec<Migration> {
     let mut migrations = bbsbox_identity::migrations();
     migrations.extend(bbsbox_event_core::migrations());
     migrations.extend(bbsbox_settings::migrations());
+    migrations.extend(bbsbox_discussions::migrations());
     migrations
 }
 #[derive(Clone, Serialize)]
@@ -187,7 +188,7 @@ struct AppState {
 }
 pub struct Runtime {
     writer: Writer,
-    _signer: NodeSigner,
+    signer: Arc<NodeSigner>,
     info: NodeInfo,
 }
 impl Runtime {
@@ -233,7 +234,7 @@ impl Runtime {
         };
         Ok(Self {
             writer,
-            _signer: signer,
+            signer: Arc::new(signer),
             info,
         })
     }
@@ -312,7 +313,11 @@ pub fn app(config: &Config, runtime: &Runtime) -> Result<Router> {
             get(|| async { asset(include_str!("status.js"), "text/javascript; charset=utf-8") }),
         )
         .with_state(state.clone())
-        .merge(session::router(config, runtime.writer.handle())?)
+        .merge(session::router(
+            config,
+            runtime.writer.handle(),
+            runtime.signer.clone(),
+        )?)
         .layer(middleware::from_fn_with_state(state, policy)))
 }
 async fn stop_signal() -> Result<()> {

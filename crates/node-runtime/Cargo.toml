@@ -11,6 +11,8 @@ path = "src/main.rs"
 
 [dependencies]
 bbsbox-storage = { path = "../storage" }
+bbsbox-discussions = { path = "../discussions" }
+bbsbox-event-codec = { path = "../event-codec" }
 bbsbox-settings = { path = "../settings" }
 bbsbox-identity = { path = "../identity" }
 bbsbox-event-core = { path = "../event-core" }

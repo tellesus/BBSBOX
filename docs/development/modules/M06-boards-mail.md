@@ -1,8 +1,8 @@
 # M06 — Local boards and private mail
 
-Brief revision 1.1.1 · 2026-11-03 · Roadmap baseline 1.1.0 · Product baseline 0.6.0.
+Brief revision 1.1.2 · 2026-11-03 · Roadmap baseline 1.1.0 · Product baseline 0.6.0.
 
-**State:** In progress. Slice A signed board/thread/reply provider passes local tests. Browser integration remains pending.
+**State:** In progress. Slice A signed boards, threads and replies pass local HTTPS. Signed Debian and slices B–C remain pending.
 
 ## Read only this packet
 

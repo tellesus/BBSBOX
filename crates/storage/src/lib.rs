@@ -398,6 +398,24 @@ impl Database {
         expected_growth: u64,
         work: impl FnOnce(&Transaction<'_>) -> std::result::Result<Vec<u8>, E>,
     ) -> std::result::Result<Receipt, E> {
+        self.transaction_service_checked(
+            command,
+            class,
+            expected_growth,
+            |_| Ok(()),
+            |tx, ()| work(tx),
+        )
+    }
+
+    /// Revalidate current authorization inside the transaction, including on a receipt replay.
+    pub fn transaction_service_checked<A, E: From<Error>>(
+        &mut self,
+        command: Command<'_>,
+        class: disk::Class,
+        expected_growth: u64,
+        authorize: impl FnOnce(&Transaction<'_>) -> std::result::Result<A, E>,
+        work: impl FnOnce(&Transaction<'_>, A) -> std::result::Result<Vec<u8>, E>,
+    ) -> std::result::Result<Receipt, E> {
         if !valid_key(command.namespace) || !valid_key(command.id) {
             return Err(Error::InvalidCommandKey.into());
         }
@@ -407,6 +425,7 @@ impl Database {
             .connection
             .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
             .map_err(Error::from)?;
+        let actor = authorize(&tx)?;
         let old:Option<(Vec<u8>,Vec<u8>)>=tx.query_row("SELECT request_hash,response FROM core_command_receipts WHERE namespace=?1 AND command_id=?2",[command.namespace,command.id],|r|Ok((r.get(0)?,r.get(1)?))).optional().map_err(Error::from)?;
         if let Some((old_digest, bytes)) = old {
             if old_digest.as_slice() != digest.as_slice() {
@@ -420,7 +439,7 @@ impl Database {
         }
         self.budget
             .admit(self.space.as_ref(), &directory, class, expected_growth)?;
-        let bytes = work(&tx)?;
+        let bytes = work(&tx, actor)?;
         if bytes.len() > MAX_RECEIPT_BYTES {
             return Err(Error::ReceiptTooLarge.into());
         }

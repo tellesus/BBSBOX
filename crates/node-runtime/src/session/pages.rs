@@ -25,6 +25,7 @@ const STYLE: &str = include_str!("../../../../web/shell/static/shell.css");
 const UNAVAILABLE: &str = include_str!("../../../../web/shell/compiled/unavailable.html");
 const SHELL_STATE: &str = include_str!("../../../../web/shell/static/shell-state.js");
 mod accounts;
+mod discussions;
 mod site;
 mod theme;
 
@@ -39,6 +40,7 @@ pub(super) fn routes() -> Router<Sessions> {
             get(|| async { crate::asset(SHELL_STATE, "text/javascript; charset=utf-8") }),
         )
         .merge(accounts::routes())
+        .merge(discussions::routes())
         .merge(site::routes())
         .merge(theme::routes())
         .fallback(fallback)
@@ -63,6 +65,7 @@ fn template(state: &Sessions, mut source: &str, slots: &[(&str, &str)]) -> Strin
                     _ => unreachable!("validated menu"),
                 });
             }
+            body.push_str("<a href=\"/discussions/\">Discussions</a>");
         } else {
             body.push_str(
                 slots

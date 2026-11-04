@@ -8,6 +8,7 @@ const pages = [
   ['settings/theme/index.html', 'theme.html', ['THEME_STATUS', 'THEME_REVISION', 'CSRF', 'BACKGROUND', 'TEXT', 'ACCENT', 'SECONDARY']],
   ['settings/site/index.html', 'site.html', ['SITE_STATUS', 'SITE_REVISION', 'CSRF', 'MESSAGE', 'ART', 'MENU_OPTIONS']],
   ['settings/accounts/index.html', 'accounts.html', ['ACCOUNT_STATUS', 'CSRF']],
+  ['discussions/index.html', 'discussions.html', ['DISCUSSIONS_TITLE', 'DISCUSSIONS_CONTENT']],
   ['unavailable/index.html', 'unavailable.html', ['PAGE_TITLE', 'PAGE_MESSAGE']]
 ];
 

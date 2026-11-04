@@ -9,6 +9,7 @@ use axum::{
 };
 use bbsbox_identity::{
     Account, Auth, Error, Role,
+    node::NodeSigner,
     session::{Login, session_from_cookie_header},
 };
 use bbsbox_storage::{
@@ -39,9 +40,15 @@ struct Sessions {
     node_name: Arc<str>,
     theme: Arc<RwLock<bbsbox_settings::Theme>>,
     site: Arc<RwLock<bbsbox_settings::site::Site>>,
+    signer: Arc<NodeSigner>,
+    boards: Arc<bbsbox_discussions::Boards>,
 }
 
-pub(super) fn router(config: &crate::Config, writer: Handle) -> crate::Result<Router> {
+pub(super) fn router(
+    config: &crate::Config,
+    writer: Handle,
+    signer: Arc<NodeSigner>,
+) -> crate::Result<Router> {
     let origins = std::iter::once(&config.origin).chain(&config.additional_origins);
     let auth = Auth::with_origins(
         origins.map(String::as_str),
@@ -59,6 +66,8 @@ pub(super) fn router(config: &crate::Config, writer: Handle) -> crate::Result<Ro
         node_name: Arc::from(config.name.as_str()),
         theme: Arc::new(RwLock::new(theme)),
         site: Arc::new(RwLock::new(site)),
+        boards: Arc::new(bbsbox_discussions::Boards::new(&signer)),
+        signer,
     };
     Ok(Router::new()
         .route(

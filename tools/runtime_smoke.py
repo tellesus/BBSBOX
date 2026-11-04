@@ -169,7 +169,24 @@ def exercise(binary, state_root, host, isolated):
                         updated = response.read().decode()
                         assert 'Neighbors &lt;welcome&gt;' in updated and '&lt;text art&gt;' in updated
                         menu = updated.split('<nav aria-label="Main">', 1)[1].split('</nav>', 1)[0]
-                        assert re.findall(r'<a href="([^"]+)"', menu) == ['/status/', '/', '/account/']
+                        assert re.findall(r'<a href="([^"]+)"', menu) == ['/status/', '/', '/account/', '/discussions/']
+                    def discussion_proof(page):
+                        return {key: re.search(r'name="'+key+r'" value="([0-9a-f]+)"', page).group(1) for key in ['csrf', 'request']}
+                    def submit(path, fields):
+                        return request(path, 'POST', form_headers, urllib.parse.urlencode(fields).encode())
+                    with request('/discussions/') as response:
+                        landing = response.read().decode()
+                        assert 'No boards to show.' in landing
+                    board_form = dict(discussion_proof(landing), title='General <board>', board='general')
+                    with submit('/discussions/', board_form) as response:
+                        assert response.geturl().endswith('/discussions/general/')
+                    with submit('/discussions/', board_form) as response:
+                        assert response.geturl().endswith('/discussions/general/')
+                    try:
+                        submit('/discussions/', dict(board_form, title='Different'))
+                        raise AssertionError('Changed retry was accepted')
+                    except urllib.error.HTTPError as error:
+                        assert error.code == 409
                     member = dict(username='Neighbor', password='fixture member passphrase', role='member', csrf=hidden.group(1))
                     with request('/settings/accounts/', 'POST', form_headers, urllib.parse.urlencode(member).encode()) as response:
                         assert response.status == 201 and b'Account created.' in response.read()
@@ -191,6 +208,27 @@ def exercise(binary, state_root, host, isolated):
                     try:
                         request('/settings/accounts/')
                         raise AssertionError('Member could open the SysOp account editor')
+                    except urllib.error.HTTPError as error:
+                        assert error.code == 403
+                    with request('/discussions/general/') as response:
+                        page = response.read().decode()
+                    thread_form = dict(discussion_proof(page), title='Library meetup', text='*Hi* <script>bad</script> ![alt](https://outside.invalid/picture) [files](/files/)\n\n' + 'å' * 6000)
+                    with submit('/discussions/general/new/', thread_form) as response:
+                        thread_url = urllib.parse.urlsplit(response.geturl()).path
+                        thread = response.read().decode()
+                        assert '<em>Hi</em>' in thread and '&lt;script&gt;' in thread
+                        assert '<img' not in thread and 'href="/files/"' in thread
+                    with submit('/discussions/general/new/', thread_form) as response:
+                        assert urllib.parse.urlsplit(response.geturl()).path == thread_url
+                    with request('/discussions/general/') as response:
+                        assert response.read().count(b'Library meetup') == 1
+                    parent = thread_url.rstrip('/').rsplit('/', 1)[1]
+                    reply_form = dict(discussion_proof(thread), parent=parent, text='Meet at six.')
+                    with submit(thread_url + 'reply/', reply_form) as response:
+                        assert 'focus=' in response.geturl() and b'Meet at six.' in response.read()
+                    try:
+                        submit(thread_url + 'reply/', dict(reply_form, csrf='0' * 64))
+                        raise AssertionError('Receipt replay bypassed CSRF')
                     except urllib.error.HTTPError as error:
                         assert error.code == 403
                 # A new client without the local CA must fail certificate verification.
@@ -221,7 +259,7 @@ def exercise(binary, state_root, host, isolated):
                 text = trace.read_text(encoding='utf-8')
                 traces.append(audit.audit_trace(text))
                 (state_root/f'runtime-{"ipv6" if family == socket.AF_INET6 else "ipv4"}-{attempt}.trace').write_text(text, encoding='utf-8')
-        return dict(family='IPv6' if family == socket.AF_INET6 else 'IPv4', simultaneous_dual_stack=True, tls=True, untrusted_ca_rejected=True, local_assets=4, identity_preserved_after_restart=True, configured_alias_accepted=True, unexpected_authority_rejected=True, public_status_read_only=True, local_session_lifecycle=True, restart_invalidates_session=True, palette_preview_apply_reset=True, welcome_and_menu_settings=True, member_onboarding=True, unavailable_section_status=True, initialization_audit=initial_audit, network_audit=traces)
+        return dict(family='IPv6' if family == socket.AF_INET6 else 'IPv4', simultaneous_dual_stack=True, tls=True, untrusted_ca_rejected=True, local_assets=4, identity_preserved_after_restart=True, configured_alias_accepted=True, unexpected_authority_rejected=True, public_status_read_only=True, local_session_lifecycle=True, restart_invalidates_session=True, palette_preview_apply_reset=True, welcome_and_menu_settings=True, member_onboarding=True, unavailable_section_status=True, local_board_thread_reply=True, discussion_retry_and_csrf=True, initialization_audit=initial_audit, network_audit=traces)
 
 
 def main():

@@ -16,6 +16,9 @@ use bbsbox_storage::Migration;
 use rusqlite::{Connection, OptionalExtension, Transaction, params};
 use serde::{Deserialize, Serialize};
 
+mod markdown;
+pub use markdown::render_markdown;
+
 pub fn migrations() -> [Migration; 1] {
     [Migration {
         module: "discussions",
@@ -25,6 +28,7 @@ pub fn migrations() -> [Migration; 1] {
 }
 
 const AUDIENCE: &str = "local-public";
+pub const POST_PAGE_SIZE: usize = 30;
 const CREATE: &str = "discussions.board.create";
 const THREAD: &str = "discussions.thread.create";
 const REPLY: &str = "discussions.reply.create";
@@ -314,6 +318,67 @@ pub fn boards(connection: &Connection, after: Option<&str>) -> Result<Vec<BoardS
     Ok(rows.collect::<rusqlite::Result<_>>()?)
 }
 
+pub fn board_title(connection: &Connection, board: &str) -> Result<String, Error> {
+    integration::ensure_projection_current(connection, "discussions")?;
+    let id = live_board(connection, board)?.ok_or(Error::MissingBoard)?;
+    Ok(connection.query_row(
+        "SELECT title FROM discussions_entries WHERE id=?1",
+        [id.as_slice()],
+        |row| row.get(0),
+    )?)
+}
+
+pub fn thread_title(
+    connection: &Connection,
+    board: &str,
+    thread: EventId,
+) -> Result<String, Error> {
+    integration::ensure_projection_current(connection, "discussions")?;
+    if live_board(connection, board)?.is_none() {
+        return Err(Error::MissingBoard);
+    }
+    connection
+        .query_row(
+            "SELECT title FROM discussions_entries WHERE id=?1 AND board=?2 AND kind='thread'",
+            params![thread.bytes().as_slice(), board],
+            |row| row.get(0),
+        )
+        .optional()?
+        .ok_or(Error::MissingParent)
+}
+
+pub fn reply_thread(
+    connection: &Connection,
+    board: &str,
+    parent: EventId,
+) -> Result<EventId, Error> {
+    if live_board(connection, board)?.is_none() {
+        return Err(Error::MissingBoard);
+    }
+    parent_thread(connection, board, parent.bytes())?
+        .map(EventId::from_bytes)
+        .ok_or(Error::MissingParent)
+}
+
+pub fn before_post(
+    connection: &Connection,
+    thread: EventId,
+    post: EventId,
+) -> Result<Option<(i64, EventId)>, Error> {
+    let current = connection
+        .query_row(
+            "SELECT created_at FROM discussions_entries WHERE thread=?1 AND id=?2",
+            params![thread.bytes().as_slice(), post.bytes().as_slice()],
+            |row| row.get::<_, i64>(0),
+        )
+        .optional()?
+        .ok_or(Error::MissingParent)?;
+    Ok(connection.query_row(
+        "SELECT created_at,id FROM discussions_entries WHERE thread=?1 AND (created_at,id)<(?2,?3) ORDER BY created_at DESC,id DESC LIMIT 1",
+        params![thread.bytes().as_slice(), current, post.bytes().as_slice()], |row| Ok((row.get(0)?, EventId::from_bytes(row.get(1)?))),
+    ).optional()?)
+}
+
 pub fn threads(
     connection: &Connection,
     board: &str,
@@ -364,13 +429,14 @@ pub fn posts(
         .as_ref()
         .map(|(time, id)| (time, id.bytes().as_slice()));
     let mut query = connection.prepare(
-        "SELECT id,parent,username,body,created_at FROM discussions_entries WHERE thread=?1 AND (?2 IS NULL OR (created_at,id)>(?2,?3)) ORDER BY created_at,id LIMIT 100",
+        "SELECT id,parent,username,body,created_at FROM discussions_entries WHERE thread=?1 AND (?2 IS NULL OR (created_at,id)>(?2,?3)) ORDER BY created_at,id LIMIT ?4",
     )?;
     let rows = query.query_map(
         params![
             thread.bytes().as_slice(),
             cursor.map(|(time, _)| time),
-            cursor.map(|(_, id)| id)
+            cursor.map(|(_, id)| id),
+            POST_PAGE_SIZE as i64
         ],
         |row| {
             Ok(Post {

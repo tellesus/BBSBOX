@@ -68,25 +68,25 @@ class CompiledUpgradeTests(unittest.TestCase):
             cipher=root/'before.age'
             saved=json.loads(run(BASE,'backup','--config',path,'--node',node,'--recipient',public['recipient'],'--output',cipher,'--staging',root).stdout)
             self.assertNotEqual(run(REJECT,'migrate-existing','--database',database,'--node',node,check=False).returncode,0)
-            with closing(sqlite3.connect(database)) as connection:self.assertEqual(connection.execute('SELECT count(*) FROM core_migrations').fetchone()[0],9)
+            with closing(sqlite3.connect(database)) as connection:self.assertEqual(connection.execute('SELECT count(*) FROM core_migrations').fetchone()[0],10)
             migrated=json.loads(run(SUCCESS,'migrate-existing','--database',database,'--node',node).stdout)
             self.assertFalse(migrated['listener_opened'])
             with closing(sqlite3.connect(database)) as connection:
-                self.assertEqual(connection.execute('SELECT count(*) FROM core_migrations').fetchone()[0],11)
+                self.assertEqual(connection.execute('SELECT count(*) FROM core_migrations').fetchone()[0],12)
                 self.assertEqual(connection.execute('SELECT count(*) FROM events_upgrade_receipts').fetchone()[0],2)
             self.assertNotEqual(run(BASE,'migrate-existing','--database',database,'--node',node,check=False).returncode,0)
             compatible=root/'compatible'
             resumed=json.loads(run(SUCCESS,'restore-compatible','--archive',cipher,'--node',node,'--identity-file',key,'--output',compatible,'--staging',root,'--source','lost','--reason','Simulated lost source; private isolated continuation','--at','0').stdout)
-            self.assertEqual(resumed['format'],'bbsbox.compatible-continuation/v1');self.assertTrue(resumed['migration_required']);self.assertEqual(len(resumed['source_registry']),9);self.assertFalse(resumed['installed'])
-            with closing(sqlite3.connect(compatible/'data/node.sqlite')) as connection:self.assertEqual(connection.execute('SELECT count(*) FROM core_migrations').fetchone()[0],9)
+            self.assertEqual(resumed['format'],'bbsbox.compatible-continuation/v1');self.assertTrue(resumed['migration_required']);self.assertEqual(len(resumed['source_registry']),10);self.assertFalse(resumed['installed'])
+            with closing(sqlite3.connect(compatible/'data/node.sqlite')) as connection:self.assertEqual(connection.execute('SELECT count(*) FROM core_migrations').fetchone()[0],10)
             run(SUCCESS,'migrate-existing','--database',compatible/'data/node.sqlite','--node',node)
             check_closed_data(compatible/'data')
-            with closing(sqlite3.connect(compatible/'data/node.sqlite')) as connection:self.assertEqual(connection.execute('SELECT count(*) FROM core_migrations').fetchone()[0],11)
+            with closing(sqlite3.connect(compatible/'data/node.sqlite')) as connection:self.assertEqual(connection.execute('SELECT count(*) FROM core_migrations').fetchone()[0],12)
             target=root/'restored'
             restored=json.loads(run(BASE,'restore-and-authorize','--archive',cipher,'--node',node,'--identity-file',key,'--output',target,'--staging',root,'--source','retired','--reason','Stopped disposable upgraded fixture','--at','0').stdout)
             self.assertEqual(saved['inventory_sha256'],restored['inventory_sha256']);self.assertTrue(restored['isolated_writer_ready']);self.assertFalse(restored['installed'])
             with closing(sqlite3.connect(target/'data/node.sqlite')) as connection:
-                self.assertEqual(connection.execute('SELECT count(*) FROM core_migrations').fetchone()[0],9)
+                self.assertEqual(connection.execute('SELECT count(*) FROM core_migrations').fetchone()[0],10)
                 self.assertEqual(connection.execute("SELECT count(*) FROM core_command_receipts WHERE response=?",(b'saved',)).fetchone()[0],2)
             run(BASE,'migrate-existing','--database',target/'data/node.sqlite','--node',node)
 
@@ -128,7 +128,7 @@ class RecoveryExclusionTests(unittest.TestCase):
                     else:self.fail('Did not observe the actual Rust migration writer lock')
                     child.kill();child.communicate(timeout=5)
                     with update.source_lock():self.assertEqual(lock.stat().st_ino,inode)
-                with closing(sqlite3.connect(database)) as connection:self.assertEqual(connection.execute('SELECT count(*) FROM core_migrations').fetchone()[0],9)
+                with closing(sqlite3.connect(database)) as connection:self.assertEqual(connection.execute('SELECT count(*) FROM core_migrations').fetchone()[0],10)
                 run(BASE,'migrate-existing','--database',database,'--node',node)
             finally:
                 if child.poll() is None:child.kill();child.communicate(timeout=5)

@@ -346,11 +346,7 @@ impl Auth {
             boot: self.boot,
         })
     }
-    pub(crate) fn mutation_account(
-        &self,
-        tx: &Transaction<'_>,
-        actor: &Mutation,
-    ) -> Result<Account> {
+    pub fn mutation_account(&self, tx: &Transaction<'_>, actor: &Mutation) -> Result<Account> {
         if actor.boot != self.boot {
             return Err(Error::InvalidSession);
         }

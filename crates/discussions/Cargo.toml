@@ -11,6 +11,7 @@ bbsbox-event-codec = { path = "../event-codec" }
 bbsbox-event-core = { path = "../event-core" }
 bbsbox-identity = { path = "../identity" }
 bbsbox-storage = { path = "../storage" }
+pulldown-cmark = { version = "0.13", default-features = false, features = ["html"] }
 rusqlite = "0.41"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

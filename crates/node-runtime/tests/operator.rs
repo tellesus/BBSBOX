@@ -67,7 +67,7 @@ impl Fixture {
 #[test]
 fn known_foundation_backup_can_recover_before_the_theme_migration() {
     let mut previous = migrations();
-    previous.retain(|migration| migration.module != "settings");
+    previous.retain(|migration| !matches!(migration.module, "settings" | "discussions"));
     let fixture = Fixture::with_registry(&previous);
     let identity = fixture.root.join("key.age");
     let public = operator::keygen(&identity).unwrap();
@@ -261,6 +261,41 @@ fn explicit_restore_authorization_keeps_client_recovery_and_installed_activation
 #[test]
 fn local_operator_round_trip_keeps_identity_configuration_and_restore_block() {
     let f = Fixture::new();
+    let mut database = Database::open(&f.database, &migrations()).unwrap();
+    let signer = NodeSigner::start_existing(&mut database, f.node).unwrap();
+    let password = bbsbox_identity::password::Engine::default()
+        .prepare(zeroize::Zeroizing::new("backup fixture passphrase".into()))
+        .unwrap();
+    let author = database
+        .write(bbsbox_storage::disk::Class::Control, 65536, |tx| {
+            bbsbox_identity::bootstrap_sysop(tx, "operator", password)
+        })
+        .unwrap();
+    let boards = bbsbox_discussions::Boards::new(&signer);
+    let thread = database
+        .write(bbsbox_storage::disk::Class::Content, 131072, |tx| {
+            boards.record(
+                tx,
+                &signer,
+                &author,
+                "general",
+                bbsbox_discussions::Change::Board { title: "General" },
+                1,
+            )?;
+            boards.record(
+                tx,
+                &signer,
+                &author,
+                "general",
+                bbsbox_discussions::Change::Thread {
+                    title: "Local post",
+                    text: "Keep this post through recovery.",
+                },
+                2,
+            )
+        })
+        .unwrap();
+    drop(database);
     let secret = f.root.join("operator.key");
     let generated = operator::keygen(&secret).unwrap();
     assert!(generated.get("secret").is_none());
@@ -272,6 +307,11 @@ fn local_operator_round_trip_keeps_identity_configuration_and_restore_block() {
     let target = f.root.join("restored");
     let restored = operator::restore(&cipher, f.node, &secret, &target, &f.root).unwrap();
     assert_eq!(restored["state"], "recovery-required");
+    let reader = bbsbox_storage::open_reader(target.join("data/node.sqlite")).unwrap();
+    let posts = bbsbox_discussions::posts(&reader, "general", thread, None).unwrap();
+    assert_eq!(posts[0].id, thread);
+    assert_eq!(posts[0].text, "Keep this post through recovery.");
+    drop(reader);
     assert_eq!(
         fs::read(target.join("configuration/tls/ca-key.pem")).unwrap(),
         fs::read(f.config.parent().unwrap().join("tls/ca-key.pem")).unwrap()

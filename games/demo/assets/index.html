@@ -4,11 +4,25 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Dungeon demo</title>
+  <link rel="stylesheet" href="/game.css">
+  <script src="/game.js" defer></script>
 </head>
 <body>
   <main>
     <h1>Dungeon demo</h1>
     <p>Two players take turns exploring or resting. Reach the third chamber together.</p>
+    <p id="state" aria-live="polite"></p>
+    <div class="actions">
+      <button id="explore" disabled>Explore</button>
+      <button id="rest" disabled>Rest</button>
+      <button id="retry" hidden>Retry move</button>
+    </div>
+    <p id="notice" role="status"></p>
+    <section id="memberships" hidden>
+      <h2>Your local groups</h2>
+      <ul id="groups"></ul>
+      <button id="more-groups" hidden>More groups</button>
+    </section>
   </main>
 </body>
 </html>

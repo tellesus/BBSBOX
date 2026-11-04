@@ -47,12 +47,14 @@ struct Sessions {
     profile_providers: Arc<bbsbox_profiles::components::Providers>,
     social: Arc<bbsbox_social::Social>,
     gatherings: Arc<bbsbox_gatherings::Gatherings>,
+    game: Option<Arc<crate::games::Service>>,
 }
 
 pub(super) fn router(
     config: &crate::Config,
     writer: Handle,
     signer: Arc<NodeSigner>,
+    game: Option<Arc<crate::games::Service>>,
 ) -> crate::Result<Router> {
     let origins = std::iter::once(&config.origin).chain(&config.additional_origins);
     let auth = Auth::with_origins(
@@ -77,10 +79,12 @@ pub(super) fn router(
         profile_providers: Arc::new(bbsbox_profiles::components::Providers {
             feed: Some(pages::feeds::profile_provider()),
             events: Some(pages::gatherings::profile_provider()),
+            games: game.clone().map(crate::games::profile_provider),
             ..Default::default()
         }),
         social: Arc::new(bbsbox_social::Social::new(&signer)),
         gatherings: Arc::new(bbsbox_gatherings::Gatherings::new(&signer)),
+        game,
         signer,
     };
     Ok(Router::new()

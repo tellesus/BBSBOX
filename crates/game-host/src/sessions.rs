@@ -57,6 +57,7 @@ enum Kind {
 
 struct Grant {
     game: String,
+    account: LocalAccountId,
     player: PlayerId,
     expires: i64,
     kind: Kind,
@@ -92,6 +93,7 @@ impl Registry {
         }
         Ok(self.issue(Grant {
             game: game.game_id().into(),
+            account,
             player: PlayerId::for_account(node, game, account),
             expires: now.saturating_add(TICKET_AGE),
             kind: Kind::Ticket,
@@ -110,6 +112,13 @@ impl Registry {
     pub fn authorize(&self, game: &Manifest, bearer: &str) -> Result<PlayerId, Error> {
         let key = token_key(bearer)?;
         Ok(self.lookup(game, key, Kind::Session)?.player)
+    }
+
+    /// The core uses this only for authorized queries about the session's own local account.
+    pub fn local_account(&self, game: &Manifest, bearer: &str) -> Result<LocalAccountId, Error> {
+        Ok(self
+            .lookup(game, token_key(bearer)?, Kind::Session)?
+            .account)
     }
 
     pub fn revoke(&mut self, game: &Manifest, bearer: &str) -> Result<(), Error> {

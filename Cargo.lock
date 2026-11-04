@@ -261,7 +261,7 @@ dependencies = [
 
 [[package]]
 name = "bbsbox-demo-worker"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "bbsbox-game-host",
  "bbsbox-maintenance",
@@ -450,6 +450,7 @@ dependencies = [
  "bbsbox-event-codec",
  "bbsbox-event-core",
  "bbsbox-files",
+ "bbsbox-game-host",
  "bbsbox-gatherings",
  "bbsbox-groups",
  "bbsbox-identity",

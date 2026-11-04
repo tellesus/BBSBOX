@@ -24,9 +24,11 @@ use std::{
 
 pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 pub mod cli;
+mod games;
 pub mod operator;
 pub mod release_operator;
 mod session;
+use tower::ServiceExt;
 /// No filesystem, identity or listener is opened when reporting compiled compatibility.
 pub fn release_profile() -> bbsbox_maintenance::release_payload::RuntimeProfile {
     release_profile_for_registry(&migrations())
@@ -70,6 +72,8 @@ pub struct Config {
     pub origin: String,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub additional_origins: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub game_origin: Option<String>,
     pub database: PathBuf,
     pub certificate: PathBuf,
     pub certificate_key: PathBuf,
@@ -122,6 +126,32 @@ impl Config {
             let authority = self.origin_authority(origin)?;
             if !seen.insert(authority) {
                 return Err("duplicate local origin".into());
+            }
+        }
+        if let Some(origin) = &self.game_origin {
+            let authority: axum::http::uri::Authority = self.origin_authority(origin)?.parse()?;
+            let host = authority.host().trim_matches(['[', ']']);
+            let local = match host.parse::<IpAddr>() {
+                Ok(IpAddr::V4(ip)) => ip.is_loopback() || ip.is_private() || ip.is_link_local(),
+                Ok(IpAddr::V6(ip)) => {
+                    ip.is_loopback() || ip.is_unique_local() || ip.is_unicast_link_local()
+                }
+                Err(_) => host == "localhost" || host.ends_with(".home.arpa"),
+            };
+            if !local
+                || seen.iter().any(|core| {
+                    core.parse::<axum::http::uri::Authority>()
+                        .is_ok_and(|core| {
+                            let core_host =
+                                core.host().trim_matches(['[', ']']).trim_end_matches('.');
+                            core_host.eq_ignore_ascii_case(host)
+                                || core_host
+                                    .parse::<IpAddr>()
+                                    .is_ok_and(|core_ip| host.parse::<IpAddr>() == Ok(core_ip))
+                        })
+                })
+            {
+                return Err("game origin must be local HTTPS on a separate host".into());
             }
         }
         for path in [&self.database, &self.certificate, &self.certificate_key] {
@@ -191,11 +221,13 @@ pub struct NodeInfo {
 struct AppState {
     info: Arc<NodeInfo>,
     authorities: Arc<[String]>,
+    game: Option<(String, Router)>,
 }
 pub struct Runtime {
     writer: Writer,
     signer: Arc<NodeSigner>,
     info: NodeInfo,
+    game: Option<Arc<games::Service>>,
 }
 impl Runtime {
     pub async fn start(config: &Config) -> Result<Self> {
@@ -247,10 +279,21 @@ impl Runtime {
             version: env!("CARGO_PKG_VERSION"),
             status: "ready",
         };
+        let game = if let Some(origin) = config.game_origin.clone() {
+            let database = config.database.clone();
+            let node = signer.id();
+            Some(Arc::new(
+                tokio::task::spawn_blocking(move || games::Service::start(origin, database, node))
+                    .await??,
+            ))
+        } else {
+            None
+        };
         Ok(Self {
             writer,
             signer: Arc::new(signer),
             info,
+            game,
         })
     }
     pub fn info(&self) -> &NodeInfo {
@@ -265,6 +308,7 @@ async fn health(State(state): State<AppState>) -> Json<NodeInfo> {
     Json(state.info.as_ref().clone())
 }
 async fn policy(State(state): State<AppState>, mut request: Request, next: Next) -> Response {
+    const POLICY: &str = "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'";
     let authority = request.uri().authority().map(|a| a.as_str()).or_else(|| {
         request
             .headers()
@@ -278,8 +322,32 @@ async fn policy(State(state): State<AppState>, mut request: Request, next: Next)
         .any(|value| value.to_str().ok() != authority);
     let known = authority.filter(|value| state.authorities.iter().any(|a| a == value));
     let invalid_scheme = request.uri().scheme_str().is_some_and(|s| s != "https");
+    let game_router = state
+        .game
+        .as_ref()
+        .filter(|(game, _)| Some(game.as_str()) == authority);
+    let content_policy = if known.is_some()
+        && request.method() == axum::http::Method::GET
+        && request.uri().path() == "/games/"
+        && let Some((authority, _)) = &state.game
+    {
+        HeaderValue::from_str(&format!("{POLICY} https://{authority}"))
+            .expect("validated local origin")
+    } else {
+        HeaderValue::from_static(POLICY)
+    };
     let mut response =
-        if let Some(authority) = known.filter(|_| !conflicting_host && !invalid_scheme) {
+        if let Some((_, router)) = game_router.filter(|_| !conflicting_host && !invalid_scheme) {
+            if request.headers().contains_key(header::COOKIE) {
+                StatusCode::FORBIDDEN.into_response()
+            } else {
+                router
+                    .clone()
+                    .oneshot(request)
+                    .await
+                    .unwrap_or_else(|error| match error {})
+            }
+        } else if let Some(authority) = known.filter(|_| !conflicting_host && !invalid_scheme) {
             let origin = session::RequestOrigin(format!("https://{authority}"));
             request.extensions_mut().insert(origin);
             next.run(request).await
@@ -292,7 +360,7 @@ async fn policy(State(state): State<AppState>, mut request: Request, next: Next)
         };
     let headers = response.headers_mut();
     headers.insert(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));
-    headers.insert(header::CONTENT_SECURITY_POLICY,HeaderValue::from_static("default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"));
+    headers.insert(header::CONTENT_SECURITY_POLICY, content_policy);
     headers.insert(
         header::X_CONTENT_TYPE_OPTIONS,
         HeaderValue::from_static("nosniff"),
@@ -312,6 +380,14 @@ pub fn app(config: &Config, runtime: &Runtime) -> Result<Router> {
     let state = AppState {
         info: Arc::new(runtime.info().clone()),
         authorities: config.authorities()?.into(),
+        game: match (&config.game_origin, &runtime.game) {
+            (Some(origin), Some(game)) => Some((
+                config.origin_authority(origin)?,
+                games::router(game.clone()),
+            )),
+            (None, None) => None,
+            _ => return Err("game origin differs from the started runtime".into()),
+        },
     };
     Ok(Router::new()
         .route(
@@ -332,6 +408,7 @@ pub fn app(config: &Config, runtime: &Runtime) -> Result<Router> {
             config,
             runtime.writer.handle(),
             runtime.signer.clone(),
+            runtime.game.clone(),
         )?)
         .layer(middleware::from_fn_with_state(state, policy)))
 }

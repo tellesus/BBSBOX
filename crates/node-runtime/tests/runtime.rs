@@ -13,6 +13,7 @@ fn config(directory: &std::path::Path) -> Config {
         additional_binds: vec![],
         origin: "https://localhost:8443".into(),
         additional_origins: vec![],
+        game_origin: None,
         database: directory.join("node.sqlite"),
         certificate: directory.join("server.pem"),
         certificate_key: directory.join("server-key.pem"),
@@ -24,6 +25,16 @@ fn config_requires_bounded_known_fields_local_literal_addresses_https_and_distin
     let temp = tempfile::tempdir().unwrap();
     let valid = config(temp.path());
     valid.validate().unwrap();
+    let mut game = valid.clone();
+    game.game_origin = Some("https://127.0.0.1:8443".into());
+    game.validate().unwrap();
+    game.game_origin = Some("https://localhost:8443".into());
+    assert!(game.validate().is_err());
+    game.game_origin = Some("https://outside.invalid:8443".into());
+    assert!(game.validate().is_err());
+    game.origin = "https://[::1]:8443".into();
+    game.game_origin = Some("https://[0:0:0:0:0:0:0:1]:8443".into());
+    assert!(game.validate().is_err());
     for (bind, origin) in [
         ("0.0.0.0:8443", "https://localhost:8443"),
         ("8.8.8.8:8443", "https://localhost:8443"),

@@ -1,8 +1,8 @@
 # M11 — Game host and local multiplayer example
 
-Brief revision 1.1.3 · Roadmap baseline 1.1.0 · 2026-11-04 · Locked scope · Product baseline 0.6.0.
+Brief revision 1.1.4 · Roadmap baseline 1.1.0 · 2026-11-04 · Locked scope · Product baseline 0.6.0.
 
-**State:** In progress. The launch-ticket and worker fixtures pass locally. Browser and appliance integration are pending.
+**State:** In progress. Development browser, worker, profile and group paths pass locally. Signed game installation and complete appliance recovery remain pending.
 
 ## Read only this packet
 
@@ -25,7 +25,7 @@ Use locally installed HTML/TypeScript game assets and an isolated worker with JS
 
 `crates/game-host/` owns manifests, launch tickets and framed worker requests. `games/demo/` owns the demo's rules, SQLite state and command receipts.
 
-M12's [game-node snapshot provider](../../../crates/maintenance/README.md#game-node-snapshot-profile) accepts the demo worker's bounded, request-fenced checkpoints in a fixture. Appliance install, activation and game-node backup commands remain pending.
+M12's [game-node snapshot provider](../../../crates/maintenance/README.md#game-node-snapshot-profile) accepts request-fenced demo checkpoints. Appliance install and game-node backup commands remain pending. Foundation backup refuses retained game state.
 
 Use the listed contracts. Disabling a game retains its state.
 

@@ -32,6 +32,7 @@ mod accounts;
 mod discussions;
 pub(super) mod feeds;
 mod files;
+mod games;
 pub(super) mod gatherings;
 mod groups;
 mod mail;
@@ -53,6 +54,7 @@ pub(super) fn routes() -> Router<Sessions> {
         .merge(discussions::routes())
         .merge(feeds::routes())
         .merge(files::routes())
+        .merge(games::routes())
         .merge(gatherings::routes())
         .merge(groups::routes())
         .merge(mail::routes())
@@ -88,6 +90,9 @@ fn template(state: &Sessions, mut source: &str, slots: &[(&str, &str)]) -> Strin
             body.push_str("<a href=\"/events/\">Events</a>");
             body.push_str("<a href=\"/groups/\">Groups</a>");
             body.push_str("<a href=\"/files/\">Files</a>");
+            if state.game.is_some() {
+                body.push_str("<a href=\"/games/\">Games</a>");
+            }
         } else {
             body.push_str(
                 slots

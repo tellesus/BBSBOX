@@ -1,6 +1,6 @@
 # Development work ledger
 
-Version 1.1.0 · 2026-10-25 · Locked roadmap. M01–M08 and M12 software providers Complete. M00 and M09–M11 In progress. Other modules Unstarted. Execution updated 2026-11-04.
+Version 1.1.0 · 2026-10-25 · Locked roadmap. M01–M10 and M12 software providers Complete. M00 and M11 In progress. Other modules Unstarted. Execution updated 2026-11-04.
 
 Evidence log — not an independent source of scope authority. Current choices live in the canonical roadmap and user instructions.
 
@@ -17,10 +17,10 @@ Design review is complete and the first M00 prototype has real local implementat
 | [M05](modules/M05-interface-themes.md) | Approved | Complete | A–C: local HTTPS, Edge, signed Debian install/rebuild and settings restore; CI 41751474936 | Integrate real feature navigation, visual review and G1 device checks |
 | [M06](modules/M06-boards-mail.md) | Approved | Complete | A–C: signed discussions and participant-restricted mail pass Debian CI 41769646693 | G1 device checks and later complaint integration |
 | [M07](modules/M07-directory-profiles.md) | Approved | Complete | A–C: directory, profile privacy and component hooks pass signed Debian CI 41770621736 | Bind live providers in their owning modules |
-| [M08](modules/M08-friends-events.md) | Approved | Complete | A–C: local feeds, friendships, events, invitations and calendar pass signed Debian CI 41808835341 | Promote verified commit when GitHub branch update succeeds |
-| [M09](modules/M09-clans-cohorts.md) | Approved | In progress | A–C: roster privacy, invitations, handover and game membership lookup pass locally | Confirm signed Debian. Bind games in M11/M18 |
-| [M10](modules/M10-local-files.md) | Approved | In progress | A–C: local permissions, streaming, quota and restore tests pass | Confirm signed Debian. M15/M16 own actual exchange tests |
-| [M11](modules/M11-local-games.md) | Approved | In progress | Game launch tickets, child worker, retry/restart and real checkpoint pass local fixtures | Integrate verified browser origin, installation and game-node backup |
+| [M08](modules/M08-friends-events.md) | Approved | Complete | A–C: local feeds, friendships, events, invitations and calendar pass signed Debian CI 41808835341 | G1 device acceptance |
+| [M09](modules/M09-clans-cohorts.md) | Approved | Complete | A–C: roster privacy, consent, handover and typed membership pass signed Debian CI 41810057605 | M11/M18 bind game consumers |
+| [M10](modules/M10-local-files.md) | Approved | Complete | A–C: permission, streaming, quota and restore pass signed Debian CI 41811437491 | M15/M16 own actual exchange tests |
+| [M11](modules/M11-local-games.md) | Approved | In progress | Two-origin development launch, worker persistence and profile/group checks pass locally | Signed game install, appliance isolation and full game-node recovery |
 | [M13](modules/M13-encrypted-forums.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
 | [M14](modules/M14-complaints-moderation.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
 | [M15](modules/M15-selected-federation.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
@@ -605,7 +605,7 @@ Local IPv4 and IPv6 HTTPS check member consent, a private roster before acceptan
 
 ## 2026-11-04 — M08 signed confirmation and M10 file library
 
-[Signed Debian CI](https://github.com/tellesus/BBSBOX/actions/runs/41808835341) passed for the full M08 provider at `e02224c`. G1 device acceptance remains pending. The verified commits remain on the development branch while GitHub's default-branch update returns errors.
+[Signed Debian CI](https://github.com/tellesus/BBSBOX/actions/runs/41808835341) passed for the full M08 provider at `e02224c`. Main includes it. G1 device acceptance remains pending.
 
 Files migration 1 adds area permissions, quota accounting and local file entries. The browser streams uploads to a private disk spool. The storage writer rechecks access, verifies the staged bytes and publishes the file entry, blob reference and retry receipt in one transaction. Downloads require current area access and use attachment headers. Owners and SysOps can remove permitted files. Cleanup follows the reference and recovery rules in C01.
 
@@ -615,4 +615,12 @@ Local IPv4 and IPv6 HTTPS verify member upload/download permission, denial for a
 
 The first-party demo manifest binds its game ID, version, state schema and entry asset. A one-time two-minute launch ticket exchanges for a 15-minute game-scoped session. The worker identity is derived per node, game and local account. The registry keeps token hashes and checks expiry against the monotonic clock.
 
-The demo runs as a separate child process with bounded, correlated JSON messages and a locked SQLite database. Local fixtures fill two player seats, refuse a third, apply one action once across retries and restart, and verify the exact pause/checkpoint/resume fence through M12's checkpoint coordinator. A second worker resumes from the copied SQLite checkpoint. Browser origin separation, signed installation, appliance isolation, profile and group bindings, and full game-node backup commands remain open. The shipped node serves no game launch route yet.
+The demo runs as a separate child process with bounded, correlated JSON messages and a locked SQLite database. Local fixtures fill two player seats, refuse a third, apply one action once across retries and restart, and verify the exact pause/checkpoint/resume fence through M12's checkpoint coordinator. A second worker resumes from the copied SQLite checkpoint.
+
+## 2026-11-04 — M09/M10 signed confirmation and M11 browser development
+
+[M09 CI](https://github.com/tellesus/BBSBOX/actions/runs/41810057605) and [M10 CI](https://github.com/tellesus/BBSBOX/actions/runs/41811437491) passed and were promoted through the M10 checkpoint.
+
+An explicit development game origin enables the bundled demo beside the node executable. It requires a different local HTTPS host and a certificate valid on both hosts. The launch page submits a same-origin CSRF-checked form, then redirects with a one-time ticket. The game host refuses Cookie headers and core routes. The UI uses a game-scoped bearer and the worker receives a per-game player identifier. Opted-in public profiles can display the player's demo character. The game's group query returns only the session account's active local memberships.
+
+The HTTPS fixture verifies two-player play, discussions, restart, command retry, cross-origin refusals and scoped group/profile access. Edge played two turns from two browser contexts with no Cookie header on the game origin. The development origin is off by default. Signed worker installation, appliance process isolation and complete game-node recovery are pending. Foundation backup refuses an enabled game or retained game state.

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Invitation consent and management on the group's home node.
-use super::{Error, GroupId, Role, active, get, role};
+use super::{Error, GroupId, Kind, PAGE_SIZE, Role, active, get, role};
 use bbsbox_credentials::NodeId;
 use bbsbox_identity::{LocalAccountId, account_by_username};
 use rand_core::{OsRng, RngCore};
@@ -242,4 +242,49 @@ pub fn local_role(
             },
         )
         .optional()
+}
+
+pub struct LocalMembership {
+    pub group: GroupId,
+    pub name: String,
+    pub kind: Kind,
+    pub role: Role,
+    pub sequence: i64,
+}
+
+/// List only the account's own active memberships for a scoped local game session.
+pub fn local_memberships(
+    connection: &Connection,
+    home: NodeId,
+    account: LocalAccountId,
+    before: Option<i64>,
+) -> rusqlite::Result<Vec<LocalMembership>> {
+    let mut query = connection.prepare(
+        "SELECT g.id,g.name,g.kind,m.role,g.sequence FROM groups_members m
+         JOIN groups_local g ON g.id=m.group_id JOIN identity_accounts a ON a.id=m.account
+         WHERE m.account=?1 AND a.active=1 AND g.home=?2 AND g.dissolved=0
+           AND (?3 IS NULL OR g.sequence<?3)
+         ORDER BY g.sequence DESC LIMIT ?4",
+    )?;
+    query
+        .query_map(
+            params![
+                account.bytes().as_slice(),
+                home.bytes().as_slice(),
+                before,
+                (PAGE_SIZE + 1) as i64
+            ],
+            |row| {
+                let kind: String = row.get(2)?;
+                let role: String = row.get(3)?;
+                Ok(LocalMembership {
+                    group: GroupId(row.get(0)?),
+                    name: row.get(1)?,
+                    kind: Kind::parse(&kind).ok_or(rusqlite::Error::InvalidQuery)?,
+                    role: Role::from_database(&role)?,
+                    sequence: row.get(4)?,
+                })
+            },
+        )?
+        .collect()
 }

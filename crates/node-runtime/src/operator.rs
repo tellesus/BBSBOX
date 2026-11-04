@@ -185,6 +185,9 @@ pub fn backup_with_registry(
     registry: Vec<bbsbox_storage::Migration>,
 ) -> Result<serde_json::Value> {
     let config = Config::read(config_path)?;
+    if config.game_origin.is_some() || crate::games::has_retained_state(&config.database)? {
+        return Err("this node has game state; use a complete game-node checkpoint".into());
+    }
     let registry = foundation_registry(registry)?;
     let (root, required) = configuration(config_path, &config)?;
     // The configuration owner serializes this with local certificate renewal.
@@ -207,6 +210,11 @@ pub fn backup_with_registry(
     let lock = ConfigurationLock(lock);
     // Read again after the lock: renewal may have completed between the first read and acquisition.
     let frozen_config = Config::read(config_path)?;
+    if frozen_config.game_origin.is_some()
+        || crate::games::has_retained_state(&frozen_config.database)?
+    {
+        return Err("this node has game state; use a complete game-node checkpoint".into());
+    }
     if serde_json::to_vec(&config)? != serde_json::to_vec(&frozen_config)? {
         return Err("Configuration changed; retry backup".into());
     }

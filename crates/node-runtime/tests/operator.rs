@@ -46,6 +46,7 @@ impl Fixture {
                 additional_binds: vec![],
                 origin: "https://localhost:8443".into(),
                 additional_origins: vec![],
+                game_origin: None,
                 database: database.clone(),
                 certificate: configuration.join("tls/server.pem"),
                 certificate_key: configuration.join("tls/server-key.pem"),
@@ -639,6 +640,20 @@ fn cold_backup_refuses_active_writer_wrong_node_missing_storage_and_configuratio
     fs::remove_file(&f.database).unwrap();
     assert!(operator::backup(&f.config, f.node, &recipient, &output, &f.root).is_err());
     assert!(!f.database.exists());
+    assert!(!output.exists());
+}
+
+#[test]
+fn foundation_backup_refuses_retained_game_state_even_after_disabling_its_origin() {
+    let f = Fixture::new();
+    let state = f.database.parent().unwrap().join("games/dungeon-demo");
+    fs::create_dir_all(&state).unwrap();
+    fs::write(state.join("state.sqlite"), b"retained game fixture").unwrap();
+    let key = f.root.join("key.age");
+    let generated = operator::keygen(&key).unwrap();
+    let recipient = generated["recipient"].as_str().unwrap().parse().unwrap();
+    let output = f.root.join("incomplete.age");
+    assert!(operator::backup(&f.config, f.node, &recipient, &output, &f.root).is_err());
     assert!(!output.exists());
 }
 #[test]

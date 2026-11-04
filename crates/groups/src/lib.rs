@@ -112,6 +112,13 @@ impl Role {
     pub fn can_manage(self) -> bool {
         matches!(self, Self::Creator | Self::Manager)
     }
+    pub fn key(self) -> &'static str {
+        match self {
+            Self::Creator => "creator",
+            Self::Manager => "manager",
+            Self::Member => "member",
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

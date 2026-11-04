@@ -1,9 +1,9 @@
 name: Foundation experiment
 on:
   push:
-    paths: ['spikes/m00/**', 'web/shell/**', 'crates/**', 'games/**', 'client/**', 'protocol/**', 'deploy/**', 'Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', '.github/workflows/foundation.yml', 'tools/validate_roadmap.py', 'tools/verify_credentials.mjs', 'tools/verify_event_vectors.mjs', 'tools/verify_archive_vectors.mjs', 'tools/verify_release_vectors.mjs', 'tools/release_materials.py', 'tools/test_release_materials.py', 'tools/release_candidate.py', 'tools/test_release_candidate.py', 'tools/runtime_smoke.py', 'tools/runtime_bundle.py', 'tools/test_runtime_bundle.py', 'tools/test_install_development.py', 'tools/test_install_release.py', 'tools/test_update_release.py', 'tools/test_backup_development.py', 'tools/test_backup_retention.py', 'tools/test_network_profile.py', 'tools/test_enrollment.py', 'tools/test_configure_network.py', 'tools/test_local_tls.py', 'tools/test_link_capture.py', 'docs/**']
+    paths: ['spikes/m00/**', 'web/shell/**', 'crates/**', 'games/**', 'client/**', 'protocol/**', 'deploy/**', 'Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', '.github/workflows/foundation.yml', 'tools/validate_roadmap.py', 'tools/verify_credentials.mjs', 'tools/verify_event_vectors.mjs', 'tools/verify_archive_vectors.mjs', 'tools/verify_release_vectors.mjs', 'tools/release_materials.py', 'tools/test_release_materials.py', 'tools/release_candidate.py', 'tools/test_release_candidate.py', 'tools/runtime_smoke.py', 'tools/game_smoke.py', 'tools/runtime_bundle.py', 'tools/test_runtime_bundle.py', 'tools/test_install_development.py', 'tools/test_install_release.py', 'tools/test_update_release.py', 'tools/test_backup_development.py', 'tools/test_backup_retention.py', 'tools/test_network_profile.py', 'tools/test_enrollment.py', 'tools/test_configure_network.py', 'tools/test_local_tls.py', 'tools/test_link_capture.py', 'docs/**']
   pull_request:
-    paths: ['spikes/m00/**', 'web/shell/**', 'crates/**', 'games/**', 'client/**', 'protocol/**', 'deploy/**', 'Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', '.github/workflows/foundation.yml', 'tools/validate_roadmap.py', 'tools/verify_credentials.mjs', 'tools/verify_event_vectors.mjs', 'tools/verify_archive_vectors.mjs', 'tools/verify_release_vectors.mjs', 'tools/release_materials.py', 'tools/test_release_materials.py', 'tools/release_candidate.py', 'tools/test_release_candidate.py', 'tools/runtime_smoke.py', 'tools/runtime_bundle.py', 'tools/test_runtime_bundle.py', 'tools/test_install_development.py', 'tools/test_install_release.py', 'tools/test_update_release.py', 'tools/test_backup_development.py', 'tools/test_backup_retention.py', 'tools/test_network_profile.py', 'tools/test_enrollment.py', 'tools/test_configure_network.py', 'tools/test_local_tls.py', 'tools/test_link_capture.py', 'docs/**']
+    paths: ['spikes/m00/**', 'web/shell/**', 'crates/**', 'games/**', 'client/**', 'protocol/**', 'deploy/**', 'Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', '.github/workflows/foundation.yml', 'tools/validate_roadmap.py', 'tools/verify_credentials.mjs', 'tools/verify_event_vectors.mjs', 'tools/verify_archive_vectors.mjs', 'tools/verify_release_vectors.mjs', 'tools/release_materials.py', 'tools/test_release_materials.py', 'tools/release_candidate.py', 'tools/test_release_candidate.py', 'tools/runtime_smoke.py', 'tools/game_smoke.py', 'tools/runtime_bundle.py', 'tools/test_runtime_bundle.py', 'tools/test_install_development.py', 'tools/test_install_release.py', 'tools/test_update_release.py', 'tools/test_backup_development.py', 'tools/test_backup_retention.py', 'tools/test_network_profile.py', 'tools/test_enrollment.py', 'tools/test_configure_network.py', 'tools/test_local_tls.py', 'tools/test_link_capture.py', 'docs/**']
 permissions:
   contents: read
 jobs:
@@ -87,7 +87,7 @@ jobs:
       - run: cargo fmt --check --all
       - run: cargo test --locked --workspace
       - run: cargo clippy --locked --offline --workspace --all-targets -- -D warnings
-      - run: cargo build --locked --offline -p bbsbox-node-runtime --bins --examples
+      - run: cargo build --locked --offline -p bbsbox-node-runtime -p bbsbox-demo-worker --bins --examples
       - run: python3 -m unittest discover -s tools -p test_update_release.py -v
       - run: python3 -m unittest discover -s tools -p test_release_materials.py -v
       - run: python3 -m unittest discover -s tools -p test_release_candidate.py -v
@@ -103,6 +103,7 @@ jobs:
       - run: sudo apt-get -o Acquire::http::Timeout=20 -o Acquire::https::Timeout=20 -o Acquire::Retries=1 update && sudo apt-get -o DPkg::Lock::Timeout=60 -o Acquire::http::Timeout=20 -o Acquire::https::Timeout=20 -o Acquire::Retries=1 install -y strace iproute2 systemd-container
         timeout-minutes: 5
       - run: sudo unshare --net -- bash -c 'ip link set lo up && python3 tools/runtime_smoke.py --isolated'
+      - run: sudo unshare --net -- bash -c 'ip link set lo up && python3 tools/game_smoke.py'
       - run: target/debug/bbsbox-node --release-profile > work/release-candidate-profile.json
       - name: Rebuild matching materials with no network or dependency cache
         run: sudo unshare --net -- python3 deploy/ci/rebuild_release.py --root work/release-extracted --materials work/release-materials --source-commit "$GITHUB_SHA" --cargo "$(rustup which cargo)" --rustc "$(rustup which rustc)" --node "$(command -v node)" --npm "$(command -v npm)" --expected-profile work/release-candidate-profile.json --output work/offline-material-rebuild.json

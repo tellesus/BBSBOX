@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import ts from 'typescript';
 
 const pages = [
   ['index.html', 'home.html', ['NODE_NAME', 'WELCOME']],
@@ -15,6 +16,7 @@ const pages = [
   ['events/index.html', 'events.html', ['EVENTS_TITLE', 'EVENTS_CONTENT']],
   ['groups/index.html', 'groups.html', ['GROUPS_TITLE', 'GROUPS_CONTENT']],
   ['files/index.html', 'files.html', ['FILES_TITLE', 'FILES_CONTENT']],
+  ['games/index.html', 'games.html', ['GAMES_CONTENT']],
   ['unavailable/index.html', 'unavailable.html', ['PAGE_TITLE', 'PAGE_MESSAGE']]
 ];
 
@@ -38,4 +40,15 @@ for (const [source, destination, pageSlots] of pages) {
   } else {
     await writeFile(target, html);
   }
+}
+
+const gameSource = await readFile('../../games/demo/web/game.ts', 'utf8');
+const gameScript = ts.transpileModule(gameSource, {
+  compilerOptions: { target: ts.ScriptTarget.ES2022, strict: true, newLine: ts.NewLineKind.LineFeed }
+}).outputText;
+const gameTarget = '../../games/demo/assets/game.js';
+if (verify) {
+  if (gameScript !== (await readFile(gameTarget, 'utf8')).replaceAll('\r\n', '\n')) throw new Error(`Rebuild ${gameTarget}`);
+} else {
+  await writeFile(gameTarget, gameScript);
 }

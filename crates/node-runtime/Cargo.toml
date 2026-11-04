@@ -23,6 +23,7 @@ bbsbox-social = { path = "../social" }
 bbsbox-gatherings = { path = "../gatherings" }
 bbsbox-groups = { path = "../groups" }
 bbsbox-files = { path = "../files" }
+bbsbox-game-host = { path = "../game-host" }
 bbsbox-credentials = { path = "../credentials" }
 tempfile = "3"
 zeroize = "1"
@@ -36,6 +37,4 @@ serde_json = "1"
 sha2 = "0.10"
 tokio = { version = "1", features = ["fs", "io-util", "macros", "rt-multi-thread", "signal", "time"] }
 tokio-util = { version = "0.7", features = ["io"] }
-
-[dev-dependencies]
 tower = { version = "0.5", features = ["util"] }

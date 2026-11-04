@@ -105,7 +105,7 @@ with closing(sqlite3.connect('/var/lib/bbsbox/node.sqlite')) as database, databa
         installed=json.loads((root/'etc/bbsbox/installation.json').read_text())
         assert installed['node_id']==node and installed['release_id']==original_release
         with closing(sqlite3.connect('file:'+str(root/'var/lib/bbsbox/node.sqlite')+'?mode=ro',uri=True)) as database:
-            assert database.execute('SELECT count(*) FROM core_migrations').fetchone()[0]==18
+            assert database.execute('SELECT count(*) FROM core_migrations').fetchone()[0]==19
             assert database.execute("SELECT count(*) FROM core_command_receipts WHERE command_id='same-id' AND response=?",(b'kept',)).fetchone()[0]==2
             assert database.execute('SELECT revision, background FROM settings_theme WHERE id=1').fetchone()==(1,'#111111')
             assert database.execute('SELECT revision, welcome, menu_order FROM settings_site WHERE id=1').fetchone()==(1,'Welcome neighbors','status,home,account')
@@ -154,7 +154,7 @@ with closing(sqlite3.connect('/var/lib/bbsbox/node.sqlite')) as database, databa
     assert json.loads((root/'etc/bbsbox/installation.json').read_text())['node_id']==node
     assert (root/'etc/bbsbox/tls/ca-key.pem').read_bytes()==original_ca
     with closing(sqlite3.connect('file:'+str(root/'var/lib/bbsbox/node.sqlite')+'?mode=ro',uri=True)) as database:
-        assert database.execute('SELECT count(*) FROM core_migrations').fetchone()[0]==20
+        assert database.execute('SELECT count(*) FROM core_migrations').fetchone()[0]==21
         assert database.execute('SELECT count(*) FROM events_upgrade_receipts').fetchone()[0]==2
     command('release-control-boot');guest.service_identity(pid,root)
     # Completion retry must preserve a write accepted after that update's snapshot/completion.
@@ -165,7 +165,7 @@ with closing(sqlite3.connect('/var/lib/bbsbox/node.sqlite')) as database, databa
     assert repeated['state']=='completed'
     with closing(sqlite3.connect('file:'+str(root/'var/lib/bbsbox/node.sqlite')+'?mode=ro',uri=True)) as database:
         assert database.execute("SELECT response FROM core_command_receipts WHERE namespace='fixture-later'").fetchone()[0]==b'newer-write'
-        assert database.execute('SELECT count(*) FROM core_migrations').fetchone()[0]==20
+        assert database.execute('SELECT count(*) FROM core_migrations').fetchone()[0]==21
     stale=guest.enter(pid,root,[*updater,'recover','--operation',failed['operation'],*identity],check=False,timeout=120)
     assert stale.returncode!=0
     assert command('release-control-state','--directory',control)['state']==current
@@ -189,7 +189,7 @@ with closing(sqlite3.connect('/var/lib/bbsbox/node.sqlite')) as database, databa
     assert retained['inventory_sha256']==plan['retained_inventory'] and retained['state']=='recovery-required'
     with closing(sqlite3.connect('file:'+str(root/'root/rollback-retained/data/node.sqlite')+'?mode=ro',uri=True)) as database:
         assert database.execute("SELECT response FROM core_command_receipts WHERE namespace='fixture-later'").fetchone()[0]==b'newer-write'
-        assert database.execute('SELECT count(*) FROM core_migrations').fetchone()[0]==20
+        assert database.execute('SELECT count(*) FROM core_migrations').fetchone()[0]==21
     with closing(sqlite3.connect('file:'+str(root/'var/lib/bbsbox-maintenance/release-control/release-trust.sqlite')+'?mode=ro',uri=True)) as database:
         evidence=json.loads(database.execute("SELECT detail FROM history WHERE action='begin-recovery' ORDER BY revision DESC LIMIT 1").fetchone()[0])['purpose']['evidence']
         assert evidence['reason']=='CI explicit matching historical recovery' and bytes(evidence['snapshot_inventory']).hex()==plan['snapshot']

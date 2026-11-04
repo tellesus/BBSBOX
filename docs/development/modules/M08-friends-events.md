@@ -1,8 +1,8 @@
 # M08 — Chosen feeds, gatherings and invitations
 
-Brief revision 1.1.4 · 2026-11-03 · Roadmap baseline 1.1.0 · Product baseline 0.6.0.
+Brief revision 1.1.5 · 2026-11-03 · Roadmap baseline 1.1.0 · Product baseline 0.6.0.
 
-**State:** In progress. A–B pass locally. Calendar, RSVPs and reminders are next.
+**State:** In progress. A–C pass locally. Signed Debian confirmation is pending for the full module.
 
 ## Read only this packet
 
@@ -23,7 +23,7 @@ Use explicit following for public posts, with mutual confirmed friendship as a d
 
 ## Ownership and interfaces
 
-`crates/social/` owns follows, friends and feeds. `crates/gatherings/` owns event revisions, invitations and later RSVPs. M13 owns encrypted friend audiences.
+`crates/social/` owns follows, friends and feeds. `crates/gatherings/` owns events, invitations, RSVPs and reminders. M13 owns encrypted friend audiences.
 
 Follow the listed contracts. A disabled optional module retains its data and leaves other services available.
 

@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 """Exercise real HTTPS startup/restart; --isolated also audits both families in a Linux namespace."""
 import argparse
+from datetime import datetime, timedelta, timezone
 import http.cookiejar
 import importlib.util
 import json
@@ -516,6 +517,51 @@ def exercise(binary, state_root, host, isolated):
                         assert b'No invitations to show.' in response.read()
                     with request(event_path) as response:
                         assert b'Invitations sent on this node' not in response.read()
+                    with request('/events/new/') as response:
+                        agenda_proof = discussion_proof(response.read().decode())
+                    soon = (datetime.now(timezone.utc) + timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M')
+                    with submit('/events/new/', dict(agenda_proof, title='Soon at the library', place='Library', description='', local=soon, zone='UTC', occurrence='')) as response:
+                        event_path = urllib.parse.urlsplit(response.geturl()).path
+                        scheduled = response.read().decode()
+                    first_rsvp = dict(event_action(scheduled, 'attendance/rsvp'), previous='', value='going')
+                    with submit(event_path + 'attendance/rsvp/', first_rsvp) as response:
+                        rsvp_view = response.read().decode()
+                        assert 'Last recorded responses: 1 going, 0 maybe, 0 not going.' in rsvp_view
+                    form = rsvp_view.split(f'<form action="{event_path}attendance/rsvp/"', 1)[1].split('</form>', 1)[0]
+                    previous = re.search(r'name="previous" value="([0-9a-f]{64})"', form).group(1)
+                    with submit(event_path + 'attendance/rsvp/', dict(discussion_proof(form), previous=previous, value='maybe')) as response:
+                        rsvp_view = response.read().decode()
+                        assert 'Last recorded responses: 0 going, 1 maybe, 0 not going.' in rsvp_view
+                    with submit(event_path + 'attendance/rsvp/', first_rsvp) as response:
+                        assert b'0 going, 1 maybe' in response.read()
+                    try:
+                        submit(event_path + 'attendance/rsvp/', dict(event_action(rsvp_view, 'attendance/rsvp'), previous='', value='not-going'))
+                        raise AssertionError('A stale RSVP form overwrote a newer response')
+                    except urllib.error.HTTPError as error:
+                        assert error.code == 409
+                    reminder = dict(event_action(rsvp_view, 'attendance/reminder'), value='60')
+                    with submit(event_path + 'attendance/reminder/', reminder) as response:
+                        assert b'<option value="60" selected>' in response.read()
+                    with request('/events/calendar/') as response:
+                        calendar = response.read().decode()
+                        due = calendar.split('<h2>Reminders due</h2>', 1)[1].split('</ul>', 1)[0]
+                        assert 'Soon at the library' in due and '<h2>Upcoming</h2>' in calendar
+                    with request(event_path + 'edit/') as response:
+                        agenda_editor = response.read().decode()
+                    previous = re.search(r'name="previous" value="([0-9a-f]{64})"', agenda_editor).group(1)
+                    moved = (datetime.now(timezone.utc) + timedelta(hours=2)).strftime('%Y-%m-%dT%H:%M')
+                    with submit(event_path + 'edit/', dict(discussion_proof(agenda_editor), previous=previous, title='Soon at the library', place='Library', description='', local=moved, zone='UTC', occurrence='')) as response:
+                        assert b'<option value="60" selected>' in response.read()
+                    with request('/events/calendar/') as response:
+                        assert b'Reminders due' not in response.read()
+                    sign_out()
+                    sign_in(other['username'], other['password'])
+                    with request('/events/calendar/') as response:
+                        calendar = response.read().decode()
+                        assert 'Soon at the library' in calendar and 'Reminders due' not in calendar
+                    with request(event_path) as response:
+                        attendee = response.read().decode()
+                        assert '0 going, 1 maybe' in attendee and '<option value="maybe" selected>' not in attendee
                 # A new client without the local CA must fail certificate verification.
                 untrusted = urllib.request.build_opener(urllib.request.ProxyHandler({}), urllib.request.HTTPSHandler(context=ssl.create_default_context()))
                 try:
@@ -544,7 +590,7 @@ def exercise(binary, state_root, host, isolated):
                 text = trace.read_text(encoding='utf-8')
                 traces.append(audit.audit_trace(text))
                 (state_root/f'runtime-{"ipv6" if family == socket.AF_INET6 else "ipv4"}-{attempt}.trace').write_text(text, encoding='utf-8')
-        return dict(family='IPv6' if family == socket.AF_INET6 else 'IPv4', simultaneous_dual_stack=True, tls=True, untrusted_ca_rejected=True, local_assets=4, identity_preserved_after_restart=True, configured_alias_accepted=True, unexpected_authority_rejected=True, public_status_read_only=True, local_session_lifecycle=True, restart_invalidates_session=True, palette_preview_apply_reset=True, welcome_and_menu_settings=True, member_onboarding=True, unavailable_section_status=True, local_board_thread_reply=True, discussion_retry_and_csrf=True, discussion_edit_and_withdraw=True, local_mail_participants=True, directory_and_profile_privacy=True, chronological_followed_feed=True, mutual_local_friendship=True, local_gathering_revisions=True, recipient_addressed_invitations=True, initialization_audit=initial_audit, network_audit=traces)
+        return dict(family='IPv6' if family == socket.AF_INET6 else 'IPv4', simultaneous_dual_stack=True, tls=True, untrusted_ca_rejected=True, local_assets=4, identity_preserved_after_restart=True, configured_alias_accepted=True, unexpected_authority_rejected=True, public_status_read_only=True, local_session_lifecycle=True, restart_invalidates_session=True, palette_preview_apply_reset=True, welcome_and_menu_settings=True, member_onboarding=True, unavailable_section_status=True, local_board_thread_reply=True, discussion_retry_and_csrf=True, discussion_edit_and_withdraw=True, local_mail_participants=True, directory_and_profile_privacy=True, chronological_followed_feed=True, mutual_local_friendship=True, local_gathering_revisions=True, recipient_addressed_invitations=True, local_calendar_rsvp_and_reminders=True, initialization_audit=initial_audit, network_audit=traces)
 
 
 def main():

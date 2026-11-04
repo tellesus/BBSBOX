@@ -28,10 +28,12 @@ use std::{fmt::Write, sync::Arc};
 use zeroize::Zeroizing;
 
 const TEMPLATE: &str = include_str!("../../../../../web/shell/compiled/events.html");
+mod calendar;
 
 pub(super) fn routes() -> Router<Sessions> {
     Router::new()
         .route("/events/", get(index))
+        .merge(calendar::routes())
         .route("/events/invitations/", get(inbox))
         .route(
             "/events/new/",
@@ -118,10 +120,15 @@ async fn index(
         .read(move |_, path| Ok(events::list(&open_reader(path)?, None, after)?))
         .await?;
     let mut content = String::from(
-        "<p><a href=\"/events/new/\">Create an event</a> · <a href=\"/events/invitations/\">Your invitations</a></p>",
+        "<p><a href=\"/events/new/\">Create an event</a> · <a href=\"/events/calendar/\">Calendar</a> · <a href=\"/events/invitations/\">Your invitations</a></p>",
     );
+    event_list(&mut content, &rows, "No events to show.");
+    Ok(page(&state, StatusCode::OK, "Events", &content))
+}
+
+fn event_list(content: &mut String, rows: &[Gathering], empty: &str) {
     if rows.is_empty() {
-        content.push_str("<p>No events to show.</p>");
+        let _ = write!(content, "<p>{empty}</p>");
     } else {
         content.push_str("<ul>");
         for row in rows.iter().take(events::PAGE_SIZE) {
@@ -147,7 +154,6 @@ async fn index(
             );
         }
     }
-    Ok(page(&state, StatusCode::OK, "Events", &content))
 }
 
 async fn inbox(
@@ -257,6 +263,8 @@ async fn view(
         item.username
     );
     content.push_str(&bbsbox_discussions::render_markdown(&details.description));
+    calendar::render_attendance(&state, account.id, id, item.cancelled, &csrf, &mut content)
+        .await?;
     if account.id.bytes() == &item.organizer {
         let count = state
             .read(move |_, path| {

@@ -17,6 +17,7 @@ use rand_core::{OsRng, RngCore};
 use rusqlite::{Connection, OptionalExtension, Transaction, params};
 use serde::{Deserialize, Serialize};
 
+pub mod attendance;
 pub mod invitations;
 mod schedule;
 pub use schedule::{Occurrence, Schedule, ScheduleError};
@@ -27,7 +28,7 @@ const CANCEL: &str = "gathering.cancel";
 const AUDIENCE: &str = "local-public";
 pub const PAGE_SIZE: usize = 30;
 
-pub fn migrations() -> [Migration; 2] {
+pub fn migrations() -> [Migration; 3] {
     [
         Migration {
             module: "gatherings",
@@ -38,6 +39,11 @@ pub fn migrations() -> [Migration; 2] {
             module: "gatherings",
             version: 2,
             sql: include_str!("invitations.sql"),
+        },
+        Migration {
+            module: "gatherings",
+            version: 3,
+            sql: include_str!("attendance.sql"),
         },
     ]
 }
@@ -188,12 +194,13 @@ pub struct Gatherings {
 
 impl Gatherings {
     pub fn new(signer: &NodeSigner) -> Self {
-        let rules = [CREATE, REVISE, CANCEL, invitations::KIND].map(|kind| KindRule {
-            kind: kind.into(),
-            schema: 1,
-            actor: Role::Node,
-            purpose: None,
-        });
+        let rules =
+            [CREATE, REVISE, CANCEL, invitations::KIND, attendance::KIND].map(|kind| KindRule {
+                kind: kind.into(),
+                schema: 1,
+                actor: Role::Node,
+                purpose: None,
+            });
         Self {
             node: *signer.id().bytes(),
             registry: Registry::new(rules.into(), vec![]).expect("valid local gathering rules"),
@@ -325,6 +332,9 @@ impl Module for Gatherings {
         if metadata.kind == invitations::KIND {
             return invitations::authorize(connection, event, self.node);
         }
+        if metadata.kind == attendance::KIND {
+            return attendance::authorize(connection, event, self.node);
+        }
         let Some(body) = body(event) else {
             return Ok(Decision::Deny("invalid_gathering_body"));
         };
@@ -375,7 +385,9 @@ impl Module for Gatherings {
 
     fn dependency_effective(&self, connection: &Connection, id: EventId) -> events::Result<bool> {
         Ok(connection.query_row(
-            "SELECT EXISTS(SELECT 1 FROM gatherings_revisions WHERE event=?1 AND gathering NOT IN (SELECT gathering FROM gatherings_quarantined))",
+            "SELECT EXISTS(SELECT 1 FROM gatherings_revisions WHERE event=?1 AND gathering NOT IN (SELECT gathering FROM gatherings_quarantined)
+               UNION ALL SELECT 1 FROM gatherings_rsvps r WHERE revision=?1
+                AND NOT EXISTS (SELECT 1 FROM gatherings_rsvp_forks f WHERE f.gathering=r.gathering AND f.account=r.account))",
             [id.bytes().as_slice()], |row| row.get(0),
         )?)
     }
@@ -383,6 +395,9 @@ impl Module for Gatherings {
     fn reduce(&self, tx: &Transaction<'_>, event: &CompleteEvent) -> events::Result<Relevance> {
         if event.metadata().kind == invitations::KIND {
             return invitations::reduce(tx, event);
+        }
+        if event.metadata().kind == attendance::KIND {
+            return attendance::reduce(tx, event);
         }
         let body = body(event).ok_or(events::Error::CorruptRecord)?;
         let key = body.gathering.0.as_slice();
@@ -416,6 +431,7 @@ impl Module for Gatherings {
             [fork.stream.as_slice()],
         )?;
         invitations::invalidate_fork(tx, fork)?;
+        attendance::invalidate_fork(tx, fork)?;
         Ok(())
     }
 }
@@ -467,9 +483,27 @@ pub fn list(
     organizer: Option<LocalAccountId>,
     after: Option<(i64, GatheringId)>,
 ) -> rusqlite::Result<Vec<Gathering>> {
+    list_after(connection, organizer, after, None)
+}
+
+pub fn upcoming(
+    connection: &Connection,
+    now: i64,
+    after: Option<(i64, GatheringId)>,
+) -> rusqlite::Result<Vec<Gathering>> {
+    list_after(connection, None, after, Some(now))
+}
+
+fn list_after(
+    connection: &Connection,
+    organizer: Option<LocalAccountId>,
+    after: Option<(i64, GatheringId)>,
+    earliest: Option<i64>,
+) -> rusqlite::Result<Vec<Gathering>> {
     let mut query = connection.prepare(
         "SELECT id,revision,organizer,username,details,cancelled FROM gatherings_current
          WHERE (?1 IS NULL OR organizer=?1) AND (?2 IS NULL OR (starts_at,id)>(?2,?3))
+           AND (?5 IS NULL OR starts_at>=?5)
            AND id NOT IN (SELECT gathering FROM gatherings_quarantined)
          ORDER BY starts_at,id LIMIT ?4",
     )?;
@@ -480,7 +514,8 @@ pub fn list(
                 organizer.as_ref().map(|id| id.bytes().as_slice()),
                 time,
                 id.as_ref().map(|id| id.0.as_slice()),
-                (PAGE_SIZE + 1) as i64
+                (PAGE_SIZE + 1) as i64,
+                earliest
             ],
             gathering,
         )?

@@ -17,7 +17,7 @@ Design review is complete and the first M00 prototype has real local implementat
 | [M05](modules/M05-interface-themes.md) | Approved | Complete | A–C: local HTTPS, Edge, signed Debian install/rebuild and settings restore; CI 41751474936 | Integrate real feature navigation, visual review and G1 device checks |
 | [M06](modules/M06-boards-mail.md) | Approved | Complete | A–C: signed discussions and participant-restricted mail pass Debian CI 41769646693 | G1 device checks and later complaint integration |
 | [M07](modules/M07-directory-profiles.md) | Approved | Complete | A–C: directory, profile privacy and component hooks pass signed Debian CI 41770621736 | Bind live providers in their owning modules |
-| [M08](modules/M08-friends-events.md) | Approved | In progress | A–B: chosen feed, friendship, event revisions and addressed invitations pass local HTTPS | Add calendar, RSVPs and local reminders |
+| [M08](modules/M08-friends-events.md) | Approved | In progress | A–C: feed, friendship, events, invitations and calendar pass local HTTPS | Confirm full signed Debian run |
 | [M09](modules/M09-clans-cohorts.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
 | [M10](modules/M10-local-files.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
 | [M11](modules/M11-local-games.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
@@ -565,7 +565,7 @@ Fixtures check an older profile migrating with its field choices intact, baselin
 
 Social migration 1 stores local follow choices, the projection of signed public updates and the node's first-seen times. A resident can post to the signed-in local audience, open a stable update link, follow another account or unfollow it. The chosen timeline uses authored time and event ID. The UI labels arrivals delayed by at least five minutes and clocks that are at least five minutes ahead of observation. These times affect display only.
 
-The browser test verifies that a follow selects updates, an unfollow removes them and retrying an older follow form leaves the unfollow in effect. It also checks duplicate publish, Markdown, and the live feed link when the profile owner explicitly publishes it. The provider fixture covers late arrivals, tied times, cursor ordering and clock uncertainty. Debian confirmation is pending. M08 B owns events, causal revisions and recipient-addressed invitations.
+The browser test verifies that a follow selects updates, an unfollow removes them and retrying an older follow form leaves the unfollow in effect. It also checks duplicate publish, Markdown, and the live feed link when the profile owner explicitly publishes it. The provider fixture covers late arrivals, tied times, cursor ordering and clock uncertainty. [Signed Debian CI](https://github.com/tellesus/BBSBOX/actions/runs/41771511518) passed at `ba3183f`, promoted to main.
 
 ## 2026-11-03 — M08 B: mutual local friendships
 
@@ -584,3 +584,9 @@ Provider fixtures verify owner-only writes, stable IDs, cancellation and stale e
 Gatherings migration 2 stores invitations signed by the local node on behalf of the authenticated organizer. Each invitation is scoped to one event and addressee. Selected accounts see them under Events. The organizer can see how many invitations are recorded on the node. The count describes sends, and the system records no read state. Cancellation remains visible in the invitation list.
 
 IPv4 and IPv6 HTTPS verify rollback of an invalid recipient batch, deduplication, delivery to a recipient who signs in later, a cancelled event in their invitation list, and an unrelated SysOp receiving neither the invite nor the organizer's count. An encrypted snapshot round trip preserves the invitation ID and intended recipient. Signed Debian confirmation is pending. M08 C is next.
+
+## 2026-11-03 — M08 C: agenda calendar, RSVPs and local reminders
+
+Gatherings migration 3 adds signed RSVP choices per event and account, last recorded aggregate counts, and private reminder preferences. A stale RSVP cannot replace a newer choice. Cancellation retains the last recorded totals and closes attendance changes. The calendar is an upcoming agenda with a personal due section. Reminders are evaluated when the calendar opens, against the current event time. Moving an event moves its reminder. Cancelled events have no due reminder.
+
+Local IPv4 and IPv6 HTTPS exercise signed response revisions, duplicate and stale forms, due reminders after sign-in, privacy between accounts, and rescheduling. Signed Debian confirmation is pending. M09 starts with local clan and cohort membership.

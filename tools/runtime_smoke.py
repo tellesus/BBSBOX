@@ -169,7 +169,7 @@ def exercise(binary, state_root, host, isolated):
                         updated = response.read().decode()
                         assert 'Neighbors &lt;welcome&gt;' in updated and '&lt;text art&gt;' in updated
                         menu = updated.split('<nav aria-label="Main">', 1)[1].split('</nav>', 1)[0]
-                        assert re.findall(r'<a href="([^"]+)"', menu) == ['/status/', '/', '/account/', '/discussions/', '/mail/', '/directory/']
+                        assert re.findall(r'<a href="([^"]+)"', menu) == ['/status/', '/', '/account/', '/discussions/', '/mail/', '/directory/', '/feeds/']
                     def discussion_proof(page):
                         return {key: re.search(r'name="'+key+r'" value="([0-9a-f]+)"', page).group(1) for key in ['csrf', 'request']}
                     def submit(path, fields):
@@ -321,13 +321,28 @@ def exercise(binary, state_root, host, isolated):
                             page = response.read().decode()
                         return {key: re.search(r'name="'+key+r'" value="([0-9a-f]+)"', page).group(1) for key in ('csrf', 'revision')}
 
-                    profile_details = dict(bio='Meet me at <the library>', message='Private short message', email='fixture@example.invalid', phone='555-fixture', contact='Fixture private address', show_bio='on', show_phone='on')
+                    profile_details = dict(bio='Meet me at <the library>', message='Private short message', email='fixture@example.invalid', phone='555-fixture', contact='Fixture private address', show_bio='on', show_phone='on', show_feed='on')
                     first = dict(profile_details, **profile_form())
                     with submit('/account/profile/', first) as response:
-                        assert b'Meet me' not in response.read()
+                        draft_profile = response.read()
+                        assert b'Meet me' not in draft_profile and b'/feeds/neighbor/' not in draft_profile
                     publish = dict(profile_details, **profile_form(), public='on')
                     with submit('/account/profile/', publish) as response:
                         assert b'Meet me at &lt;the library&gt;' in response.read()
+                    def write_update(text):
+                        with request('/feeds/') as response:
+                            proof = discussion_proof(response.read().decode())
+                        return dict(proof, text=text)
+
+                    earlier = write_update('First public update.')
+                    with submit('/feeds/', earlier) as response:
+                        post_url = response.geturl()
+                        assert b'First public update.' in response.read()
+                    with submit('/feeds/', earlier) as response:
+                        assert response.geturl() == post_url
+                    time.sleep(.025)
+                    with submit('/feeds/', write_update('*Second public update.*')) as response:
+                        assert b'<em>Second public update.</em>' in response.read()
                     try:
                         submit('/account/profile/', first)
                         raise AssertionError('Stale profile update was accepted')
@@ -342,8 +357,11 @@ def exercise(binary, state_root, host, isolated):
                         assert response.headers['Cache-Control'] == 'no-store'
                         assert b'Meet me at &lt;the library&gt;' in public_profile
                         assert b'555-fixture' in public_profile
+                        assert b'href="/feeds/neighbor/">Public updates</a>' in public_profile
                         for hidden_value in (b'fixture@example.invalid', b'Fixture private address', b'Private short message', b'Lump Drops', b'Hosted events', b'Games and characters'):
                             assert hidden_value not in public_profile
+                    with submit('/feeds/', write_update('Unfollowed operator update.')) as response:
+                        assert b'Unfollowed operator update.' in response.read()
                     sign_out()
                     sign_in(member['username'], member['password'])
                     hide = dict(profile_details, **profile_form())
@@ -353,9 +371,28 @@ def exercise(binary, state_root, host, isolated):
                     sign_in(other['username'], other['password'])
                     with request('/directory/neighbor/') as response:
                         private_profile = response.read()
-                        assert b'Meet me' not in private_profile and b'555-fixture' not in private_profile
+                        assert b'Meet me' not in private_profile and b'555-fixture' not in private_profile and b'/feeds/neighbor/' not in private_profile
                     with request('/directory/') as response:
                         assert b'href="/directory/neighbor/"' in response.read()
+                    with request('/feeds/') as response:
+                        assert b'No updates from accounts you follow.' in response.read()
+                    with request('/feeds/?username=Neighbor') as response:
+                        author = response.read().decode()
+                        assert response.geturl().endswith('/feeds/neighbor/')
+                    follow = dict(discussion_proof(author), follow='yes')
+                    with submit('/feeds/neighbor/follow/', follow) as response:
+                        following = response.read().decode()
+                        assert 'Unfollow' in following
+                    with request('/feeds/') as response:
+                        timeline = response.read()
+                        assert timeline.index(b'Second public update.') < timeline.index(b'First public update.')
+                        assert b'Unfollowed operator update.' not in timeline
+                    with submit('/feeds/neighbor/follow/', dict(discussion_proof(following), follow='no')) as response:
+                        assert b'Unfollow' not in response.read()
+                    with submit('/feeds/neighbor/follow/', follow) as response:
+                        assert b'Unfollow' not in response.read()
+                    with request('/feeds/') as response:
+                        assert b'No updates from accounts you follow.' in response.read()
                 # A new client without the local CA must fail certificate verification.
                 untrusted = urllib.request.build_opener(urllib.request.ProxyHandler({}), urllib.request.HTTPSHandler(context=ssl.create_default_context()))
                 try:
@@ -384,7 +421,7 @@ def exercise(binary, state_root, host, isolated):
                 text = trace.read_text(encoding='utf-8')
                 traces.append(audit.audit_trace(text))
                 (state_root/f'runtime-{"ipv6" if family == socket.AF_INET6 else "ipv4"}-{attempt}.trace').write_text(text, encoding='utf-8')
-        return dict(family='IPv6' if family == socket.AF_INET6 else 'IPv4', simultaneous_dual_stack=True, tls=True, untrusted_ca_rejected=True, local_assets=4, identity_preserved_after_restart=True, configured_alias_accepted=True, unexpected_authority_rejected=True, public_status_read_only=True, local_session_lifecycle=True, restart_invalidates_session=True, palette_preview_apply_reset=True, welcome_and_menu_settings=True, member_onboarding=True, unavailable_section_status=True, local_board_thread_reply=True, discussion_retry_and_csrf=True, discussion_edit_and_withdraw=True, local_mail_participants=True, directory_and_profile_privacy=True, initialization_audit=initial_audit, network_audit=traces)
+        return dict(family='IPv6' if family == socket.AF_INET6 else 'IPv4', simultaneous_dual_stack=True, tls=True, untrusted_ca_rejected=True, local_assets=4, identity_preserved_after_restart=True, configured_alias_accepted=True, unexpected_authority_rejected=True, public_status_read_only=True, local_session_lifecycle=True, restart_invalidates_session=True, palette_preview_apply_reset=True, welcome_and_menu_settings=True, member_onboarding=True, unavailable_section_status=True, local_board_thread_reply=True, discussion_retry_and_csrf=True, discussion_edit_and_withdraw=True, local_mail_participants=True, directory_and_profile_privacy=True, chronological_followed_feed=True, initialization_audit=initial_audit, network_audit=traces)
 
 
 def main():

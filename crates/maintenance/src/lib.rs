@@ -16,7 +16,7 @@ pub mod snapshot;
 pub fn foundation_owner(module: &str) -> bool {
     matches!(
         module,
-        "identity" | "events" | "settings" | "discussions" | "mail" | "profiles"
+        "identity" | "events" | "settings" | "discussions" | "mail" | "profiles" | "social"
     )
 }
 pub use age::secrecy as age_secret;

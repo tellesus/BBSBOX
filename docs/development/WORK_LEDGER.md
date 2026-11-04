@@ -1,6 +1,6 @@
 # Development work ledger
 
-Version 1.1.0 · 2026-10-25 · Locked roadmap. M01–M05 and M12 software providers Complete. M00, M06 and M07 In progress. Other modules Unstarted. Execution updated 2026-11-03.
+Version 1.1.0 · 2026-10-25 · Locked roadmap. M01–M05 and M12 software providers Complete. M00 and M06–M08 In progress. Other modules Unstarted. Execution updated 2026-11-03.
 
 Evidence log — not an independent source of scope authority. Current choices live in the canonical roadmap and user instructions.
 
@@ -17,7 +17,7 @@ Design review is complete and the first M00 prototype has real local implementat
 | [M05](modules/M05-interface-themes.md) | Approved | Complete | A–C: local HTTPS, Edge, signed Debian install/rebuild and settings restore; CI 41751474936 | Integrate real feature navigation, visual review and G1 device checks |
 | [M06](modules/M06-boards-mail.md) | Approved | In progress | A–C: signed local discussions and participant-restricted mail pass local HTTPS | Confirm signed Debian |
 | [M07](modules/M07-directory-profiles.md) | Approved | In progress | A–C: directory, profile privacy and component hooks pass local checks | Confirm signed Debian. Bind live providers in their owning modules |
-| [M08](modules/M08-friends-events.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
+| [M08](modules/M08-friends-events.md) | Approved | In progress | A: chosen chronological local feed passes local HTTPS | Confirm signed Debian. Build gatherings and invitations |
 | [M09](modules/M09-clans-cohorts.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
 | [M10](modules/M10-local-files.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
 | [M11](modules/M11-local-games.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
@@ -560,3 +560,9 @@ Real IPv4 and IPv6 HTTPS checks found the same user while public and private, ve
 Profiles migration 2 records separate display choices for the feed, hosted events, games and Lump Drop count. Feed, event and game display requires both a public profile and the owner's choice. The provider also receives the local viewer and owner and must enforce its own audience. Count visibility is independent. Uninstalled providers supply no sections and their preferences remain intact.
 
 Fixtures check an older profile migrating with its field choices intact, baseline lookup of inactive accounts, a denied feed audience, hidden providers, an actual zero from an installed count provider, and hiding the count on a private profile. The encrypted node restore preserves private drafts and the separate count choice. Local HTTPS verifies that uninstalled components produce no output. Live bindings are owned by M08, M11/M18 and M16. Signed Debian confirmation is pending.
+
+## 2026-11-03 — M08 A: chosen local updates
+
+Social migration 1 stores local follow choices, the projection of signed public updates and the node's first-seen times. A resident can post to the signed-in local audience, open a stable update link, follow another account or unfollow it. The chosen timeline uses authored time and event ID. The UI labels arrivals delayed by at least five minutes and clocks that are at least five minutes ahead of observation. These times affect display only.
+
+The browser test verifies that a follow selects updates, an unfollow removes them and retrying an older follow form leaves the unfollow in effect. It also checks duplicate publish, Markdown, and the live feed link when the profile owner explicitly publishes it. The provider fixture covers late arrivals, tied times, cursor ordering and clock uncertainty. Debian confirmation is pending. M08 B owns events, causal revisions and recipient-addressed invitations.

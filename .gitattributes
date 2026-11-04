@@ -19,3 +19,4 @@ crates/settings/src/*.sql text eol=lf
 crates/discussions/src/*.sql text eol=lf
 crates/mail/src/*.sql text eol=lf
 crates/profiles/src/*.sql text eol=lf
+crates/social/src/*.sql text eol=lf

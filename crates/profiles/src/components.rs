@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Display preferences gate calls to installed, audience-aware data providers.
+use super::Error;
 use bbsbox_identity::LocalAccountId;
 use rusqlite::{Row, Transaction};
 use std::sync::Arc;
@@ -75,7 +76,7 @@ impl Link {
 }
 
 /// The installed module checks its own source audience with both account IDs.
-pub type Provider<T> = Arc<dyn Fn(&Transaction<'_>, Viewer) -> rusqlite::Result<T> + Send + Sync>;
+pub type Provider<T> = Arc<dyn Fn(&Transaction<'_>, Viewer) -> Result<T, Error> + Send + Sync>;
 
 #[derive(Default)]
 pub struct Providers {
@@ -109,7 +110,7 @@ impl Providers {
         viewer: Viewer,
         public: bool,
         selection: Selection,
-    ) -> rusqlite::Result<Display> {
+    ) -> Result<Display, Error> {
         let mut display = Display::default();
         if let Some(feed) = self.feed.as_ref().filter(|_| public && selection.feed) {
             display.feed = feed(tx, viewer)?;

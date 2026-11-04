@@ -383,6 +383,7 @@ dependencies = [
  "bbsbox-maintenance",
  "bbsbox-profiles",
  "bbsbox-settings",
+ "bbsbox-social",
  "bbsbox-storage",
  "hex",
  "rand_core",
@@ -410,6 +411,22 @@ version = "0.1.0"
 dependencies = [
  "bbsbox-storage",
  "rusqlite",
+]
+
+[[package]]
+name = "bbsbox-social"
+version = "0.1.0"
+dependencies = [
+ "bbsbox-credentials",
+ "bbsbox-event-codec",
+ "bbsbox-event-core",
+ "bbsbox-identity",
+ "bbsbox-storage",
+ "hex",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "tempfile",
 ]
 
 [[package]]

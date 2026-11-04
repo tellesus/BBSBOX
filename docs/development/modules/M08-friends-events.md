@@ -1,8 +1,8 @@
 # M08 — Chosen feeds, gatherings and invitations
 
-Version 1.1.0 · 2026-10-25 · Locked development baseline · Product baseline 0.6.0.
+Brief revision 1.1.1 · 2026-11-03 · Roadmap baseline 1.1.0 · Product baseline 0.6.0.
 
-**State:** Approved for implementation under U19; unstarted. Runtime and hardware evidence remains pending.
+**State:** In progress. A passes locally. Events and invitations are next.
 
 ## Read only this packet
 
@@ -23,9 +23,9 @@ Use explicit following for public posts, with mutual confirmed friendship as a d
 
 ## Ownership and interfaces
 
-Planned crates/social/ and crates/gatherings/; relationship choices, feed projection, event revisions, invitations and optional RSVP state. M13 is required for any promise of host-blind audience-restricted sharing.
+`crates/social/` owns follows and the feed. Planned `crates/gatherings/` owns event revisions, invitations and RSVP state. M13 owns encrypted friend audiences.
 
-Paths above are planned implementation locations, not existing code. Consume the contracts in the reading packet; changes to them need affected-consumer updates. A disabled optional module retains its data and does not break unrelated local services.
+Follow the listed contracts. A disabled optional module retains its data and leaves other services available.
 
 ## Sequential work slices
 
@@ -41,7 +41,7 @@ Paths above are planned implementation locations, not existing code. Consume the
 
 ## Locked defaults and verification
 
-Directional public following is selected. Use descending claimed authored-time with event-ID tie-break and explicit late-arrival/clock-uncertainty labels; edits use causal revision rules. Calendar, going/maybe/not-going RSVPs, cancellation and local reminders are approved. Mutual confirmed friendships are a relationship separate from follows. G1 implements public feeds/events and recipient-addressed host-visible invitations; M13 owns the G2 encrypted friend-audience adapter, so no private-content promise leaks into G1.
+Following selects public updates. Sort newest authored time first, breaking ties by event ID. Show arrival or clock labels at five minutes of difference. Edits follow causal revision rules. Mutual confirmed friendship is separate. Calendar, going/maybe/not-going RSVPs, cancellation and local reminders are approved. G1 invitations are host-visible and recipient-addressed.
 
 ## Handoff
 

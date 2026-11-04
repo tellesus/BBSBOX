@@ -70,7 +70,7 @@ fn known_foundation_backup_can_recover_before_the_theme_migration() {
     previous.retain(|migration| {
         !matches!(
             migration.module,
-            "settings" | "discussions" | "mail" | "profiles"
+            "settings" | "discussions" | "mail" | "profiles" | "social"
         )
     });
     let fixture = Fixture::with_registry(&previous);
@@ -377,6 +377,19 @@ fn local_operator_round_trip_keeps_identity_configuration_and_restore_block() {
             bbsbox_profiles::save(tx, member.id, 0, &profile)
         })
         .unwrap();
+    let update = database
+        .write(bbsbox_storage::disk::Class::Content, 131072, |tx| {
+            bbsbox_social::set_following(tx, author.id, member.id, true)?;
+            bbsbox_social::Social::new(&signer).post(
+                tx,
+                &signer,
+                member.id,
+                "Local updates survive a node recovery.",
+                5,
+                5,
+            )
+        })
+        .unwrap();
     drop(database);
     let secret = f.root.join("operator.key");
     let generated = operator::keygen(&secret).unwrap();
@@ -421,6 +434,10 @@ fn local_operator_round_trip_keeps_identity_configuration_and_restore_block() {
     assert_eq!(profile.username, "member");
     assert!(profile.fields.email.is_none());
     drop(tx);
+    let feed =
+        bbsbox_social::posts(&reader, bbsbox_social::Feed::Following(author.id), None).unwrap();
+    assert_eq!(feed[0].id, update);
+    assert_eq!(feed[0].text, "Local updates survive a node recovery.");
     drop(reader);
     assert_eq!(
         fs::read(target.join("configuration/tls/ca-key.pem")).unwrap(),

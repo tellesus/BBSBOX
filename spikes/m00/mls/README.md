@@ -25,6 +25,7 @@ The first dependency fetch requires developer internet access (`cargo fetch --lo
 | Encrypted snapshot | AES-256-GCM protects serialized client storage with a separate test recovery key, random nonce and versioned authenticated context. A fresh provider reloads the group and signing key and reads subsequent traffic. Wrong keys, ciphertext tampering and mismatched fixture identity fail. This tests storage mechanics, not a production recovery-kit format or person-identity proof. |
 | Backup rollback | A snapshot predating a received message can decrypt that message again after restore. Lost post-snapshot replay knowledge cannot be reconstructed from the old snapshot alone. Exact delivery/application IDs need their own reconciliation policy. |
 | Recovery guard | The harness restores into receive-only mode. Even a subsequent commit does not automatically enable sending. A new owner-authorized join with fresh client state can send while other members continue using the group. The production private client must enforce this across all mutation paths. |
+| Signed post framing | The M13 fixture binds the outer device-signed event to the MLS group, epoch and authenticated data. A relabeled copy fails before processing, then the original decrypts once. |
 
 ## Limits and next integration
 

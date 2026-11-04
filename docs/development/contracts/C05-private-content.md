@@ -1,12 +1,12 @@
 # C05 — Private content, profiles and complaint access
 
-Version 1.1.0 · Accepted for implementation · Owners M07, M13 and M14.
+Version 1.1.1 · Accepted for implementation · Owners M07, M13 and M14.
 
 ## Privacy surfaces
 
 Separate audience, distribution and presentation. Local-only means not federated; it does not imply encryption. Public profile means optional fields chosen for display; private profile still exposes the common directory baseline. Selected baseline is username and stable local profile link; additional baseline fields require a decision. Lump Drop count has its own public/private switch. Never serialize private contact/game/event fields and rely on CSS to hide them. Feed links and event references obey their own audience authorization.
 
-Client-held forum decryption keys never enter node backups, server search indexes or game APIs. Selected MLS/OpenMLS group state is owned by trusted member clients; public governance proofs establish outer admission and moderator roles for the host. Sharing plaintext voluntarily remains the member's choice under R17. Exact metadata disclosure and proof format need a recorded M13 decision.
+Client-held forum decryption keys never enter node backups, server search indexes or game APIs. Selected MLS/OpenMLS group state is owned by trusted member clients; public governance proofs establish outer admission and moderator roles for the host. Sharing plaintext voluntarily remains the member's choice under R17. The [application framing](../../../protocol/private-forum-application-v1.md) has fixed metadata. M13 owns exact governance admission.
 
 ## Client trust and delayed state
 
@@ -26,6 +26,7 @@ If an exact revision is not present, show missing/pending and request it through
 ## Signed outer admission and distinct client sessions
 
 Hosts validate a signed outer record binding forum ID, epoch/control references, author credential, action kind, stable target/revision IDs and ciphertext hash. This necessarily discloses those routing/authority fields to authorized hosts/carriers; it does not disclose plaintext. A newly admitted opaque message can qualify for a Lump Drop without asserting that its plaintext is meaningful or decryptable. No-op known revisions do not qualify. Unsupported authority remains pending, never credited as validated content.
+
 
 Ordinary browser login uses same-origin cookies/CSRF protection. The independently installed client pairs by a fresh node challenge plus device proof, receives a revocable scoped token, and uses pinned local TLS; never disable certificate checks to work around mobile CORS/mixed-content restrictions. M00 must test the real native/browser boundary on Android/iOS/desktop. Owner/moderator access to suppressed targets uses a fresh role-bound challenge and an auditable case-specific fetch. Ordinary sync exports cannot bypass local suppression. C02 permits signed commitment metadata for authorized same-scope chain verification while withholding suppressed bodies; it grants no plaintext access and earns no delivery credit by itself.
 

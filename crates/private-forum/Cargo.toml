@@ -1,0 +1,15 @@
+[package]
+name = "bbsbox-private-forum"
+version = "0.1.0"
+edition = "2024"
+license = "AGPL-3.0-or-later"
+publish = false
+
+[dependencies]
+bbsbox-credentials = { path = "../credentials" }
+bbsbox-event-codec = { path = "../event-codec" }
+
+[dev-dependencies]
+bbsbox-client-identity = { path = "../../client/identity" }
+hex = "0.4"
+sha2 = "0.10"

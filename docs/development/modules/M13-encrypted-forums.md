@@ -1,8 +1,8 @@
 # M13 — Trusted clients and encrypted forums
 
-Version 1.1.0 · 2026-10-25 · Locked development baseline · Product baseline 0.6.0.
+Brief revision 1.1.1 · Roadmap baseline 1.1.0 · 2026-11-04 · Locked scope · Product baseline 0.6.0.
 
-**State:** Approved for implementation under U19; unstarted. Runtime and hardware evidence remains pending.
+**State:** In progress. Slice A begins with signed post framing and pinned MLS interoperability fixtures. Host admission, trusted client runtime and hardware evidence remain open.
 
 ## Read only this packet
 
@@ -23,9 +23,9 @@ Implement the selected MLS/OpenMLS path with shared Rust/native crypto and a sep
 
 ## Ownership and interfaces
 
-Planned crates/private-forum/ and client/crypto/; encrypted event kinds, public authority proofs, client group/key state, invitations and encrypted client backups. Hosts own ciphertext indexes only.
+`crates/private-forum/` owns the signed public post framing. The planned `client/crypto/` adapter owns client group/key state, invitations and encrypted backups. Hosts own ciphertext indexes only.
 
-Implementation paths remain planned. Consume the listed contracts, update affected consumers with any change, and retain optional-module data when disabled.
+Consume the listed contracts, update affected consumers with any change, and retain optional-module data when disabled.
 
 ## Sequential work slices
 

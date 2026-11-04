@@ -1,6 +1,6 @@
 # Development work ledger
 
-Version 1.1.0 · 2026-10-25 · Locked roadmap. M01–M10 and M12 software providers Complete. M00 and M11 In progress. Other modules Unstarted. Execution updated 2026-11-04.
+Version 1.1.0 · 2026-10-25 · Locked roadmap. M01–M10 and M12 software providers Complete. M00, M11 and M13 In progress. Other modules Unstarted. Execution updated 2026-11-04.
 
 Evidence log — not an independent source of scope authority. Current choices live in the canonical roadmap and user instructions.
 
@@ -21,7 +21,7 @@ Design review is complete and the first M00 prototype has real local implementat
 | [M09](modules/M09-clans-cohorts.md) | Approved | Complete | A–C: roster privacy, consent, handover and typed membership pass signed Debian CI 41810057605 | M11/M18 bind game consumers |
 | [M10](modules/M10-local-files.md) | Approved | Complete | A–C: permission, streaming, quota and restore pass signed Debian CI 41811437491 | M15/M16 own actual exchange tests |
 | [M11](modules/M11-local-games.md) | Approved | In progress | Development browser and encrypted game-node restore pass CI 41814817663 | Verify isolated Debian socket, wire appliance enablement and recovery activation |
-| [M13](modules/M13-encrypted-forums.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
+| [M13](modules/M13-encrypted-forums.md) | Approved | In progress | A: signed outer post framing and MLS authenticated-data fixture | Add owner authority, opaque host admission and trusted client integration |
 | [M14](modules/M14-complaints-moderation.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
 | [M15](modules/M15-selected-federation.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
 | [M16](modules/M16-pigeons-lump-drops.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
@@ -664,3 +664,7 @@ The appliance socket worker separates gameplay and maintenance using the connect
 ## 2026-11-04 — M11 fresh recovery of a complete game node
 
 `recover_release.py --game-node` restores the exact matching core registry and bundled save. It places the save under the game service account and checks the database read-only. Before releasing the staged writer, the operator reopens the encrypted archive and compares the signed source decision, staged game files and placed save. The signed installer retains pending boot control through installation. A retained save can be backed up on a loopback or disabled game node through a temporarily started socket. Local tests preserve the recovery fence on a bad placement and allow the matching save. The Debian fixture now recovers to separate signed media and reopens the retained turn through the isolated worker. Confirmation and game-aware installed updates remain open.
+
+## 2026-11-04 — M13 A application envelope
+
+C05 v1.1.1 specifies the required signed post extension and its MLS authenticated data. The first fixture binds a genuine device-signed envelope to OpenMLS ciphertext. Relabeling a valid encrypted post's distribution fails before the recipient processes it, so the original can still be opened. The metadata provider covers create, reply, edit and withdrawal. Owner-authorized governance, host admission and the independent client remain separate slices.

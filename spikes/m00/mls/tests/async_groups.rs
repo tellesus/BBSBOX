@@ -52,6 +52,9 @@ impl Client {
             .unwrap()
     }
     fn create_group(&mut self) {
+        self.create_group_with_id(GroupId::from_slice(b"bbsbox-m00-test-group"));
+    }
+    fn create_group_with_id(&mut self, group_id: GroupId) {
         let config = MlsGroupCreateConfig::builder()
             .ciphersuite(SUITE)
             .max_past_epochs(PAST_EPOCHS)
@@ -62,7 +65,7 @@ impl Client {
                 &self.provider,
                 &self.signer,
                 &config,
-                GroupId::from_slice(b"bbsbox-m00-test-group"),
+                group_id,
                 self.credential(),
             )
             .unwrap(),
@@ -147,6 +150,122 @@ impl Client {
         self.group.as_ref().unwrap().epoch().as_u64()
     }
 }
+
+#[test]
+fn signed_forum_metadata_is_bound_to_the_mls_post_before_state_advances() {
+    use bbsbox_client_identity::{DeviceKey, RootKey};
+    use bbsbox_credentials::{ForumId, Purpose, Purposes};
+    use bbsbox_event_codec::{
+        self as events, Actor, CompleteEvent, Distribution, Draft, EventId, Scope,
+    };
+    use bbsbox_private_forum::{AUDIENCE, Action, Header, Outer};
+
+    let author = RootKey::generate();
+    let key = DeviceKey::generate();
+    let credential = author
+        .issue_device(key.public(), Purposes::new(&[Purpose::Authorship]).unwrap())
+        .unwrap();
+    let device = key.activate(author.person_id(), credential).unwrap();
+    let actor = Actor::device(device.credential());
+    let device_id = actor.device_id().unwrap().to_string();
+    let forum = ForumId::from_digest([23; 32]);
+    let mut sender = Client::new(&device_id);
+    let mut recipient = Client::new("recipient fixture");
+    sender.create_group_with_id(GroupId::from_slice(forum.bytes()));
+    let (_, welcome) = sender.invite(&[recipient.key_package().key_package().clone()]);
+    recipient.join(&welcome);
+
+    let header = Header {
+        epoch: sender.epoch(),
+        control: EventId::from_bytes([2; 32]),
+        action_id: [3; 16],
+        action: Action::Post,
+    };
+    let draft = Draft {
+        kind: header.action.kind().into(),
+        schema: 1,
+        scope: Scope {
+            resource: forum.to_string(),
+            audience: AUDIENCE.into(),
+            distribution: Distribution::Local,
+        },
+        sequence: 1,
+        previous: None,
+        dependencies: header.dependencies(),
+        claimed_time: 0,
+        extensions: vec![header.extension().unwrap()],
+    };
+    let aad = Outer::before_encryption(&draft, &actor)
+        .unwrap()
+        .authenticated_data;
+    sender.group.as_mut().unwrap().set_aad(aad);
+    let secret = b"fixture post for members";
+    let ciphertext = sender.send(secret).unwrap();
+    assert!(
+        !ciphertext
+            .windows(secret.len())
+            .any(|bytes| bytes == secret)
+    );
+    let sign = |draft| {
+        events::sign(
+            draft,
+            actor.clone(),
+            &ciphertext,
+            Some(device.credential()),
+            |bytes| {
+                device
+                    .sign_for(Purpose::Authorship, bytes)
+                    .map_err(|_| events::Error::SignerUnavailable)
+            },
+        )
+        .unwrap()
+    };
+    let original = sign(draft.clone());
+    let mut relabeled = draft;
+    relabeled.scope.distribution = Distribution::Shared;
+    let relabeled = sign(relabeled);
+
+    let receive =
+        |recipient: &mut Client, event: &CompleteEvent| -> Result<Vec<u8>, &'static str> {
+            let expected = Outer::inspect(event).map_err(|_| "outer metadata")?;
+            let protocol = MlsMessageIn::tls_deserialize_exact(event.body())
+                .map_err(|_| "MLS bytes")?
+                .try_into_protocol_message()
+                .map_err(|_| "MLS protocol")?;
+            let ProtocolMessage::PrivateMessage(message) = &protocol else {
+                return Err("MLS private message required");
+            };
+            if message.aad() != expected.authenticated_data
+                || protocol.group_id().as_slice() != expected.forum.bytes()
+                || protocol.epoch().as_u64() != expected.header.epoch
+                || protocol.content_type() != ContentType::Application
+            {
+                return Err("MLS framing differs from outer metadata");
+            }
+            let processed = recipient
+                .group
+                .as_mut()
+                .unwrap()
+                .process_message(&recipient.provider, protocol)
+                .map_err(|_| "MLS verification")?;
+            if processed.aad() != expected.authenticated_data
+                || processed.credential().serialized_content() != device_id.as_bytes()
+            {
+                return Err("MLS authenticated author or metadata differs");
+            }
+            match processed.into_content() {
+                ProcessedMessageContent::ApplicationMessage(message) => Ok(message.into_bytes()),
+                _ => Err("MLS application message required"),
+            }
+        };
+    assert_eq!(
+        receive(&mut recipient, &relabeled),
+        Err("MLS framing differs from outer metadata")
+    );
+    assert_eq!(receive(&mut recipient, &original).unwrap(), secret);
+    assert!(receive(&mut recipient, &original).is_err());
+}
+
 fn three() -> (Client, Client, Client) {
     let mut alice = Client::new("Alice-owner");
     let mut bob = Client::new("Bob");

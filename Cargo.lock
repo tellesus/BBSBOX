@@ -476,6 +476,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "bbsbox-private-forum"
+version = "0.1.0"
+dependencies = [
+ "bbsbox-client-identity",
+ "bbsbox-credentials",
+ "bbsbox-event-codec",
+ "hex",
+ "sha2 0.10.9",
+]
+
+[[package]]
 name = "bbsbox-profiles"
 version = "0.1.0"
 dependencies = [

@@ -445,7 +445,7 @@
       "prerequisite_evidence": {
         "M00": "G0-local plus private-client/MLS evidence for G2"
       },
-      "execution_status": "unstarted"
+      "execution_status": "in_progress"
     },
     {
       "id": "M14",
@@ -1118,5 +1118,5 @@
       "scope": "Desktop/core and isolated-runtime evidence; G1/G2 device, appliance and private-client acceptance remain open"
     }
   },
-  "execution_revision": "1.1.23"
+  "execution_revision": "1.1.24"
 }

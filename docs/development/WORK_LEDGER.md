@@ -1,6 +1,6 @@
 # Development work ledger
 
-Version 1.1.0 · 2026-10-25 · Locked roadmap. M01–M05 and M12 software providers Complete. M00 and M06 In progress. Other modules Unstarted. Execution updated 2026-11-03.
+Version 1.1.0 · 2026-10-25 · Locked roadmap. M01–M05 and M12 software providers Complete. M00, M06 and M07 In progress. Other modules Unstarted. Execution updated 2026-11-03.
 
 Evidence log — not an independent source of scope authority. Current choices live in the canonical roadmap and user instructions.
 
@@ -16,7 +16,7 @@ Design review is complete and the first M00 prototype has real local implementat
 | [M12](modules/M12-maintenance-recovery.md) | Approved | Complete | A–C: Debian signed install/update/rollback, fresh recovery, scheduled backup and retention; CI 41718200103 | Begin M05 A. M11 owns real game adapter acceptance. G1 physical tests remain |
 | [M05](modules/M05-interface-themes.md) | Approved | Complete | A–C: local HTTPS, Edge, signed Debian install/rebuild and settings restore; CI 41751474936 | Integrate real feature navigation, visual review and G1 device checks |
 | [M06](modules/M06-boards-mail.md) | Approved | In progress | A–C: signed local discussions and participant-restricted mail pass local HTTPS | Confirm signed Debian |
-| [M07](modules/M07-directory-profiles.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
+| [M07](modules/M07-directory-profiles.md) | Approved | In progress | A: local account directory and owner-controlled profile fields | Add profile component registration and visibility fixtures |
 | [M08](modules/M08-friends-events.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
 | [M09](modules/M09-clans-cohorts.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
 | [M10](modules/M10-local-files.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
@@ -548,3 +548,9 @@ Local IPv4 and IPv6 HTTPS exercised author edits, stale withdrawal refusal and a
 Mail migration 1 adds conversations and messages to the core node snapshot. Signed starts and replies carry a local-only participant scope. Participants can use the mailbox and follow stable message references. An unrelated SysOp sees no mail in the ordinary browser endpoints. The mailbox explains that the operator can access stored messages.
 
 Local IPv4 and IPv6 HTTPS checks sent mail between members, checked duplicate-send handling and signed-out redirects, refused an unaddressed SysOp, delivered a member's operator contact, and returned a reply to the original sender. Provider tests also refuse replies from outsiders or another conversation. Signed Debian confirmation is pending. M07 can use the existing identity provider for the account directory.
+
+## 2026-11-03 — M07 A: local account directory and profile privacy
+
+Profiles migration 1 stores owner-controlled display preferences, with no backfill needed for existing accounts. Signed-in directory readers see every local username and its stable profile link. A new profile starts private. Its owner may save drafts and publish any combination of bio, short message, email, phone and contact text. The published query returns only fields selected by a public profile. Writes bind to the current account and reject stale revisions.
+
+Real IPv4 and IPv6 HTTPS checks found the same user while public and private, verified that unpublished values were absent from a SysOp's response, refused stale saves and required a session. Local Rust tests, Clippy and Svelte checks passed. Debian confirmation and component registration fixtures are next.

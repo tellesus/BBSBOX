@@ -1,8 +1,8 @@
 # M07 — Member directory and chosen profile displays
 
-Version 1.1.0 · 2026-10-25 · Locked development baseline · Product baseline 0.6.0.
+Brief revision 1.1.1 · 2026-11-03 · Roadmap baseline 1.1.0 · Product baseline 0.6.0.
 
-**State:** Approved for implementation under U19; unstarted. Runtime and hardware evidence remains pending.
+**State:** In progress. A implements the local account directory and profile editor. B–C add component hooks and tests.
 
 ## Read only this packet
 
@@ -23,9 +23,9 @@ Use username plus stable profile link as the minimal common baseline. Typed fiel
 
 ## Ownership and interfaces
 
-Planned crates/profiles/; local directory projection, field visibility, profile-component settings. Owns presentation preferences, not game state, events or delivery credits.
+`crates/profiles/` owns local profile field visibility and profile-component settings. The directory reads usernames from M03. Game state, events and delivery credits stay with their providers.
 
-Paths above are planned implementation locations, not existing code. Consume the contracts in the reading packet; changes to them need affected-consumer updates. A disabled optional module retains its data and does not break unrelated local services.
+Consume the contracts in the reading packet; changes to them need affected-consumer updates. A disabled optional module retains its data and leaves unrelated services available.
 
 ## Sequential work slices
 
@@ -41,7 +41,7 @@ Paths above are planned implementation locations, not existing code. Consume the
 
 ## Locked defaults and verification
 
-Directory baseline is username plus stable local profile link. Optional public fields: bio, short message, email, phone and contact/address text, each explicitly published by the user. Optional fields default hidden; no automatic contact lookup. Profiles default private; the separate Lump Drop counter remains public by default under R25. Feed/event/game providers enforce their own audience on the server, and later consumer modules own live bindings.
+Signed-in members can browse or find every local username and follow its stable profile link. Owners edit bio, short message, email, phone and contact/address text and can choose which fields to publish. Profiles and fields default private. The separate Lump Drop counter remains public by default under R25. Feed/event/game providers enforce their own audience on the server, and later consumer modules own live bindings.
 
 ## Handoff
 

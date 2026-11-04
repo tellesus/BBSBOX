@@ -31,6 +31,7 @@ const SHELL_STATE: &str = include_str!("../../../../web/shell/static/shell-state
 mod accounts;
 mod discussions;
 mod mail;
+mod profiles;
 mod site;
 mod theme;
 
@@ -47,6 +48,7 @@ pub(super) fn routes() -> Router<Sessions> {
         .merge(accounts::routes())
         .merge(discussions::routes())
         .merge(mail::routes())
+        .merge(profiles::routes())
         .merge(site::routes())
         .merge(theme::routes())
         .fallback(fallback)
@@ -73,6 +75,7 @@ fn template(state: &Sessions, mut source: &str, slots: &[(&str, &str)]) -> Strin
             }
             body.push_str("<a href=\"/discussions/\">Discussions</a>");
             body.push_str("<a href=\"/mail/\">Mail</a>");
+            body.push_str("<a href=\"/directory/\">Directory</a>");
         } else {
             body.push_str(
                 slots

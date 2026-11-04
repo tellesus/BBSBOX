@@ -169,7 +169,7 @@ def exercise(binary, state_root, host, isolated):
                         updated = response.read().decode()
                         assert 'Neighbors &lt;welcome&gt;' in updated and '&lt;text art&gt;' in updated
                         menu = updated.split('<nav aria-label="Main">', 1)[1].split('</nav>', 1)[0]
-                        assert re.findall(r'<a href="([^"]+)"', menu) == ['/status/', '/', '/account/', '/discussions/', '/mail/']
+                        assert re.findall(r'<a href="([^"]+)"', menu) == ['/status/', '/', '/account/', '/discussions/', '/mail/', '/directory/']
                     def discussion_proof(page):
                         return {key: re.search(r'name="'+key+r'" value="([0-9a-f]+)"', page).group(1) for key in ['csrf', 'request']}
                     def submit(path, fields):
@@ -310,6 +310,52 @@ def exercise(binary, state_root, host, isolated):
                     sign_in(member['username'], member['password'])
                     with request(private_url) as response:
                         assert b'See you there.' in response.read()
+                    with request('/directory/') as response:
+                        directory = response.read()
+                        for username in ('neighbor', 'operator', 'other'):
+                            assert f'href="/directory/{username}/"'.encode() in directory
+                    with request('/directory/?username=Neighbor') as response:
+                        assert response.geturl().endswith('/directory/neighbor/')
+                    def profile_form():
+                        with request('/account/profile/') as response:
+                            page = response.read().decode()
+                        return {key: re.search(r'name="'+key+r'" value="([0-9a-f]+)"', page).group(1) for key in ('csrf', 'revision')}
+
+                    profile_details = dict(bio='Meet me at <the library>', message='Private short message', email='fixture@example.invalid', phone='555-fixture', contact='Fixture private address', show_bio='on', show_phone='on')
+                    first = dict(profile_details, **profile_form())
+                    with submit('/account/profile/', first) as response:
+                        assert b'Meet me' not in response.read()
+                    publish = dict(profile_details, **profile_form(), public='on')
+                    with submit('/account/profile/', publish) as response:
+                        assert b'Meet me at &lt;the library&gt;' in response.read()
+                    try:
+                        submit('/account/profile/', first)
+                        raise AssertionError('Stale profile update was accepted')
+                    except urllib.error.HTTPError as error:
+                        assert error.code == 409
+                    sign_out()
+                    with request('/directory/neighbor/') as response:
+                        assert response.geturl().endswith('/login/')
+                    sign_in('operator', password.decode())
+                    with request('/directory/neighbor/') as response:
+                        public_profile = response.read()
+                        assert response.headers['Cache-Control'] == 'no-store'
+                        assert b'Meet me at &lt;the library&gt;' in public_profile
+                        assert b'555-fixture' in public_profile
+                        for hidden_value in (b'fixture@example.invalid', b'Fixture private address', b'Private short message'):
+                            assert hidden_value not in public_profile
+                    sign_out()
+                    sign_in(member['username'], member['password'])
+                    hide = dict(profile_details, **profile_form())
+                    with submit('/account/profile/', hide) as response:
+                        assert b'555-fixture' not in response.read()
+                    sign_out()
+                    sign_in(other['username'], other['password'])
+                    with request('/directory/neighbor/') as response:
+                        private_profile = response.read()
+                        assert b'Meet me' not in private_profile and b'555-fixture' not in private_profile
+                    with request('/directory/') as response:
+                        assert b'href="/directory/neighbor/"' in response.read()
                 # A new client without the local CA must fail certificate verification.
                 untrusted = urllib.request.build_opener(urllib.request.ProxyHandler({}), urllib.request.HTTPSHandler(context=ssl.create_default_context()))
                 try:
@@ -338,7 +384,7 @@ def exercise(binary, state_root, host, isolated):
                 text = trace.read_text(encoding='utf-8')
                 traces.append(audit.audit_trace(text))
                 (state_root/f'runtime-{"ipv6" if family == socket.AF_INET6 else "ipv4"}-{attempt}.trace').write_text(text, encoding='utf-8')
-        return dict(family='IPv6' if family == socket.AF_INET6 else 'IPv4', simultaneous_dual_stack=True, tls=True, untrusted_ca_rejected=True, local_assets=4, identity_preserved_after_restart=True, configured_alias_accepted=True, unexpected_authority_rejected=True, public_status_read_only=True, local_session_lifecycle=True, restart_invalidates_session=True, palette_preview_apply_reset=True, welcome_and_menu_settings=True, member_onboarding=True, unavailable_section_status=True, local_board_thread_reply=True, discussion_retry_and_csrf=True, discussion_edit_and_withdraw=True, local_mail_participants=True, initialization_audit=initial_audit, network_audit=traces)
+        return dict(family='IPv6' if family == socket.AF_INET6 else 'IPv4', simultaneous_dual_stack=True, tls=True, untrusted_ca_rejected=True, local_assets=4, identity_preserved_after_restart=True, configured_alias_accepted=True, unexpected_authority_rejected=True, public_status_read_only=True, local_session_lifecycle=True, restart_invalidates_session=True, palette_preview_apply_reset=True, welcome_and_menu_settings=True, member_onboarding=True, unavailable_section_status=True, local_board_thread_reply=True, discussion_retry_and_csrf=True, discussion_edit_and_withdraw=True, local_mail_participants=True, directory_and_profile_privacy=True, initialization_audit=initial_audit, network_audit=traces)
 
 
 def main():

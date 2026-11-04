@@ -381,6 +381,7 @@ dependencies = [
  "bbsbox-identity",
  "bbsbox-mail",
  "bbsbox-maintenance",
+ "bbsbox-profiles",
  "bbsbox-settings",
  "bbsbox-storage",
  "hex",
@@ -392,6 +393,15 @@ dependencies = [
  "tokio",
  "tower",
  "zeroize",
+]
+
+[[package]]
+name = "bbsbox-profiles"
+version = "0.1.0"
+dependencies = [
+ "bbsbox-identity",
+ "bbsbox-storage",
+ "rusqlite",
 ]
 
 [[package]]

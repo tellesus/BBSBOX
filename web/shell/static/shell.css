@@ -27,7 +27,9 @@ form { display: grid; gap: 1rem; max-width: 25rem; }
 label { display: grid; gap: .25rem; }
 .actions { display: flex; flex-wrap: wrap; gap: .5rem; }
 input[type="color"] { max-width: 7rem; }
-input:not([type="hidden"]), textarea, select { min-width: 0; width: 100%; min-height: 44px; border: 1px solid var(--text); border-radius: .25rem; background: var(--background); color: var(--text); padding: .5rem; font: inherit; }
+input:not([type="hidden"]):not([type="checkbox"]), textarea, select { min-width: 0; width: 100%; min-height: 44px; border: 1px solid var(--text); border-radius: .25rem; background: var(--background); color: var(--text); padding: .5rem; font: inherit; }
+.choice { display: flex; align-items: center; min-height: 44px; gap: .5rem; }
+.choice input { inline-size: 1.25rem; block-size: 1.25rem; accent-color: var(--accent); }
 .welcome { white-space: pre-wrap; overflow-wrap: anywhere; }
 .welcome-art { max-width: 100%; overflow-x: auto; }
 textarea[name="artwork"] { font-family: ui-monospace, monospace; }

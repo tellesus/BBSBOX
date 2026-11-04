@@ -10,6 +10,7 @@ const pages = [
   ['settings/accounts/index.html', 'accounts.html', ['ACCOUNT_STATUS', 'CSRF']],
   ['discussions/index.html', 'discussions.html', ['DISCUSSIONS_TITLE', 'DISCUSSIONS_CONTENT']],
   ['mail/index.html', 'mail.html', ['MAIL_TITLE', 'MAIL_CONTENT']],
+  ['directory/index.html', 'directory.html', ['DIRECTORY_TITLE', 'DIRECTORY_CONTENT']],
   ['unavailable/index.html', 'unavailable.html', ['PAGE_TITLE', 'PAGE_MESSAGE']]
 ];
 

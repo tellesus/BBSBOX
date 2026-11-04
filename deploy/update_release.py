@@ -78,7 +78,7 @@ def compatible(previous,successor):
         raise ValueError('This update provider requires the same directly readable core schema')
     old={(m['module'],m['version']):m['sha256'] for m in previous['module_migrations']}
     new={(m['module'],m['version']):m['sha256'] for m in successor['module_migrations']}
-    if any(owner not in ['identity', 'events', 'settings', 'discussions', 'mail'] for owner, _ in new) or any(new.get(key)!=digest for key,digest in old.items()):
+    if any(owner not in ['identity', 'events', 'settings', 'discussions', 'mail', 'profiles'] for owner, _ in new) or any(new.get(key)!=digest for key,digest in old.items()):
         raise ValueError('Update removed/changed applied SQL or needs another module snapshot provider')
 
 

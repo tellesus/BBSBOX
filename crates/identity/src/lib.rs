@@ -200,6 +200,17 @@ pub fn operator_usernames(connection: &Connection) -> Result<Vec<String>> {
         .query_map([], |row| row.get(0))?
         .collect::<rusqlite::Result<_>>()?)
 }
+
+/// The common directory baseline includes every local account, including inactive accounts.
+pub fn directory_usernames(connection: &Connection, after: Option<&str>) -> Result<Vec<String>> {
+    let after = after.map(normalize_username).transpose()?;
+    let mut query = connection.prepare(
+        "SELECT username FROM identity_accounts WHERE username>coalesce(?1,'') ORDER BY username LIMIT 50",
+    )?;
+    Ok(query
+        .query_map([after], |row| row.get(0))?
+        .collect::<std::result::Result<Vec<_>, _>>()?)
+}
 fn insert_account(
     tx: &Transaction<'_>,
     username: &str,

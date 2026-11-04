@@ -67,7 +67,12 @@ impl Fixture {
 #[test]
 fn known_foundation_backup_can_recover_before_the_theme_migration() {
     let mut previous = migrations();
-    previous.retain(|migration| !matches!(migration.module, "settings" | "discussions" | "mail"));
+    previous.retain(|migration| {
+        !matches!(
+            migration.module,
+            "settings" | "discussions" | "mail" | "profiles"
+        )
+    });
     let fixture = Fixture::with_registry(&previous);
     let identity = fixture.root.join("key.age");
     let public = operator::keygen(&identity).unwrap();

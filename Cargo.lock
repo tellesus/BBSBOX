@@ -482,6 +482,7 @@ dependencies = [
  "bbsbox-client-identity",
  "bbsbox-credentials",
  "bbsbox-event-codec",
+ "ed25519-dalek",
  "hex",
  "sha2 0.10.9",
 ]

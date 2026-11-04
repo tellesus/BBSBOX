@@ -283,6 +283,84 @@ fn three() -> (Client, Client, Client) {
 }
 
 #[test]
+fn a_valid_mls_commit_needs_the_matching_forum_owner_approval() {
+    use bbsbox_credentials::ForumId;
+    use bbsbox_event_codec::{self as events, Actor, Dependency, Distribution, Draft, Role, Scope};
+    use bbsbox_private_forum::{
+        AUDIENCE,
+        control::{Control, ControlHeader},
+    };
+    use ed25519_dalek::{Signer, SigningKey};
+
+    let authority = SigningKey::from_bytes(&[12; 32]);
+    let unrelated = SigningKey::from_bytes(&[13; 32]);
+    let forum = ForumId::from_public_key(&authority.verifying_key().to_bytes()).unwrap();
+    let sign = |key: &SigningKey, header: ControlHeader, body: &[u8]| {
+        let actor = Actor::root(Role::ForumRoot, key.verifying_key().to_bytes(), [1; 16]).unwrap();
+        let draft = Draft {
+            kind: header.kind().into(),
+            schema: 1,
+            scope: Scope {
+                resource: forum.to_string(),
+                audience: AUDIENCE.into(),
+                distribution: Distribution::Local,
+            },
+            sequence: header.epoch + 1,
+            previous: header.parent,
+            dependencies: header.parent.map(Dependency::event).into_iter().collect(),
+            claimed_time: 0,
+            extensions: vec![header.extension().unwrap()],
+        };
+        events::sign(draft, actor, body, None, |data| {
+            Ok(key.sign(data).to_bytes())
+        })
+        .unwrap()
+    };
+
+    let mut owner = Client::new("owner fixture");
+    let mut moderator = Client::new("moderator fixture");
+    let mut recipient = Client::new("recipient fixture");
+    owner.create_group_with_id(GroupId::from_slice(forum.bytes()));
+    let genesis = Control::inspect(&sign(
+        &authority,
+        ControlHeader {
+            epoch: 0,
+            parent: None,
+        },
+        b"fixture initial group",
+    ))
+    .unwrap();
+    let (commit, welcome) = owner.invite(&[
+        moderator.key_package().key_package().clone(),
+        recipient.key_package().key_package().clone(),
+    ]);
+    let joined = Control::inspect(&sign(
+        &authority,
+        ControlHeader {
+            epoch: 1,
+            parent: Some(genesis.id()),
+        },
+        &commit,
+    ))
+    .unwrap();
+    assert!(joined.is_successor_of(genesis));
+    moderator.join(&welcome);
+    recipient.join(&welcome);
+    let next = ControlHeader {
+        epoch: 2,
+        parent: Some(joined.id()),
+    };
+    let unauthorized = sign(&unrelated, next, &moderator.update());
+    assert!(Control::inspect(&unauthorized).is_err());
+    assert_eq!(recipient.epoch(), 1);
+    let approved = sign(&authority, next, &owner.update());
+    let control = Control::inspect(&approved).unwrap();
+    assert!(control.is_successor_of(joined));
+    assert_eq!(recipient.receive(approved.body()).unwrap(), None);
+    assert_eq!(recipient.epoch(), control.header().epoch);
+}
+
+#[test]
 fn disconnected_writers_reconcile_reordered_ciphertexts_and_reject_replays() {
     let (mut alice, mut bob, mut carol) = three();
     // Nobody receives anything before all three have written locally.

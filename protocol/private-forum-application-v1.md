@@ -24,3 +24,9 @@ The sender passes the following concatenated bytes to MLS before encrypting the 
 The C02 signature binds the detached ciphertext hash and length. Recipients compare the unverified MLS group ID, epoch, application framing and authenticated-data field with the outer record before processing. After MLS verification they compare the authenticated data again and verify that the MLS leaf matches the authorized device for that epoch. Host admission separately checks the public governance chain, resource permission and distribution policy. Passing the framing check alone grants no membership, delivery credit or permission to share.
 
 The [fixed test vector](../crates/private-forum/tests/outer.rs) verifies the exact authenticated-data bytes. The [pinned OpenMLS fixture](../spikes/m00/mls/tests/async_groups.rs) checks that a relabeled ciphertext fails without consuming the original message.
+
+## Owner authorization
+
+Kind schema `1` reserves `forum.control.genesis` and `forum.control.commit`. Each requires a C02 `ForumRoot` signature whose subject equals the forum resource. The required extension `0x1302` starts with the 8-byte big-endian epoch. Genesis uses epoch zero and has no parent. A commit appends its 32-byte parent control event ID and lists that ID as its sole explicit C02 Event dependency. A present same-stream predecessor must be the same parent. After an incarnation change the parent remains an explicit dependency.
+
+The signed body commitment binds the exact genesis payload or MLS commit bytes. Each accepted commit must extend the same forum and distribution at the immediately following epoch. Repeated delivery of one event ID leaves the successor unchanged. Multiple distinct verified successors of one parent are a conflict, so advancement at that parent is withheld and the conflicting signed records are retained. These checks precede MLS merge and membership evaluation.

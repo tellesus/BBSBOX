@@ -3,8 +3,9 @@
 //! Membership, epoch authority and delivery policy are separate checks.
 use bbsbox_credentials::{ForumId, Purpose};
 use bbsbox_event_codec::{
-    Actor, CompleteEvent, Dependency, Draft, EventId, Extension, Role, Scope,
+    Actor, CompleteEvent, Dependency, Distribution, Draft, EventId, Extension, Role, Scope,
 };
+pub mod control;
 
 pub const AUDIENCE: &str = "forum-members";
 pub const HEADER_EXTENSION: u16 = 0x1301;
@@ -120,23 +121,7 @@ impl Header {
     }
 
     fn parse<'a>(kind: &str, extensions: &'a [Extension]) -> Result<(Self, &'a [u8]), Error> {
-        let mut recognized = extensions
-            .iter()
-            .filter(|extension| extension.id == HEADER_EXTENSION);
-        let extension = recognized
-            .next()
-            .filter(|extension| extension.required)
-            .ok_or(Error::InvalidHeader)?;
-        if recognized.next().is_some() {
-            return Err(Error::InvalidHeader);
-        }
-        if extensions
-            .iter()
-            .any(|candidate| candidate.required && candidate.id != HEADER_EXTENSION)
-        {
-            return Err(Error::Unsupported);
-        }
-        let data = &extension.data;
+        let data = required_extension(HEADER_EXTENSION, extensions)?;
         let reference = |offset: usize| {
             EventId::from_bytes(
                 data[offset..offset + 32]
@@ -181,6 +166,7 @@ impl Header {
 /// The recipient recomputes them from the signed envelope and compares them after processing MLS.
 pub struct Outer {
     pub forum: ForumId,
+    pub distribution: Distribution,
     pub header: Header,
     pub authenticated_data: Vec<u8>,
 }
@@ -241,10 +227,7 @@ impl Outer {
         if header.dependencies() != dependencies {
             return Err(Error::InvalidDependencies);
         }
-        let forum: ForumId = scope.resource.parse().map_err(|_| Error::InvalidScope)?;
-        if scope.audience != AUDIENCE || forum.bytes() == &[0; 32] {
-            return Err(Error::InvalidScope);
-        }
+        let forum = forum_scope(scope)?;
         let credential = actor
             .credential
             .filter(|_| actor.role == Role::PersonDevice)
@@ -272,8 +255,35 @@ impl Outer {
         data.extend_from_slice(wire);
         Ok(Self {
             forum,
+            distribution: scope.distribution,
             header,
             authenticated_data: data,
         })
     }
+}
+
+fn forum_scope(scope: &Scope) -> Result<ForumId, Error> {
+    let forum: ForumId = scope.resource.parse().map_err(|_| Error::InvalidScope)?;
+    if scope.audience != AUDIENCE || forum.bytes() == &[0; 32] {
+        return Err(Error::InvalidScope);
+    }
+    Ok(forum)
+}
+
+fn required_extension(id: u16, extensions: &[Extension]) -> Result<&[u8], Error> {
+    let mut recognized = extensions.iter().filter(|extension| extension.id == id);
+    let extension = recognized
+        .next()
+        .filter(|extension| extension.required)
+        .ok_or(Error::InvalidHeader)?;
+    if recognized.next().is_some() {
+        return Err(Error::InvalidHeader);
+    }
+    if extensions
+        .iter()
+        .any(|candidate| candidate.required && candidate.id != id)
+    {
+        return Err(Error::Unsupported);
+    }
+    Ok(&extension.data)
 }

@@ -20,8 +20,8 @@ Design review is complete and the first M00 prototype has real local implementat
 | [M08](modules/M08-friends-events.md) | Approved | Complete | A–C: local feeds, friendships, events, invitations and calendar pass signed Debian CI 41808835341 | G1 device acceptance |
 | [M09](modules/M09-clans-cohorts.md) | Approved | Complete | A–C: roster privacy, consent, handover and typed membership pass signed Debian CI 41810057605 | M11/M18 bind game consumers |
 | [M10](modules/M10-local-files.md) | Approved | Complete | A–C: permission, streaming, quota and restore pass signed Debian CI 41811437491 | M15/M16 own actual exchange tests |
-| [M11](modules/M11-local-games.md) | Approved | In progress | Development browser and encrypted game-node restore pass CI 41814817663 | Verify isolated Debian socket, wire appliance enablement and recovery activation |
-| [M13](modules/M13-encrypted-forums.md) | Approved | In progress | A: signed outer post framing and MLS authenticated-data fixture | Add owner authority, opaque host admission and trusted client integration |
+| [M11](modules/M11-local-games.md) | Approved | In progress | Signed Debian enablement and isolated game backup pass CI 41891954359 | Confirm fresh game recovery and implement game-aware installed update |
+| [M13](modules/M13-encrypted-forums.md) | Approved | In progress | A: signed post framing and owner controls pass pinned MLS fixtures | Add membership proofs, opaque host admission and trusted client integration |
 | [M14](modules/M14-complaints-moderation.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
 | [M15](modules/M15-selected-federation.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
 | [M16](modules/M16-pigeons-lump-drops.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
@@ -668,3 +668,9 @@ The appliance socket worker separates gameplay and maintenance using the connect
 ## 2026-11-04 — M13 A application envelope
 
 C05 v1.1.1 specifies the required signed post extension and its MLS authenticated data. The first fixture binds a genuine device-signed envelope to OpenMLS ciphertext. Relabeling a valid encrypted post's distribution fails before the recipient processes it, so the original can still be opened. The metadata provider covers create, reply, edit and withdrawal. Owner-authorized governance, host admission and the independent client remain separate slices.
+
+## 2026-11-04 — M11 appliance confirmation and M13 A owner proofs
+
+[Isolated appliance backup](https://github.com/tellesus/BBSBOX/actions/runs/41890667142), [worker unit installation](https://github.com/tellesus/BBSBOX/actions/runs/41891243764) and [fresh appliance enablement](https://github.com/tellesus/BBSBOX/actions/runs/41891954359) passed their four Linux jobs. The enablement run checked the separate game hostname over IPv4 and IPv6 and renewed the shared local certificate. The complete game recovery run continues separately.
+
+C05 v1.1.2 binds each initial control event to its ForumRoot, exact MLS payload, epoch and parent event. Tests reject another forum root or node key, detect competing successors without relying on arrival order, and require the matching forum owner before merging a real MLS commit. Membership proofs, causal storage and the trusted client remain open.

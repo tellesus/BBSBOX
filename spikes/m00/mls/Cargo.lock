@@ -132,6 +132,7 @@ dependencies = [
  "bbsbox-credentials",
  "bbsbox-event-codec",
  "bbsbox-private-forum",
+ "ed25519-dalek 3.0.0",
  "openmls",
  "openmls_basic_credential",
  "openmls_rust_crypto",

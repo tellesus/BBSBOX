@@ -1,8 +1,8 @@
 # M11 — Game host and local multiplayer example
 
-Brief revision 1.1.14 · Roadmap baseline 1.1.0 · 2026-11-04 · Locked scope · Product baseline 0.6.0.
+Brief revision 1.1.15 · Roadmap baseline 1.1.0 · 2026-11-04 · Locked scope · Product baseline 0.6.0.
 
-**State:** In progress. Development browser, isolated game-node restore and save placement checks pass locally. Debian confirms worker isolation. Fresh appliance enablement and full recovery await Linux confirmation. Game-aware installed updates remain open.
+**State:** In progress. Debian confirms isolated game backup, signed installation and fresh appliance enablement. Full replacement-media recovery awaits Linux confirmation. Game-aware installed updates remain open.
 
 ## Read only this packet
 

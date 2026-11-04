@@ -174,6 +174,7 @@ pub fn migrations() -> Vec<Migration> {
     migrations.extend(bbsbox_mail::migrations());
     migrations.extend(bbsbox_profiles::migrations());
     migrations.extend(bbsbox_social::migrations());
+    migrations.extend(bbsbox_gatherings::migrations());
     migrations
 }
 #[derive(Clone, Serialize)]

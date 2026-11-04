@@ -1,8 +1,8 @@
 # M07 — Member directory and chosen profile displays
 
-Brief revision 1.1.2 · 2026-11-03 · Roadmap baseline 1.1.0 · Product baseline 0.6.0.
+Brief revision 1.1.3 · 2026-11-03 · Roadmap baseline 1.1.0 · Product baseline 0.6.0.
 
-**State:** In progress. A–C pass locally. Signed Debian confirmation remains pending.
+**State:** Complete for the software provider. A–C pass locally and in signed Debian CI.
 
 ## Read only this packet
 

@@ -1,6 +1,6 @@
 # Development work ledger
 
-Version 1.1.0 · 2026-10-25 · Locked roadmap. M01–M06 and M12 software providers Complete. M00, M07 and M08 In progress. Other modules Unstarted. Execution updated 2026-11-03.
+Version 1.1.0 · 2026-10-25 · Locked roadmap. M01–M07 and M12 software providers Complete. M00 and M08 In progress. Other modules Unstarted. Execution updated 2026-11-03.
 
 Evidence log — not an independent source of scope authority. Current choices live in the canonical roadmap and user instructions.
 
@@ -16,8 +16,8 @@ Design review is complete and the first M00 prototype has real local implementat
 | [M12](modules/M12-maintenance-recovery.md) | Approved | Complete | A–C: Debian signed install/update/rollback, fresh recovery, scheduled backup and retention; CI 41718200103 | Begin M05 A. M11 owns real game adapter acceptance. G1 physical tests remain |
 | [M05](modules/M05-interface-themes.md) | Approved | Complete | A–C: local HTTPS, Edge, signed Debian install/rebuild and settings restore; CI 41751474936 | Integrate real feature navigation, visual review and G1 device checks |
 | [M06](modules/M06-boards-mail.md) | Approved | Complete | A–C: signed discussions and participant-restricted mail pass Debian CI 41769646693 | G1 device checks and later complaint integration |
-| [M07](modules/M07-directory-profiles.md) | Approved | In progress | A–C: directory, profile privacy and component hooks pass local checks | Confirm signed Debian. Bind live providers in their owning modules |
-| [M08](modules/M08-friends-events.md) | Approved | In progress | A and friendship: chosen feed and mutual consent pass local HTTPS | Confirm signed Debian. Build gatherings and invitations |
+| [M07](modules/M07-directory-profiles.md) | Approved | Complete | A–C: directory, profile privacy and component hooks pass signed Debian CI 41770621736 | Bind live providers in their owning modules |
+| [M08](modules/M08-friends-events.md) | Approved | In progress | Chosen feed, mutual friendship and public event editing pass local HTTPS | Address invitations, then calendar and RSVP |
 | [M09](modules/M09-clans-cohorts.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
 | [M10](modules/M10-local-files.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
 | [M11](modules/M11-local-games.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
@@ -559,7 +559,7 @@ Real IPv4 and IPv6 HTTPS checks found the same user while public and private, ve
 
 Profiles migration 2 records separate display choices for the feed, hosted events, games and Lump Drop count. Feed, event and game display requires both a public profile and the owner's choice. The provider also receives the local viewer and owner and must enforce its own audience. Count visibility is independent. Uninstalled providers supply no sections and their preferences remain intact.
 
-Fixtures check an older profile migrating with its field choices intact, baseline lookup of inactive accounts, a denied feed audience, hidden providers, an actual zero from an installed count provider, and hiding the count on a private profile. The encrypted node restore preserves private drafts and the separate count choice. Local HTTPS verifies that uninstalled components produce no output. Live bindings are owned by M08, M11/M18 and M16. Signed Debian confirmation is pending.
+Fixtures check an older profile migrating with its field choices intact, baseline lookup of inactive accounts, a denied feed audience, hidden providers, an actual zero from an installed count provider, and hiding the count on a private profile. The encrypted node restore preserves private drafts and the separate count choice. Local HTTPS verifies that uninstalled components produce no output. [Signed Debian CI](https://github.com/tellesus/BBSBOX/actions/runs/41770621736) passed at `8eb57a6`, promoted to main. Live bindings are owned by M08, M11/M18 and M16.
 
 ## 2026-11-03 — M08 A: chosen local updates
 
@@ -572,3 +572,9 @@ The browser test verifies that a follow selects updates, an unfollow removes the
 Social migration 2 stores friendship requests and confirmation. Only the addressee can accept or decline. The requester can cancel, and either person can remove a confirmed connection. An older form cannot act on a replacement request. Both accounts see their own relationship state in Friends. The ordinary list does not show anyone else's relationships, including when a SysOp opens it. Following remains separate.
 
 IPv4 and IPv6 HTTPS cover request, refusal of self-acceptance, the addressee's acceptance, the unrelated SysOp's empty list, and removal. The relationship is local account state. M13 owns the encrypted audience adapter. Signed Debian confirmation is pending. Next are public gatherings and separately addressed invitations.
+
+## 2026-11-03 — M08 B: public event announcements and organizer revisions
+
+Gatherings migration 1 stores local public announcements and immutable signed revisions. The organizer edits against the current revision and cancellation preserves the event link and last details. A host can show their announcements on their public profile. Scheduling uses bundled [Jiff IANA timezone data](https://docs.rs/jiff/0.2.38/jiff/tz/struct.TimeZoneDatabase.html). A skipped time requires a different entry. For a repeated time the host chooses an occurrence. Each revision preserves the organizer's civil time, zone, UTC offset and resolved instant.
+
+Provider fixtures verify owner-only writes, stable IDs, cancellation and stale edits despite clock order. Local HTTPS checks duplicate create, edit, cancellation, the profile link, and timezone ambiguity. Signed Debian confirmation is pending. Recipient-addressed invitations are the remaining part of B, followed by calendar, RSVP and reminders.

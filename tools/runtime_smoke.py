@@ -169,7 +169,7 @@ def exercise(binary, state_root, host, isolated):
                         updated = response.read().decode()
                         assert 'Neighbors &lt;welcome&gt;' in updated and '&lt;text art&gt;' in updated
                         menu = updated.split('<nav aria-label="Main">', 1)[1].split('</nav>', 1)[0]
-                        assert re.findall(r'<a href="([^"]+)"', menu) == ['/status/', '/', '/account/', '/discussions/', '/mail/', '/directory/', '/feeds/']
+                        assert re.findall(r'<a href="([^"]+)"', menu) == ['/status/', '/', '/account/', '/discussions/', '/mail/', '/directory/', '/feeds/', '/events/']
                     def discussion_proof(page):
                         return {key: re.search(r'name="'+key+r'" value="([0-9a-f]+)"', page).group(1) for key in ['csrf', 'request']}
                     def submit(path, fields):
@@ -194,8 +194,8 @@ def exercise(binary, state_root, host, isolated):
                     with submit('/settings/accounts/', other) as response:
                         assert response.status == 201
                     try:
-                        request('/events/')
-                        raise AssertionError('Uninstalled events section was served')
+                        request('/games/')
+                        raise AssertionError('Uninstalled games section was served')
                     except urllib.error.HTTPError as error:
                         assert error.code == 404 and b'Section unavailable' in error.read()
                     payload = urllib.parse.urlencode(dict(csrf=hidden.group(1))).encode()
@@ -437,6 +437,56 @@ def exercise(binary, state_root, host, isolated):
                         assert b'Unfollow' not in response.read()
                     with request('/feeds/') as response:
                         assert b'No updates from accounts you follow.' in response.read()
+                    with request('/events/new/') as response:
+                        event_form = discussion_proof(response.read().decode())
+                    event_details = dict(title='Local library game night', place='Meeting room A', description='Bring a *game*.', local='2026-11-01T01:30', zone='America/New_York', occurrence='')
+                    for invalid, expected in (
+                        (dict(event_details, local='2026-03-08T02:30'), b'is skipped'),
+                        (event_details, b'occurs twice'),
+                    ):
+                        try:
+                            submit('/events/new/', dict(event_form, **invalid))
+                            raise AssertionError('Ambiguous or skipped event time was accepted')
+                        except urllib.error.HTTPError as error:
+                            assert error.code == 422 and expected in error.read()
+                    event_details['occurrence'] = 'second'
+                    create_event = dict(event_form, **event_details)
+                    with submit('/events/new/', create_event) as response:
+                        event_path = urllib.parse.urlsplit(response.geturl()).path
+                        event_page = response.read()
+                        assert b'(UTC-05:00)' in event_page and b'<em>game</em>' in event_page
+                    with submit('/events/new/', create_event) as response:
+                        assert urllib.parse.urlsplit(response.geturl()).path == event_path
+                    with request('/events/') as response:
+                        assert response.read().count(b'Local library game night') == 1
+                    with request(event_path + 'edit/') as response:
+                        event_editor = response.read().decode()
+                    previous = re.search(r'name="previous" value="([0-9a-f]{64})"', event_editor).group(1)
+                    edit = dict(discussion_proof(event_editor), previous=previous, **dict(event_details, occurrence='', place='Meeting room B'))
+                    with submit(event_path + 'edit/', edit) as response:
+                        edited_event = response.read().decode()
+                        assert 'Meeting room B' in edited_event and '(UTC-05:00)' in edited_event
+                    cancel_proof = discussion_proof(edited_event)
+                    try:
+                        submit(event_path + 'cancel/', dict(cancel_proof, previous=previous))
+                        raise AssertionError('Stale event cancellation was accepted')
+                    except urllib.error.HTTPError as error:
+                        assert error.code == 409
+                    public_events = dict(profile_form(), public='on', bio='', message='', email='', phone='', contact='', show_events='on')
+                    with submit('/account/profile/', public_events) as response:
+                        assert event_path.encode() in response.read()
+                    current = re.search(r'name="previous" value="([0-9a-f]{64})"', edited_event).group(1)
+                    with submit(event_path + 'cancel/', dict(cancel_proof, previous=current)) as response:
+                        assert b'<strong>Cancelled</strong>' in response.read()
+                    sign_out()
+                    sign_in(member['username'], member['password'])
+                    with request('/directory/other/') as response:
+                        assert b'Local library game night (cancelled)' in response.read()
+                    try:
+                        request(event_path + 'edit/')
+                        raise AssertionError('A different account could edit the event')
+                    except urllib.error.HTTPError as error:
+                        assert error.code == 403
                 # A new client without the local CA must fail certificate verification.
                 untrusted = urllib.request.build_opener(urllib.request.ProxyHandler({}), urllib.request.HTTPSHandler(context=ssl.create_default_context()))
                 try:
@@ -465,7 +515,7 @@ def exercise(binary, state_root, host, isolated):
                 text = trace.read_text(encoding='utf-8')
                 traces.append(audit.audit_trace(text))
                 (state_root/f'runtime-{"ipv6" if family == socket.AF_INET6 else "ipv4"}-{attempt}.trace').write_text(text, encoding='utf-8')
-        return dict(family='IPv6' if family == socket.AF_INET6 else 'IPv4', simultaneous_dual_stack=True, tls=True, untrusted_ca_rejected=True, local_assets=4, identity_preserved_after_restart=True, configured_alias_accepted=True, unexpected_authority_rejected=True, public_status_read_only=True, local_session_lifecycle=True, restart_invalidates_session=True, palette_preview_apply_reset=True, welcome_and_menu_settings=True, member_onboarding=True, unavailable_section_status=True, local_board_thread_reply=True, discussion_retry_and_csrf=True, discussion_edit_and_withdraw=True, local_mail_participants=True, directory_and_profile_privacy=True, chronological_followed_feed=True, mutual_local_friendship=True, initialization_audit=initial_audit, network_audit=traces)
+        return dict(family='IPv6' if family == socket.AF_INET6 else 'IPv4', simultaneous_dual_stack=True, tls=True, untrusted_ca_rejected=True, local_assets=4, identity_preserved_after_restart=True, configured_alias_accepted=True, unexpected_authority_rejected=True, public_status_read_only=True, local_session_lifecycle=True, restart_invalidates_session=True, palette_preview_apply_reset=True, welcome_and_menu_settings=True, member_onboarding=True, unavailable_section_status=True, local_board_thread_reply=True, discussion_retry_and_csrf=True, discussion_edit_and_withdraw=True, local_mail_participants=True, directory_and_profile_privacy=True, chronological_followed_feed=True, mutual_local_friendship=True, local_gathering_revisions=True, initialization_audit=initial_audit, network_audit=traces)
 
 
 def main():

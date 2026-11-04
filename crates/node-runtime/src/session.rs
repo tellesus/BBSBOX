@@ -45,6 +45,7 @@ struct Sessions {
     mailbox: Arc<bbsbox_mail::Mailbox>,
     profile_providers: Arc<bbsbox_profiles::components::Providers>,
     social: Arc<bbsbox_social::Social>,
+    gatherings: Arc<bbsbox_gatherings::Gatherings>,
 }
 
 pub(super) fn router(
@@ -73,9 +74,11 @@ pub(super) fn router(
         mailbox: Arc::new(bbsbox_mail::Mailbox::new(&signer)),
         profile_providers: Arc::new(bbsbox_profiles::components::Providers {
             feed: Some(pages::feeds::profile_provider()),
+            events: Some(pages::gatherings::profile_provider()),
             ..Default::default()
         }),
         social: Arc::new(bbsbox_social::Social::new(&signer)),
+        gatherings: Arc::new(bbsbox_gatherings::Gatherings::new(&signer)),
         signer,
     };
     Ok(Router::new()

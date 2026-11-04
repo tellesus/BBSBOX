@@ -1,8 +1,8 @@
 # M08 — Chosen feeds, gatherings and invitations
 
-Brief revision 1.1.2 · 2026-11-03 · Roadmap baseline 1.1.0 · Product baseline 0.6.0.
+Brief revision 1.1.3 · 2026-11-03 · Roadmap baseline 1.1.0 · Product baseline 0.6.0.
 
-**State:** In progress. A and the local friendship flow pass locally. Events and invitations are next.
+**State:** In progress. Feeds, friendships and event announcements pass locally. Invitations are next.
 
 ## Read only this packet
 
@@ -23,7 +23,7 @@ Use explicit following for public posts, with mutual confirmed friendship as a d
 
 ## Ownership and interfaces
 
-`crates/social/` owns follows and the feed. Planned `crates/gatherings/` owns event revisions, invitations and RSVP state. M13 owns encrypted friend audiences.
+`crates/social/` owns follows, friends and feeds. `crates/gatherings/` owns event revisions and will add invitations and RSVPs. M13 owns encrypted friend audiences.
 
 Follow the listed contracts. A disabled optional module retains its data and leaves other services available.
 
@@ -41,7 +41,7 @@ Follow the listed contracts. A disabled optional module retains its data and lea
 
 ## Locked defaults and verification
 
-Following selects public updates. Sort newest authored time first, breaking ties by event ID. Show arrival or clock labels at five minutes of difference. Edits follow causal revision rules. Mutual confirmed friendship is separate. Calendar, going/maybe/not-going RSVPs, cancellation and local reminders are approved. G1 invitations are host-visible and recipient-addressed.
+Following selects public updates. Sort by descending authored time, then event ID. Label five-minute arrival or clock differences. Gatherings store local time, IANA zone and the resolved instant. Edits follow causal revisions. Mutual friendship is separate. Calendar, RSVP, cancellation and local reminders are approved. G1 invitations are host-visible and recipient-addressed.
 
 ## Handoff
 

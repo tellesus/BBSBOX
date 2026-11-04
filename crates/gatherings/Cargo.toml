@@ -1,0 +1,22 @@
+[package]
+name = "bbsbox-gatherings"
+version = "0.1.0"
+edition = "2024"
+license = "AGPL-3.0-or-later"
+publish = false
+
+[dependencies]
+bbsbox-credentials = { path = "../credentials" }
+bbsbox-event-codec = { path = "../event-codec" }
+bbsbox-event-core = { path = "../event-core" }
+bbsbox-identity = { path = "../identity" }
+bbsbox-storage = { path = "../storage" }
+hex = "0.4"
+jiff = { version = "=0.2.38", default-features = false, features = ["std", "tzdb-bundle-always"] }
+rand_core = { version = "0.6", features = ["getrandom"] }
+rusqlite = "0.41"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[dev-dependencies]
+tempfile = "3"

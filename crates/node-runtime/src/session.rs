@@ -42,6 +42,7 @@ struct Sessions {
     site: Arc<RwLock<bbsbox_settings::site::Site>>,
     signer: Arc<NodeSigner>,
     boards: Arc<bbsbox_discussions::Boards>,
+    mailbox: Arc<bbsbox_mail::Mailbox>,
 }
 
 pub(super) fn router(
@@ -67,6 +68,7 @@ pub(super) fn router(
         theme: Arc::new(RwLock::new(theme)),
         site: Arc::new(RwLock::new(site)),
         boards: Arc::new(bbsbox_discussions::Boards::new(&signer)),
+        mailbox: Arc::new(bbsbox_mail::Mailbox::new(&signer)),
         signer,
     };
     Ok(Router::new()

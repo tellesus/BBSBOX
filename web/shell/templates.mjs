@@ -9,6 +9,7 @@ const pages = [
   ['settings/site/index.html', 'site.html', ['SITE_STATUS', 'SITE_REVISION', 'CSRF', 'MESSAGE', 'ART', 'MENU_OPTIONS']],
   ['settings/accounts/index.html', 'accounts.html', ['ACCOUNT_STATUS', 'CSRF']],
   ['discussions/index.html', 'discussions.html', ['DISCUSSIONS_TITLE', 'DISCUSSIONS_CONTENT']],
+  ['mail/index.html', 'mail.html', ['MAIL_TITLE', 'MAIL_CONTENT']],
   ['unavailable/index.html', 'unavailable.html', ['PAGE_TITLE', 'PAGE_MESSAGE']]
 ];
 

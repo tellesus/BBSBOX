@@ -15,7 +15,7 @@ Design review is complete and the first M00 prototype has real local implementat
 | [M04](modules/M04-signed-events.md) | Approved | Complete | A–C: 15 codec/33 core tests, independent vectors, all 120 arrival orders; CI 41245899257 passed | Feature modules prove actual policies/views; M13/M15/M16 complete AC07 integration |
 | [M12](modules/M12-maintenance-recovery.md) | Approved | Complete | A–C: Debian signed install/update/rollback, fresh recovery, scheduled backup and retention; CI 41718200103 | Begin M05 A. M11 owns real game adapter acceptance. G1 physical tests remain |
 | [M05](modules/M05-interface-themes.md) | Approved | Complete | A–C: local HTTPS, Edge, signed Debian install/rebuild and settings restore; CI 41751474936 | Integrate real feature navigation, visual review and G1 device checks |
-| [M06](modules/M06-boards-mail.md) | Approved | In progress | A–B: signed local posting, immutable edits and withdrawal pass local HTTPS and restore | Confirm signed Debian and implement recipient-restricted mail |
+| [M06](modules/M06-boards-mail.md) | Approved | In progress | A–C: signed local discussions and participant-restricted mail pass local HTTPS | Confirm signed Debian |
 | [M07](modules/M07-directory-profiles.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
 | [M08](modules/M08-friends-events.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
 | [M09](modules/M09-clans-cohorts.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
@@ -542,3 +542,9 @@ The local IPv4 and IPv6 HTTPS tests created a board, signed in as a member, post
 Discussions migration 2 adds immutable signed edit and withdrawal rows plus a separate current head. Edits change the post body and preserve its stable ID. The author must supply the currently observed revision. Unchanged edits and stale writes add no revision. Withdrawal displays a tombstone and keeps replies and parent links. Ordinary routes use the current view. An internal exact-revision lookup can support authorized complaint handling later.
 
 Local IPv4 and IPv6 HTTPS exercised author edits, stale withdrawal refusal and a successful withdrawal. The provider tests refused a different account and rebuilt the projection in a fixture from accepted signed bytes while preserving the receipts. The encrypted restore test checks the current and original bodies. Debian release confirmation remains pending. A production rebuild command and a complaint consumer remain separate. Next is local mailbox and operator contact in slice C.
+
+## 2026-11-03 — M06 C: local mail and operator contact
+
+Mail migration 1 adds conversations and messages to the core node snapshot. Signed starts and replies carry a local-only participant scope. Participants can use the mailbox and follow stable message references. An unrelated SysOp sees no mail in the ordinary browser endpoints. The mailbox explains that the operator can access stored messages.
+
+Local IPv4 and IPv6 HTTPS checks sent mail between members, checked duplicate-send handling and signed-out redirects, refused an unaddressed SysOp, delivered a member's operator contact, and returned a reply to the original sender. Provider tests also refuse replies from outsiders or another conversation. Signed Debian confirmation is pending. M07 can use the existing identity provider for the account directory.

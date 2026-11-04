@@ -169,7 +169,7 @@ def exercise(binary, state_root, host, isolated):
                         updated = response.read().decode()
                         assert 'Neighbors &lt;welcome&gt;' in updated and '&lt;text art&gt;' in updated
                         menu = updated.split('<nav aria-label="Main">', 1)[1].split('</nav>', 1)[0]
-                        assert re.findall(r'<a href="([^"]+)"', menu) == ['/status/', '/', '/account/', '/discussions/']
+                        assert re.findall(r'<a href="([^"]+)"', menu) == ['/status/', '/', '/account/', '/discussions/', '/mail/']
                     def discussion_proof(page):
                         return {key: re.search(r'name="'+key+r'" value="([0-9a-f]+)"', page).group(1) for key in ['csrf', 'request']}
                     def submit(path, fields):
@@ -190,6 +190,9 @@ def exercise(binary, state_root, host, isolated):
                     member = dict(username='Neighbor', password='fixture member passphrase', role='member', csrf=hidden.group(1))
                     with request('/settings/accounts/', 'POST', form_headers, urllib.parse.urlencode(member).encode()) as response:
                         assert response.status == 201 and b'Account created.' in response.read()
+                    other = dict(member, username='Other', password='fixture second member passphrase')
+                    with submit('/settings/accounts/', other) as response:
+                        assert response.status == 201
                     try:
                         request('/events/')
                         raise AssertionError('Uninstalled events section was served')
@@ -254,6 +257,59 @@ def exercise(binary, state_root, host, isolated):
                     with submit(withdraw_path, revision_form(editor, withdraw_path)) as response:
                         withdrawn = response.read()
                         assert b'Post withdrawn.' in withdrawn and b'Meet at seven.' not in withdrawn
+                    def sign_out():
+                        csrf = next(cookie.value for cookie in cookies if cookie.name == '__Host-bbsbox_csrf')
+                        with submit('/account/sign-out/', dict(csrf=csrf)) as response:
+                            assert response.geturl() == origin + '/'
+
+                    def sign_in(username, password):
+                        with submit('/login/', dict(username=username, password=password)) as response:
+                            assert response.geturl().endswith('/account/')
+
+                    with request('/mail/') as response:
+                        mailbox = response.read().decode()
+                        assert 'No conversations to show.' in mailbox
+                    send_form = dict(discussion_proof(mailbox), recipient='Other', subject='Private meetup', text='*Only the recipients* can read this.')
+                    with submit('/mail/', send_form) as response:
+                        private_url = urllib.parse.urlsplit(response.geturl()).path
+                        assert response.headers['Cache-Control'] == 'no-store'
+                        assert b'<em>Only the recipients</em>' in response.read()
+                    with submit('/mail/', send_form) as response:
+                        assert urllib.parse.urlsplit(response.geturl()).path == private_url
+                    with request('/mail/contact/') as response:
+                        contact = response.read().decode()
+                        assert '<option value="operator">operator</option>' in contact
+                        contact_form = dict(discussion_proof(contact), recipient='operator', subject='Operator help', text='Please check the local sign.')
+                    with submit('/mail/contact/', contact_form) as response:
+                        contact_url = urllib.parse.urlsplit(response.geturl()).path
+                        assert b'Please check the local sign.' in response.read()
+                    sign_out()
+                    with request(private_url) as response:
+                        assert response.geturl().endswith('/login/')
+                    sign_in('operator', password.decode())
+                    try:
+                        request(private_url)
+                        raise AssertionError('Unaddressed SysOp could read mail in the browser')
+                    except urllib.error.HTTPError as error:
+                        assert error.code == 404
+                        assert b'Private meetup' not in error.read()
+                    with request('/mail/') as response:
+                        inbox = response.read()
+                        assert b'Operator help' in inbox and b'Private meetup' not in inbox
+                    with request(contact_url) as response:
+                        assert b'Please check the local sign.' in response.read()
+                    sign_out()
+                    sign_in(other['username'], other['password'])
+                    with request(private_url) as response:
+                        conversation = response.read().decode()
+                        assert '<em>Only the recipients</em>' in conversation
+                    parent = re.search(r'name="parent" value="([0-9a-f]{64})"', conversation).group(1)
+                    with submit(private_url + 'reply/', dict(discussion_proof(conversation), parent=parent, text='See you there.')) as response:
+                        assert b'See you there.' in response.read()
+                    sign_out()
+                    sign_in(member['username'], member['password'])
+                    with request(private_url) as response:
+                        assert b'See you there.' in response.read()
                 # A new client without the local CA must fail certificate verification.
                 untrusted = urllib.request.build_opener(urllib.request.ProxyHandler({}), urllib.request.HTTPSHandler(context=ssl.create_default_context()))
                 try:
@@ -282,7 +338,7 @@ def exercise(binary, state_root, host, isolated):
                 text = trace.read_text(encoding='utf-8')
                 traces.append(audit.audit_trace(text))
                 (state_root/f'runtime-{"ipv6" if family == socket.AF_INET6 else "ipv4"}-{attempt}.trace').write_text(text, encoding='utf-8')
-        return dict(family='IPv6' if family == socket.AF_INET6 else 'IPv4', simultaneous_dual_stack=True, tls=True, untrusted_ca_rejected=True, local_assets=4, identity_preserved_after_restart=True, configured_alias_accepted=True, unexpected_authority_rejected=True, public_status_read_only=True, local_session_lifecycle=True, restart_invalidates_session=True, palette_preview_apply_reset=True, welcome_and_menu_settings=True, member_onboarding=True, unavailable_section_status=True, local_board_thread_reply=True, discussion_retry_and_csrf=True, discussion_edit_and_withdraw=True, initialization_audit=initial_audit, network_audit=traces)
+        return dict(family='IPv6' if family == socket.AF_INET6 else 'IPv4', simultaneous_dual_stack=True, tls=True, untrusted_ca_rejected=True, local_assets=4, identity_preserved_after_restart=True, configured_alias_accepted=True, unexpected_authority_rejected=True, public_status_read_only=True, local_session_lifecycle=True, restart_invalidates_session=True, palette_preview_apply_reset=True, welcome_and_menu_settings=True, member_onboarding=True, unavailable_section_status=True, local_board_thread_reply=True, discussion_retry_and_csrf=True, discussion_edit_and_withdraw=True, local_mail_participants=True, initialization_audit=initial_audit, network_audit=traces)
 
 
 def main():

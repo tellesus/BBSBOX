@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Browser entry for local signed discussion boards.
 use super::{
-    RequestOrigin, Sessions, check_origin, cookie_header, current_account, escape, html, template,
-    token,
+    RequestOrigin, Sessions, check_origin, current_account, escape, event_id, event_key, form,
+    form_access, html, template, token,
 };
 use axum::{
     Extension, Form, Router,
@@ -13,9 +13,8 @@ use axum::{
 };
 use bbsbox_discussions::{self as boards, Change};
 use bbsbox_event_codec::EventId;
-use bbsbox_identity::{Account, Role, session::csrf_from_cookie_header};
+use bbsbox_identity::Role;
 use bbsbox_storage::{Command, disk::Class, writer::Priority};
-use rand_core::{OsRng, RngCore};
 use serde::Deserialize;
 use std::fmt::Write;
 
@@ -90,23 +89,6 @@ fn problem(state: &Sessions, status: StatusCode) -> Response {
     render(state, status, title, &body)
 }
 
-fn event_key(id: EventId) -> String {
-    hex::encode(id.bytes())
-}
-
-fn event_id(value: &str) -> Result<EventId, StatusCode> {
-    let mut bytes = [0; 32];
-    if value.len() != 64
-        || value
-            .bytes()
-            .any(|byte| !(byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte)))
-        || hex::decode_to_slice(value, &mut bytes).is_err()
-    {
-        return Err(StatusCode::NOT_FOUND);
-    }
-    Ok(EventId::from_bytes(bytes))
-}
-
 async fn read<T: Send + 'static>(
     state: &Sessions,
     operation: impl FnOnce(std::path::PathBuf) -> Result<T, boards::Error> + Send + 'static,
@@ -124,26 +106,6 @@ async fn read<T: Send + 'static>(
     .await
     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
     .map_err(board_status)
-}
-
-async fn form_access(
-    state: &Sessions,
-    headers: &HeaderMap,
-) -> Option<(Account, zeroize::Zeroizing<String>)> {
-    let account = current_account(state, headers).await.ok()?;
-    let cookies = cookie_header(headers).ok()?;
-    let csrf = csrf_from_cookie_header(&cookies).ok()?;
-    Some((account, zeroize::Zeroizing::new(csrf.to_owned())))
-}
-
-fn form(content: &mut String, action: &str, csrf: &str, label: &str, fields: &str) {
-    let mut request = [0; 16];
-    OsRng.fill_bytes(&mut request);
-    let request = hex::encode(request);
-    let _ = write!(
-        content,
-        "<h2>{label}</h2><form action=\"{action}\" method=\"post\"><input type=\"hidden\" name=\"csrf\" value=\"{csrf}\"><input type=\"hidden\" name=\"request\" value=\"{request}\">{fields}<button type=\"submit\">{label}</button></form>"
-    );
 }
 
 #[derive(Deserialize, Default)]

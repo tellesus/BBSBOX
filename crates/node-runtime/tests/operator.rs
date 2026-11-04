@@ -67,7 +67,7 @@ impl Fixture {
 #[test]
 fn known_foundation_backup_can_recover_before_the_theme_migration() {
     let mut previous = migrations();
-    previous.retain(|migration| !matches!(migration.module, "settings" | "discussions"));
+    previous.retain(|migration| !matches!(migration.module, "settings" | "discussions" | "mail"));
     let fixture = Fixture::with_registry(&previous);
     let identity = fixture.root.join("key.age");
     let public = operator::keygen(&identity).unwrap();
@@ -308,6 +308,62 @@ fn local_operator_round_trip_keeps_identity_configuration_and_restore_block() {
             Ok::<_, bbsbox_discussions::Error>((thread, revision))
         })
         .unwrap();
+    let auth = bbsbox_identity::Auth::new(
+        "https://localhost:8443",
+        std::sync::Arc::new(bbsbox_storage::clock::SystemClock::default()),
+        Default::default(),
+    )
+    .unwrap();
+    let proof = auth
+        .verify_password(
+            &bbsbox_storage::open_reader(&f.database).unwrap(),
+            "operator",
+            zeroize::Zeroizing::new("backup fixture passphrase".into()),
+            "https://localhost:8443",
+        )
+        .unwrap();
+    let login = database
+        .write(bbsbox_storage::disk::Class::Control, 65536, |tx| {
+            auth.complete_login(tx, proof)
+        })
+        .unwrap();
+    let password = auth
+        .passwords()
+        .prepare(zeroize::Zeroizing::new("backup member passphrase".into()))
+        .unwrap();
+    let member = database
+        .write(bbsbox_storage::disk::Class::Control, 65536, |tx| {
+            let actor = auth.authorize_mutation(
+                tx,
+                login.session_token(),
+                login.csrf_token(),
+                "https://localhost:8443",
+            )?;
+            auth.create_account(
+                tx,
+                &actor,
+                "member",
+                password,
+                bbsbox_identity::Role::Member,
+            )
+        })
+        .unwrap();
+    let (mail_thread, message) = database
+        .write(bbsbox_storage::disk::Class::Content, 131072, |tx| {
+            bbsbox_mail::Mailbox::new(&signer).send(
+                tx,
+                &signer,
+                member.id,
+                bbsbox_mail::Message::Start {
+                    recipient: "operator",
+                    operator_only: true,
+                    subject: "Keep this mail",
+                    text: "Local mail survives a node recovery.",
+                },
+                4,
+            )
+        })
+        .unwrap();
     drop(database);
     let secret = f.root.join("operator.key");
     let generated = operator::keygen(&secret).unwrap();
@@ -331,6 +387,15 @@ fn local_operator_round_trip_keeps_identity_configuration_and_restore_block() {
             .text
             .as_deref(),
         Some("Keep this post through recovery.")
+    );
+    let (conversation, messages) =
+        bbsbox_mail::messages(&reader, author.id, mail_thread, None).unwrap();
+    assert_eq!(conversation.subject, "Keep this mail");
+    assert_eq!(messages[0].id, message);
+    assert_eq!(messages[0].text, "Local mail survives a node recovery.");
+    assert_eq!(
+        bbsbox_mail::conversations(&reader, member.id, None).unwrap()[0].id,
+        mail_thread
     );
     drop(reader);
     assert_eq!(

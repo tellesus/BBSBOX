@@ -17,6 +17,7 @@ bbsbox-settings = { path = "../settings" }
 bbsbox-identity = { path = "../identity" }
 bbsbox-event-core = { path = "../event-core" }
 bbsbox-maintenance = { path = "../maintenance" }
+bbsbox-mail = { path = "../mail" }
 bbsbox-credentials = { path = "../credentials" }
 tempfile = "3"
 zeroize = "1"

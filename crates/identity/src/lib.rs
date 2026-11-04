@@ -181,6 +181,25 @@ pub fn account(connection: &Connection, id: LocalAccountId) -> Result<Account> {
         .optional()?
         .ok_or(Error::AccountMissing)
 }
+
+pub fn account_by_username(connection: &Connection, username: &str) -> Result<Account> {
+    let username = normalize_username(username)?;
+    connection
+        .query_row(
+            "SELECT id,username,role,active FROM identity_accounts WHERE username=?1",
+            [username],
+            account_row,
+        )
+        .optional()?
+        .ok_or(Error::AccountMissing)
+}
+
+pub fn operator_usernames(connection: &Connection) -> Result<Vec<String>> {
+    let mut query = connection.prepare("SELECT username FROM identity_accounts WHERE active=1 AND role='sysop' ORDER BY username LIMIT 100")?;
+    Ok(query
+        .query_map([], |row| row.get(0))?
+        .collect::<rusqlite::Result<_>>()?)
+}
 fn insert_account(
     tx: &Transaction<'_>,
     username: &str,

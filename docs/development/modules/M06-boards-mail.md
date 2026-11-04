@@ -1,8 +1,8 @@
 # M06 — Local boards and private mail
 
-Brief revision 1.1.3 · 2026-11-03 · Roadmap baseline 1.1.0 · Product baseline 0.6.0.
+Brief revision 1.1.4 · 2026-11-03 · Roadmap baseline 1.1.0 · Product baseline 0.6.0.
 
-**State:** In progress. A–B signed boards, replies, edits and withdrawal pass local tests. Debian confirmation and local mail remain pending.
+**State:** In progress. A–C pass local HTTPS tests. Signed Debian confirmation is pending.
 
 ## Read only this packet
 
@@ -23,7 +23,7 @@ Use immutable post/message events and indexed thread/mailbox projections. Author
 
 ## Ownership and interfaces
 
-`crates/discussions/` owns board and reply projections. Planned `crates/mail/` owns mailboxes, recipient policy and operator contacts. Both expose stable post/message references to complaints and sync.
+`crates/discussions/` owns board and reply projections. `crates/mail/` owns mailboxes, recipient policy and operator contacts. Both provide stable references for authorized consumers.
 
 The node signs local-only events that attest to the authenticated local account. They carry no portable person proof. A disabled module retains its data and leaves unrelated services available.
 

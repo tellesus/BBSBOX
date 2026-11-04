@@ -17,3 +17,4 @@ web/shell/static/*.css text eol=lf
 web/shell/templates.mjs text eol=lf
 crates/settings/src/*.sql text eol=lf
 crates/discussions/src/*.sql text eol=lf
+crates/mail/src/*.sql text eol=lf

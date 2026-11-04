@@ -329,6 +329,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "bbsbox-mail"
+version = "0.1.0"
+dependencies = [
+ "bbsbox-credentials",
+ "bbsbox-event-codec",
+ "bbsbox-event-core",
+ "bbsbox-identity",
+ "bbsbox-storage",
+ "hex",
+ "rand_core",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "zeroize",
+]
+
+[[package]]
 name = "bbsbox-maintenance"
 version = "0.1.0"
 dependencies = [
@@ -361,6 +379,7 @@ dependencies = [
  "bbsbox-event-codec",
  "bbsbox-event-core",
  "bbsbox-identity",
+ "bbsbox-mail",
  "bbsbox-maintenance",
  "bbsbox-settings",
  "bbsbox-storage",

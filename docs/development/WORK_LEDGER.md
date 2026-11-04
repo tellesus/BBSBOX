@@ -18,7 +18,7 @@ Design review is complete and the first M00 prototype has real local implementat
 | [M06](modules/M06-boards-mail.md) | Approved | Complete | A–C: signed discussions and participant-restricted mail pass Debian CI 41769646693 | G1 device checks and later complaint integration |
 | [M07](modules/M07-directory-profiles.md) | Approved | Complete | A–C: directory, profile privacy and component hooks pass signed Debian CI 41770621736 | Bind live providers in their owning modules |
 | [M08](modules/M08-friends-events.md) | Approved | In progress | A–C: feed, friendship, events, invitations and calendar pass local HTTPS | Confirm full signed Debian run |
-| [M09](modules/M09-clans-cohorts.md) | Approved | In progress | A: clans, cohorts and roster privacy pass local HTTPS | Add invitation, membership and handover flows |
+| [M09](modules/M09-clans-cohorts.md) | Approved | In progress | A–C: roster privacy, invitations, handover and game membership lookup pass locally | Confirm signed Debian. Bind games in M11/M18 |
 | [M10](modules/M10-local-files.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
 | [M11](modules/M11-local-games.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
 | [M13](modules/M13-encrypted-forums.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
@@ -596,3 +596,9 @@ Local IPv4 and IPv6 HTTPS exercise signed response revisions, duplicate and stal
 Groups migration 1 creates node-bound clans and cohorts with stable local links and directory filters. A creator joins with management authority. A manager can edit the profile and make its roster visible to other signed-in accounts. The default roster is members-only. The directory and group descriptions are available to signed-in local accounts.
 
 IPv4 and IPv6 HTTPS create both types, verify duplicate submission, change roster visibility and refuse an unrelated SysOp's editor request. The provider fixture refuses lookups under a foreign node ID, confirms the default roster filtering and refuses a stale settings edit. B adds invitation acceptance and management handover. Signed Debian confirmation is pending.
+
+## 2026-11-04 — M09 B–C: group membership and management
+
+Groups migration 2 records pending invitations, membership revisions and dissolved groups. Acceptance binds the displayed roster policy. Members can leave, and managers can appoint another manager or hand over their own role. A sole active manager must hand over or dissolve. Dissolution hides the group and closes its pending invitations while preserving its stored identity.
+
+Local IPv4 and IPv6 HTTPS check member consent, a private roster before acceptance, the last-manager guard, handover and voluntary departure. Fixtures refuse a stale joining notice and check that the typed game lookup returns only active membership on the group's own node. The encrypted recovery test preserves membership and roster policy. Signed Debian confirmation is pending. M11/M18 own real game bindings.

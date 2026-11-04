@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 use bbsbox_credentials::NodeId;
+use bbsbox_groups::membership::{self, Join, Management};
 use bbsbox_groups::{Details, Error, Kind, Role, create, directory, edit, view};
 use bbsbox_identity::account_by_username;
 use rusqlite::Connection;
@@ -69,4 +70,87 @@ fn local_group_directory_and_roster_respect_node_and_member_boundaries() {
         view(&tx, home, id, operator, None).unwrap().roster.unwrap()[0].username,
         "creator"
     );
+    assert!(matches!(
+        membership::invite(&tx, home, id, operator, "creator"),
+        Err(Error::Forbidden)
+    ));
+    membership::invite(&tx, home, id, creator, "operator").unwrap();
+    assert!(
+        membership::received(&tx, home, creator, None)
+            .unwrap()
+            .is_empty()
+    );
+    assert!(
+        membership::received(&tx, foreign, operator, None)
+            .unwrap()
+            .is_empty()
+    );
+    assert_eq!(
+        membership::received(&tx, home, operator, None).unwrap()[0].invited_by,
+        "creator"
+    );
+    assert_eq!(
+        membership::local_role(&tx, home, id, operator).unwrap(),
+        None
+    );
+    let generation = view(&tx, home, id, operator, None)
+        .unwrap()
+        .invitation
+        .unwrap();
+    details.public_roster = false;
+    edit(&tx, home, creator, id, 2, &details).unwrap();
+    assert!(matches!(
+        membership::decide(
+            &tx,
+            home,
+            id,
+            operator,
+            Join {
+                generation,
+                displayed_profile_revision: 2,
+                accept: true
+            }
+        ),
+        Err(Error::Conflict)
+    ));
+    membership::decide(
+        &tx,
+        home,
+        id,
+        operator,
+        Join {
+            generation,
+            displayed_profile_revision: 3,
+            accept: true,
+        },
+    )
+    .unwrap();
+    assert_eq!(
+        membership::local_role(&tx, home, id, operator).unwrap(),
+        Some(Role::Member)
+    );
+    assert_eq!(
+        membership::local_role(&tx, foreign, id, operator).unwrap(),
+        None
+    );
+    assert!(matches!(
+        membership::manage(&tx, home, id, creator, 2, Management::Leave),
+        Err(Error::Conflict)
+    ));
+    membership::manage(&tx, home, id, creator, 2, Management::Handover("operator")).unwrap();
+    assert_eq!(
+        membership::local_role(&tx, home, id, creator).unwrap(),
+        Some(Role::Member)
+    );
+    assert_eq!(
+        membership::local_role(&tx, home, id, operator).unwrap(),
+        Some(Role::Manager)
+    );
+    membership::manage(&tx, home, id, creator, 3, Management::Leave).unwrap();
+    membership::manage(&tx, home, id, operator, 4, Management::Dissolve).unwrap();
+    assert_eq!(
+        membership::local_role(&tx, home, id, operator).unwrap(),
+        None
+    );
+    assert!(directory(&tx, home, None, None).unwrap().is_empty());
 }

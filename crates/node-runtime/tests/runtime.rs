@@ -133,7 +133,7 @@ async fn compiled_registry_drives_both_runtime_migrations_and_its_release_profil
             .query_row("SELECT count(*) FROM core_migrations", [], |r| r
                 .get::<_, i64>(0))
             .unwrap(),
-        20
+        21
     );
     drop(reader);
     let mut absent = config.clone();

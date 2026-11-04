@@ -6,14 +6,23 @@ use bbsbox_storage::Migration;
 use rand_core::{OsRng, RngCore};
 use rusqlite::{Connection, OptionalExtension, Transaction, params};
 
+pub mod membership;
+
 pub const PAGE_SIZE: usize = 50;
 
-pub fn migrations() -> [Migration; 1] {
-    [Migration {
-        module: "groups",
-        version: 1,
-        sql: include_str!("schema.sql"),
-    }]
+pub fn migrations() -> [Migration; 2] {
+    [
+        Migration {
+            module: "groups",
+            version: 1,
+            sql: include_str!("schema.sql"),
+        },
+        Migration {
+            module: "groups",
+            version: 2,
+            sql: include_str!("membership.sql"),
+        },
+    ]
 }
 
 #[derive(Debug)]
@@ -131,6 +140,7 @@ pub struct Group {
     pub kind: Kind,
     pub details: Details,
     pub revision: i64,
+    pub membership_revision: i64,
 }
 
 fn group(row: &rusqlite::Row<'_>) -> rusqlite::Result<Group> {
@@ -144,14 +154,19 @@ fn group(row: &rusqlite::Row<'_>) -> rusqlite::Result<Group> {
             public_roster: row.get(4)?,
         },
         revision: row.get(5)?,
+        membership_revision: row.get(6)?,
     })
 }
 
 pub fn get(connection: &Connection, home: NodeId, id: GroupId) -> rusqlite::Result<Option<Group>> {
-    connection.query_row(
-        "SELECT id,kind,name,description,public_roster,revision FROM groups_local WHERE id=?1 AND home=?2",
-        params![id.0.as_slice(), home.bytes().as_slice()], group,
-    ).optional()
+    connection
+        .query_row(
+            "SELECT id,kind,name,description,public_roster,revision,membership_revision
+           FROM groups_local WHERE id=?1 AND home=?2 AND dissolved=0",
+            params![id.0.as_slice(), home.bytes().as_slice()],
+            group,
+        )
+        .optional()
 }
 
 pub struct DirectoryEntry {
@@ -168,7 +183,7 @@ pub fn directory(
     before: Option<i64>,
 ) -> rusqlite::Result<Vec<DirectoryEntry>> {
     let mut query = connection.prepare(
-        "SELECT id,kind,name,sequence FROM groups_local WHERE home=?1 AND (?2 IS NULL OR kind=?2)
+        "SELECT id,kind,name,sequence FROM groups_local WHERE home=?1 AND dissolved=0 AND (?2 IS NULL OR kind=?2)
            AND (?3 IS NULL OR sequence<?3) ORDER BY sequence DESC LIMIT ?4",
     )?;
     query
@@ -296,6 +311,7 @@ pub struct View {
     pub group: Group,
     pub role: Option<Role>,
     pub roster: Option<Vec<RosterEntry>>,
+    pub invitation: Option<[u8; 16]>,
 }
 
 pub fn view(
@@ -338,5 +354,6 @@ pub fn view(
         group,
         role: membership,
         roster,
+        invitation: self::membership::invitation(tx, id, viewer)?,
     })
 }

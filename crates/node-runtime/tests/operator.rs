@@ -410,6 +410,35 @@ fn local_operator_round_trip_keeps_identity_configuration_and_restore_block() {
             Ok::<_, bbsbox_gatherings::Error>((event, invitation))
         })
         .unwrap();
+    let group = database
+        .write(bbsbox_storage::disk::Class::Content, 131072, |tx| {
+            let group = bbsbox_groups::create(
+                tx,
+                f.node,
+                member.id,
+                bbsbox_groups::Kind::Cohort,
+                &bbsbox_groups::Details {
+                    name: "Restore cohort".into(),
+                    description: String::new(),
+                    public_roster: false,
+                },
+            )?;
+            bbsbox_groups::membership::invite(tx, f.node, group, member.id, "operator")?;
+            let invite = bbsbox_groups::view(tx, f.node, group, author.id, None)?;
+            bbsbox_groups::membership::decide(
+                tx,
+                f.node,
+                group,
+                author.id,
+                bbsbox_groups::membership::Join {
+                    generation: invite.invitation.unwrap(),
+                    displayed_profile_revision: invite.group.revision,
+                    accept: true,
+                },
+            )?;
+            Ok::<_, bbsbox_groups::Error>(group)
+        })
+        .unwrap();
     drop(database);
     let secret = f.root.join("operator.key");
     let generated = operator::keygen(&secret).unwrap();
@@ -467,6 +496,15 @@ fn local_operator_round_trip_keeps_identity_configuration_and_restore_block() {
             .unwrap()
             .is_empty()
     );
+    assert_eq!(
+        bbsbox_groups::membership::local_role(&reader, f.node, group, author.id).unwrap(),
+        Some(bbsbox_groups::Role::Member)
+    );
+    let tx = reader.unchecked_transaction().unwrap();
+    let restored_group = bbsbox_groups::view(&tx, f.node, group, member.id, None).unwrap();
+    assert!(!restored_group.group.details.public_roster);
+    assert_eq!(restored_group.roster.unwrap().len(), 2);
+    drop(tx);
     drop(reader);
     assert_eq!(
         fs::read(target.join("configuration/tls/ca-key.pem")).unwrap(),

@@ -598,12 +598,57 @@ def exercise(binary, state_root, host, isolated):
                     revision = re.search(r'name="revision" value="([0-9]+)"', editor).group(1)
                     with submit(clan_path + 'edit/', dict(proof, revision=revision, name='Library clan', description='', public_roster='on')) as response:
                         assert b'Visible to all signed-in accounts.' in response.read()
+                    def membership_proof(page, action):
+                        for form in page.split('<form ')[1:]:
+                            form = form.split('</form>', 1)[0]
+                            if f'name="action" value="{action}"' in form:
+                                details = dict(discussion_proof(form), action=action)
+                                for key in ('generation', 'revision'):
+                                    value = re.search(r'name="'+key+r'" value="([0-9a-f]+)"', form)
+                                    if value:
+                                        details[key] = value.group(1)
+                                return details
+                        raise AssertionError(f'Missing group action {action}')
+
+                    with request(cohort_path) as response:
+                        cohort_host = response.read().decode()
+                    invite = dict(membership_proof(cohort_host, 'invite'), target='Neighbor')
+                    with submit(cohort_path + 'membership/', invite) as response:
+                        assert response.geturl().endswith(cohort_path)
                     sign_out()
                     sign_in(member['username'], member['password'])
                     with request(clan_path) as response:
                         assert b'/directory/other/' in response.read()
                     with request(cohort_path) as response:
-                        assert b'/directory/other/' not in response.read()
+                        invited = response.read().decode()
+                        assert '/directory/other/' not in invited
+                        assert 'other group members can see your username' in invited
+                    with request('/groups/invitations/') as response:
+                        assert cohort_path.encode() in response.read()
+                    with submit(cohort_path + 'membership/', membership_proof(invited, 'accept')) as response:
+                        joined = response.read()
+                        assert b'/directory/other/' in joined and b'/directory/neighbor/' in joined
+                        assert b'Edit group' not in joined
+                    sign_out()
+                    sign_in(other['username'], other['password'])
+                    with request(cohort_path) as response:
+                        managing = response.read().decode()
+                    try:
+                        submit(cohort_path + 'membership/', membership_proof(managing, 'leave'))
+                        raise AssertionError('The last manager could leave an active group')
+                    except urllib.error.HTTPError as error:
+                        assert error.code == 409
+                    transfer = dict(membership_proof(managing, 'handover'), target='neighbor')
+                    with submit(cohort_path + 'membership/', transfer) as response:
+                        handed_over = response.read().decode()
+                        assert 'Edit group' not in handed_over and 'Leave group' in handed_over
+                    with submit(cohort_path + 'membership/', membership_proof(handed_over, 'leave')) as response:
+                        assert b'/directory/neighbor/' not in response.read()
+                    sign_out()
+                    sign_in(member['username'], member['password'])
+                    with request(cohort_path) as response:
+                        new_manager = response.read().decode()
+                        assert 'Edit group' in new_manager and '/directory/other/' not in new_manager
                 # A new client without the local CA must fail certificate verification.
                 untrusted = urllib.request.build_opener(urllib.request.ProxyHandler({}), urllib.request.HTTPSHandler(context=ssl.create_default_context()))
                 try:
@@ -632,7 +677,7 @@ def exercise(binary, state_root, host, isolated):
                 text = trace.read_text(encoding='utf-8')
                 traces.append(audit.audit_trace(text))
                 (state_root/f'runtime-{"ipv6" if family == socket.AF_INET6 else "ipv4"}-{attempt}.trace').write_text(text, encoding='utf-8')
-        return dict(family='IPv6' if family == socket.AF_INET6 else 'IPv4', simultaneous_dual_stack=True, tls=True, untrusted_ca_rejected=True, local_assets=4, identity_preserved_after_restart=True, configured_alias_accepted=True, unexpected_authority_rejected=True, public_status_read_only=True, local_session_lifecycle=True, restart_invalidates_session=True, palette_preview_apply_reset=True, welcome_and_menu_settings=True, member_onboarding=True, unavailable_section_status=True, local_board_thread_reply=True, discussion_retry_and_csrf=True, discussion_edit_and_withdraw=True, local_mail_participants=True, directory_and_profile_privacy=True, chronological_followed_feed=True, mutual_local_friendship=True, local_gathering_revisions=True, recipient_addressed_invitations=True, local_calendar_rsvp_and_reminders=True, local_groups_and_roster_privacy=True, initialization_audit=initial_audit, network_audit=traces)
+        return dict(family='IPv6' if family == socket.AF_INET6 else 'IPv4', simultaneous_dual_stack=True, tls=True, untrusted_ca_rejected=True, local_assets=4, identity_preserved_after_restart=True, configured_alias_accepted=True, unexpected_authority_rejected=True, public_status_read_only=True, local_session_lifecycle=True, restart_invalidates_session=True, palette_preview_apply_reset=True, welcome_and_menu_settings=True, member_onboarding=True, unavailable_section_status=True, local_board_thread_reply=True, discussion_retry_and_csrf=True, discussion_edit_and_withdraw=True, local_mail_participants=True, directory_and_profile_privacy=True, chronological_followed_feed=True, mutual_local_friendship=True, local_gathering_revisions=True, recipient_addressed_invitations=True, local_calendar_rsvp_and_reminders=True, local_groups_and_roster_privacy=True, local_group_membership_lifecycle=True, initialization_audit=initial_audit, network_audit=traces)
 
 
 def main():

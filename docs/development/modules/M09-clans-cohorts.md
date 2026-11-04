@@ -1,8 +1,8 @@
 # M09 — Local clans and cohorts
 
-Brief revision 1.1.1 · 2026-11-04 · Roadmap baseline 1.1.0 · Product baseline 0.6.0.
+Brief revision 1.1.2 · 2026-11-04 · Roadmap baseline 1.1.0 · Product baseline 0.6.0.
 
-**State:** In progress. A passes locally. Membership management is next.
+**State:** In progress. A–C pass locally. Signed Debian confirmation is pending.
 
 ## Read only this packet
 
@@ -23,7 +23,7 @@ Use a local group table with kind, home node, display data and membership record
 
 ## Ownership and interfaces
 
-`crates/groups/` owns local groups, memberships, invitations and group profiles. A foreign identifier in a game record grants no local membership.
+`crates/groups/` owns local groups, invitations and profiles. Its game-facing `local_role` query checks the group's home and active account. A game record grants no membership.
 
 Use the listed contracts. Disabling a module retains its data.
 

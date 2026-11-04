@@ -19,10 +19,12 @@ use std::fmt::Write;
 use zeroize::Zeroizing;
 
 const TEMPLATE: &str = include_str!("../../../../../web/shell/compiled/groups.html");
+mod members;
 
 pub(super) fn routes() -> Router<Sessions> {
     Router::new()
         .route("/groups/", get(directory))
+        .merge(members::routes())
         .route(
             "/groups/new/",
             get(new_group)
@@ -110,7 +112,7 @@ async fn directory(
         })
         .await?;
     let mut content = String::from(
-        "<p><a href=\"/groups/new/\">Create a group</a></p><p><a href=\"/groups/\">All groups</a> · <a href=\"?kind=clan\">Clans</a> · <a href=\"?kind=cohort\">Cohorts</a></p>",
+        "<p><a href=\"/groups/new/\">Create a group</a> · <a href=\"/groups/invitations/\">Your group invitations</a></p><p><a href=\"/groups/\">All groups</a> · <a href=\"?kind=clan\">Clans</a> · <a href=\"?kind=cohort\">Cohorts</a></p>",
     );
     if rows.is_empty() {
         content.push_str("<p>No groups to show.</p>");
@@ -170,7 +172,7 @@ async fn profile(
     headers: HeaderMap,
     Query(query): Query<RosterPage>,
 ) -> Result<Response, StatusCode> {
-    let Some((account, _)) = form_access(&state, &headers).await else {
+    let Some((account, csrf)) = form_access(&state, &headers).await else {
         return Ok(login());
     };
     let view = match read(&state, &id, account.id, query.after).await {
@@ -226,6 +228,7 @@ async fn profile(
     } else {
         content.push_str("<p>The roster is visible to group members.</p>");
     }
+    members::render(&mut content, &csrf, &group, view.role, view.invitation);
     Ok(page(&state, StatusCode::OK, &group.details.name, &content))
 }
 

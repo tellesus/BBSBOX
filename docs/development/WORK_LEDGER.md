@@ -1,6 +1,6 @@
 # Development work ledger
 
-Version 1.1.0 · 2026-10-25 · Locked roadmap. M01–M04 and M12 software providers Complete. M00 and M05 In progress. Other modules Unstarted. Execution updated 2026-11-03.
+Version 1.1.0 · 2026-10-25 · Locked roadmap. M01–M05 and M12 software providers Complete. M00 and M06 In progress. Other modules Unstarted. Execution updated 2026-11-03.
 
 Evidence log — not an independent source of scope authority. Current choices live in the canonical roadmap and user instructions.
 
@@ -14,8 +14,8 @@ Design review is complete and the first M00 prototype has real local implementat
 | [M03](modules/M03-identity-access.md) | Approved | Complete | A–C: 68 Windows/70 Linux workspace checks and independent vectors; CI 41172025063 passed | Consumers integrate current v2/legacy v1 profiles; native/HTTP/MLS gates remain downstream |
 | [M04](modules/M04-signed-events.md) | Approved | Complete | A–C: 15 codec/33 core tests, independent vectors, all 120 arrival orders; CI 41245899257 passed | Feature modules prove actual policies/views; M13/M15/M16 complete AC07 integration |
 | [M12](modules/M12-maintenance-recovery.md) | Approved | Complete | A–C: Debian signed install/update/rollback, fresh recovery, scheduled backup and retention; CI 41718200103 | Begin M05 A. M11 owns real game adapter acceptance. G1 physical tests remain |
-| [M05](modules/M05-interface-themes.md) | Approved | In progress | A–C: local HTTPS, member setup, site and palette settings, and Edge shell checks | Verify signed Debian shell/settings restore before provider completion |
-| [M06](modules/M06-boards-mail.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
+| [M05](modules/M05-interface-themes.md) | Approved | Complete | A–C: local HTTPS, Edge, signed Debian install/rebuild and settings restore; CI 41751474936 | Integrate real feature navigation, visual review and G1 device checks |
+| [M06](modules/M06-boards-mail.md) | Approved | In progress | A: local signed board and nested replies tested with real SQLite and identity providers | Attach board HTTP/browser routes and signed appliance assembly |
 | [M07](modules/M07-directory-profiles.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
 | [M08](modules/M08-friends-events.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
 | [M09](modules/M09-clans-cohorts.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
@@ -524,3 +524,9 @@ Edge passed preview, apply and reset on a local HTTPS node at phone width. The p
 `settings` migration 2 owns the local welcome message, plain-text artwork and the order of installed core navigation links. A revision and the current SysOp role are checked with the settings transaction. The shell escapes welcome text and preserves its line breaks. Text art is decorative and uses the same local stylesheet. The SysOp can create a member or another SysOp using the existing password and role provider. Browser forms remain usable with JavaScript disabled.
 
 The shell shows missing and unavailable sections without publishing links to modules that are absent. Its optional local script shows submission progress, reacts to the browser going offline, and rechecks the node when connectivity returns. Edge exercised the offline/reconnect indicators and the submission handler. Local IPv4 and IPv6 HTTPS tests created a member, signed in as that member, checked the SysOp route refusal and verified menu order and escaped welcome text. The Debian recovery fixture will check both settings migrations and their saved values. The G1 integrated device checks and visual review are later work.
+
+## 2026-11-03 — M05 provider complete and M06 A provider started
+
+[Browser-shell CI](https://github.com/tellesus/BBSBOX/actions/runs/41751474936) passed all four jobs and 205 Rust tests at `d6d8612`, now on main. It reproduced the templates offline and exercised settings through signed Debian restore. The M05 software provider closes. Posting on physical phones and the visual review remain separate.
+
+M06 A uses C02 v1.4.1 and C05 v1.1.0. The first local board provider uses the existing node signature and a local-only board scope. The HTTP consumer will pass an account authorized in the same writer transaction. The reducer preserves stable event IDs and same-board parent links. Local tests cover SysOp board creation, member posting and nested replies, cross-board refusal, signed local distribution and preserving unrelated boards when a fork quarantines a board. The implementation caps raw post text at 48 KiB and also enforces the existing 64 KiB signed-body bound after encoding. Browser routes, Markdown rendering and deployed recovery are next. Edits, withdrawal and mail follow in slices B and C.

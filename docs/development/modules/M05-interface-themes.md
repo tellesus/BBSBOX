@@ -1,8 +1,8 @@
 # M05 — Browser shell, navigation and SysOp themes
 
-Brief revision 1.1.5 · 2026-11-03 · Roadmap baseline 1.1.0 · Product baseline 0.6.0.
+Brief revision 1.1.6 · 2026-11-03 · Roadmap baseline 1.1.0 · Product baseline 0.6.0.
 
-**State:** In progress. A–C shell, SysOp settings and member onboarding pass local checks. Signed Debian and G1 device evidence remain pending.
+**State:** Complete as a software provider. Signed Debian and local browser checks pass. Feature consumers, visual review and G1 device evidence remain pending.
 
 ## Read only this packet
 

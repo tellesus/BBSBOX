@@ -259,6 +259,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "bbsbox-discussions"
+version = "0.1.0"
+dependencies = [
+ "bbsbox-credentials",
+ "bbsbox-event-codec",
+ "bbsbox-event-core",
+ "bbsbox-identity",
+ "bbsbox-storage",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "zeroize",
+]
+
+[[package]]
 name = "bbsbox-event-codec"
 version = "0.1.0"
 dependencies = [

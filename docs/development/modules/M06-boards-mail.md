@@ -1,8 +1,8 @@
 # M06 — Local boards and private mail
 
-Version 1.1.0 · 2026-10-25 · Locked development baseline · Product baseline 0.6.0.
+Brief revision 1.1.1 · 2026-11-03 · Roadmap baseline 1.1.0 · Product baseline 0.6.0.
 
-**State:** Approved for implementation under U19; unstarted. Runtime and hardware evidence remains pending.
+**State:** In progress. Slice A signed board/thread/reply provider passes local tests. Browser integration remains pending.
 
 ## Read only this packet
 
@@ -23,9 +23,9 @@ Use immutable post/message events and indexed thread/mailbox projections. Author
 
 ## Ownership and interfaces
 
-Planned crates/discussions/ and crates/mail/; thread/post revisions, mailboxes, reply links, recipient policies and operator contacts. Both expose stable post/message references to complaints and sync.
+`crates/discussions/` owns board and reply projections. Planned `crates/mail/` owns mailboxes, recipient policy and operator contacts. Both expose stable post/message references to complaints and sync.
 
-Paths above are planned implementation locations, not existing code. Consume the contracts in the reading packet; changes to them need affected-consumer updates. A disabled optional module retains its data and does not break unrelated local services.
+The node signs local-only events that attest to the authenticated local account. They carry no portable person proof. A disabled module retains its data and leaves unrelated services available.
 
 ## Sequential work slices
 

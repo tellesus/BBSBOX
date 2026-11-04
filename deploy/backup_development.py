@@ -51,7 +51,8 @@ def backup(destination, recipient, release=False):
     install_development.platform_preflight()
     destination=Path(destination).absolute()
     configuration=Path('/etc/bbsbox');database=Path('/var/lib/bbsbox/node.sqlite')
-    if destination!=destination.resolve() or any(destination.is_relative_to(path) for path in [configuration,database.parent]):
+    game_state=Path('/var/lib/bbsbox-game')
+    if destination!=destination.resolve() or any(destination.is_relative_to(path) for path in [configuration,database.parent,game_state]):
         raise ValueError('Use fresh backup media outside configuration and node storage')
     if destination.exists():raise ValueError('Backup output already exists')
     if not isinstance(recipient,str) or len(recipient)>1024 or not recipient.startswith('age1') or any(c.isspace() for c in recipient):
@@ -83,10 +84,20 @@ def backup(destination, recipient, release=False):
         was_active=active==b'active'
         try:
             if was_active:run(['/usr/bin/systemctl','stop','bbsbox.service'])
-            completed=run([str(executable),'backup','--config',str(configuration/'node.json'),'--node',installed['node_id'],'--recipient',recipient,'--output',str(destination),'--staging',str(stage)],timeout=1200)
+            game_backup=False
+            if release:
+                game_backup=bool(config.get('game_origin'))
+                try: metadata=game_state.lstat()
+                except FileNotFoundError: pass
+                else:
+                    if not stat.S_ISDIR(metadata.st_mode):raise ValueError('Expected a direct appliance game state directory')
+                    game_backup=game_backup or any(path.name!='state.sqlite.lock' for path in game_state.iterdir())
+            profile='backup-game-node' if game_backup else 'backup'
+            completed=run([str(executable),profile,'--config',str(configuration/'node.json'),'--node',installed['node_id'],'--recipient',recipient,'--output',str(destination),'--staging',str(stage)],timeout=1200)
             if len(completed.stdout)>65536:raise ValueError('Unexpected maintenance response size')
             result=json.loads(completed.stdout)
             if result.get('format')!='bbsbox.node-backup/v1' or result.get('node')!=installed['node_id']:raise ValueError('Unexpected backup result')
+            if game_backup and (result.get('scope')!='game-node' or result.get('game_checkpoints')!=1):raise ValueError('Incomplete game node backup')
         finally:
             repair_ownership(database,user.pw_uid,user.pw_gid)
             resume=was_active

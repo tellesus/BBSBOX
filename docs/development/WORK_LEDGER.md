@@ -648,3 +648,7 @@ An opt-in network profile reserves the node's separate game alias on its existin
 ## 2026-11-04 — M11 game-node recovery decision
 
 `restore-game-node-and-record` verifies the complete archive against the bundled game requirements, checks the staged save files and records a node-signed source-disposition decision bound to the full archive inventory. It preserves the writer recovery marker and stages game state separately. Local provider tests reject changed saves and attempts to use the foundation writer-release path. Installed recovery must still place and activate both stores under appliance maintenance control.
+
+## 2026-11-04 — M11 isolated appliance checkpoint provider
+
+The appliance socket worker separates gameplay and maintenance using the connecting account. Maintenance opens an existing game save and can checkpoint it. Gameplay requests cannot pause or checkpoint the worker. The signed backup helper selects the complete game-node profile when a save remains, including after game disablement. The Debian fixture backs up a real played turn and verifies both players and the saved receipt after isolated restore. The containing Debian run is pending. Appliance enablement and coordinated installed recovery remain open.

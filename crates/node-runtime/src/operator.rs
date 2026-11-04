@@ -234,6 +234,17 @@ fn backup_with_scope(
     }
     regular(&config.database)?;
     let database_path = config.database.canonicalize()?;
+    let installed: serde_json::Value =
+        serde_json::from_reader(File::open(root.join("installation.json"))?.take(65537))?;
+    if !matches!(
+        installed["format"].as_str(),
+        Some("bbsbox.development-install/v1" | "bbsbox.install/v1")
+    ) || installed["node_id"] != expected.to_string()
+    {
+        return Err("Installation record does not match this node".into());
+    }
+    let appliance = installed["format"] == "bbsbox.install/v1"
+        && crate::games::is_appliance_layout(&root, &database_path);
     if with_games {
         let data = database_path
             .parent()
@@ -247,7 +258,10 @@ fn backup_with_scope(
             .unwrap_or(Path::new("."));
         for path in [staging_parent, output_parent] {
             let path = path.canonicalize()?;
-            if path.starts_with(data) || path.starts_with(&root) {
+            if path.starts_with(data)
+                || path.starts_with(&root)
+                || (appliance && path.starts_with(crate::games::APPLIANCE_STATE))
+            {
                 return Err(
                     "keep game-node staging and backup output outside live data and configuration"
                         .into(),
@@ -256,22 +270,15 @@ fn backup_with_scope(
         }
     }
     if !with_games
-        && (config.game_origin.is_some() || crate::games::has_retained_state(&database_path)?)
+        && (config.game_origin.is_some()
+            || crate::games::has_retained_state(&database_path)?
+            || (appliance && crate::games::has_appliance_state()?))
     {
         return Err("this node has game state; use backup-game-node".into());
     }
     bbsbox_storage::verify_exact_registry(&config.database, &registry)?;
     if NodeSigner::inspect_existing(&config.database)? != expected {
         return Err("Source node does not match the expected identity".into());
-    }
-    let installed: serde_json::Value =
-        serde_json::from_reader(File::open(root.join("installation.json"))?.take(65537))?;
-    if !matches!(
-        installed["format"].as_str(),
-        Some("bbsbox.development-install/v1" | "bbsbox.install/v1")
-    ) || installed["node_id"] != expected.to_string()
-    {
-        return Err("Installation record does not match this node".into());
     }
     let stage = private_stage(staging_parent, "bbsbox-snapshot-")?;
     let tree = stage.path().join("snapshot");
@@ -281,7 +288,14 @@ fn backup_with_scope(
     let writer = Writer::start(&config.database, registry.clone(), WriterConfig::default())?;
     let game = if with_games {
         let manifest = crate::games::bundled_manifest()?;
-        let (state_root, worker) = crate::games::bundled_worker(&database_path, &manifest, false)?;
+        let (state_root, worker) = if appliance {
+            if crate::games::has_retained_state(&database_path)? {
+                return Err("additional game state prevents a complete appliance backup".into());
+            }
+            crate::games::appliance_checkpoint(&manifest)?
+        } else {
+            crate::games::bundled_worker(&database_path, &manifest, false)?
+        };
         Some((game_requirement(&manifest), state_root, worker))
     } else {
         None

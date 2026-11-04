@@ -267,6 +267,7 @@ dependencies = [
  "bbsbox-maintenance",
  "hex",
  "rusqlite",
+ "rustix",
  "serde_json",
  "tempfile",
 ]

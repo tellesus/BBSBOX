@@ -18,6 +18,13 @@ const SCHEMA: i64 = 1;
 const APPLICATION: i64 = 0x4242474d;
 const MANIFEST: &[u8] = include_bytes!("../manifest.json");
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Access {
+    Development,
+    Gameplay,
+    Checkpoint,
+}
+
 fn main() {
     if run().is_err() {
         eprintln!("The local demo worker could not continue.");
@@ -27,9 +34,18 @@ fn main() {
 
 fn run() -> Result<(), Box<dyn Error>> {
     let mut arguments = std::env::args_os().skip(1);
-    let checkpoint_only = match arguments.next().as_deref().and_then(|arg| arg.to_str()) {
-        Some("--state") => false,
-        Some("--checkpoint-state") => true,
+    let access = match arguments.next().as_deref().and_then(|arg| arg.to_str()) {
+        Some("--state") => Access::Development,
+        Some("--checkpoint-state") => Access::Checkpoint,
+        #[cfg(target_os = "linux")]
+        Some("--socket-state") => {
+            let peer = rustix::net::sockopt::socket_peercred(io::stdin())?;
+            if peer.uid.is_root() {
+                Access::Checkpoint
+            } else {
+                Access::Gameplay
+            }
+        }
         _ => return Err("expected a worker state path".into()),
     };
     let state = PathBuf::from(arguments.next().ok_or("missing worker state path")?);
@@ -46,7 +62,7 @@ fn run() -> Result<(), Box<dyn Error>> {
         .open(lock_name)?;
     worker_lock.try_lock()?;
     let manifest = Manifest::parse(MANIFEST).map_err(|_| "invalid embedded manifest")?;
-    let mut db = open(&state, checkpoint_only)?;
+    let mut db = open(&state, access == Access::Checkpoint)?;
     let mut checkpoint =
         checkpoint::Manager::new(state.parent().ok_or("missing game state directory")?);
     let mut input = io::stdin().lock();
@@ -56,11 +72,18 @@ fn run() -> Result<(), Box<dyn Error>> {
             refused(Reason::Unsupported)
         } else {
             match request.operation {
+                Operation::Pause { .. }
+                | Operation::Checkpoint { .. }
+                | Operation::Resume { .. }
+                    if access == Access::Gameplay =>
+                {
+                    refused(Reason::Unsupported)
+                }
                 Operation::Pause { fence } => checkpoint.pause(fence),
                 Operation::Checkpoint { fence } => checkpoint.capture(&db, &manifest, fence),
                 Operation::Resume { fence } => checkpoint.resume(fence),
                 Operation::Join { .. } | Operation::Act { .. }
-                    if checkpoint_only || checkpoint.paused() =>
+                    if access == Access::Checkpoint || checkpoint.paused() =>
                 {
                     refused(Reason::Paused)
                 }

@@ -30,6 +30,74 @@ const PAGE: &str = include_str!("../../../games/demo/assets/index.html");
 const SCRIPT: &str = include_str!("../../../games/demo/assets/game.js");
 const CSS: &str = include_str!("../../../games/demo/assets/game.css");
 const GAME_ID: &str = "dungeon-demo";
+pub(super) const APPLIANCE_STATE: &str = "/var/lib/bbsbox-game";
+
+pub(super) fn is_appliance_layout(config: &Path, database: &Path) -> bool {
+    cfg!(target_os = "linux")
+        && config == Path::new("/etc/bbsbox")
+        && database == Path::new("/var/lib/bbsbox/node.sqlite")
+}
+
+pub(super) fn has_appliance_state() -> crate::Result<bool> {
+    let root = Path::new(APPLIANCE_STATE);
+    match std::fs::symlink_metadata(root) {
+        Ok(metadata) if metadata.file_type().is_dir() => (),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(false),
+        Ok(_) => return Err("appliance game state must have a direct local directory".into()),
+        Err(error) => return Err(error.into()),
+    }
+    for entry in std::fs::read_dir(root)? {
+        if entry?.file_name() != "state.sqlite.lock" {
+            return Ok(true);
+        }
+    }
+    Ok(false)
+}
+
+pub(super) fn appliance_checkpoint(manifest: &Manifest) -> crate::Result<(PathBuf, Worker)> {
+    #[cfg(target_os = "linux")]
+    {
+        let root = PathBuf::from(APPLIANCE_STATE);
+        if root.canonicalize()? != root
+            || !std::fs::symlink_metadata(root.join("state.sqlite"))?
+                .file_type()
+                .is_file()
+        {
+            return Err("appliance checkpoint requires its existing game save".into());
+        }
+        for entry in std::fs::read_dir(&root)? {
+            let entry = entry?;
+            let kind = entry.file_type()?;
+            let name = entry.file_name();
+            let name = name
+                .to_str()
+                .ok_or("unexpected appliance game state entry")?;
+            let sqlite = matches!(
+                name,
+                "state.sqlite"
+                    | "state.sqlite.lock"
+                    | "state.sqlite-wal"
+                    | "state.sqlite-shm"
+                    | "state.sqlite-journal"
+            );
+            let staging = name.starts_with("checkpoint-") || name.starts_with(".checkpoint-");
+            if !(sqlite && kind.is_file() || staging && kind.is_dir()) {
+                return Err("unexpected appliance game state entry".into());
+            }
+        }
+        let worker = Worker::connect(
+            Path::new("/run/bbsbox-game/worker.sock"),
+            manifest,
+            Duration::from_secs(3),
+        )?;
+        Ok((root, worker))
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = manifest;
+        Err("appliance game checkpoints require Debian".into())
+    }
+}
 
 pub(super) fn has_retained_state(database: &Path) -> std::io::Result<bool> {
     let parent = database

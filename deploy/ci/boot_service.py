@@ -1,11 +1,13 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 """Boot only the prepared developer OS tree in a private network and exercise its actual systemd unit."""
 import argparse
+from contextlib import closing
 import json
 import os
 from pathlib import Path
 import signal
 import ssl
+import sqlite3
 import stat
 import subprocess
 import sys
@@ -84,6 +86,25 @@ def maintenance(pid,root,node,signed=False):
     assert enter(pid,root,['/usr/bin/systemctl','is-active','bbsbox.service'],False).stdout.strip()==b'inactive'
     enter(pid,root,['/usr/bin/systemctl','start','bbsbox.service'])
     return dict(cold_backup=True,actual_root_ca_preserved=True,source_ownership_private=True,service_resumed_unprivileged=True,failed_backup_resumes_source=True,inactive_source_stays_inactive=True,isolated_restore=True,recovery_required=True)
+
+
+def game_backup(pid, root, node):
+    binary = '/opt/bbsbox/current/bbsbox-node'
+    identity = '/root/bbsbox-ci-backup.key'
+    archive = '/root/bbsbox-ci-game-backup.age'
+    restored = '/root/bbsbox-ci-game-restore'
+    recipient = json.loads(enter(pid,root,[binary,'backup-public','--identity-file',identity]).stdout)['recipient']
+    enter(pid,root,['/usr/bin/systemctl','reset-failed','bbsbox.service'])
+    saved = json.loads(enter(pid,root,['/usr/bin/python3','/src/deploy/backup_node.py','--output',archive,'--recipient',recipient],timeout=120).stdout)
+    assert saved['scope']=='game-node' and saved['game_checkpoints']==1 and saved['service_resumed']
+    opened = json.loads(enter(pid,root,[binary,'restore-game-node','--archive',archive,'--node',node,'--identity-file',identity,'--output',restored,'--staging','/var/lib/bbsbox-maintenance'],timeout=120).stdout)
+    assert opened['inventory_sha256']==saved['inventory_sha256'] and opened['state']=='recovery-required'
+    save = root/restored.lstrip('/')/'games/dungeon-demo/state.sqlite'
+    with closing(sqlite3.connect(save.as_uri()+'?mode=ro',uri=True)) as database:
+        assert database.execute('SELECT chamber FROM dungeon').fetchone()==(1,)
+        assert database.execute('SELECT count(*) FROM players').fetchone()==(2,)
+        assert database.execute('SELECT count(*) FROM receipts').fetchone()==(1,)
+    return dict(complete_checkpoint=True, saved_turn_restored=True, recovery_fence_retained=True)
 
 
 def probe(root):
@@ -193,6 +214,7 @@ def boot(root,output,signed=False,maintenance_check=None):
                             try:
                                 probe = enter(pid,root,['/usr/bin/python3','/usr/local/lib/bbsbox-game-worker-probe.py','probe'],timeout=35)
                                 maintenance_result['isolated_game_worker']=json.loads(probe.stdout)
+                                maintenance_result['game_node_backup']=game_backup(pid,root,info['node_id'])
                             finally:
                                 enter(pid,root,['/usr/bin/systemctl','stop',socket_unit])
                     enter(pid,root,['/usr/bin/systemctl','stop','bbsbox.service'])

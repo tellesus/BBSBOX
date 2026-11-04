@@ -264,6 +264,24 @@ def fixture(binary, directory):
     assert decision['inventory_sha256'] == sealed['inventory_sha256']
     assert decision['decision_sha256'] == hashlib.sha256(record.read_bytes()).hexdigest()
     operator('migrate-existing', '--database', recorded/'data'/'node.sqlite', '--node', node, accept=False)
+    placed = directory/'placed-game'
+    placed.mkdir()
+    placed_game = placed/'state.sqlite'
+    placed_game.write_bytes(b'bad staged placement')
+    worker = binary.with_name('bbsbox-demo-worker.exe' if os.name == 'nt' else 'bbsbox-demo-worker')
+    assert subprocess.run([str(worker), '--verify-state', str(placed_game)], capture_output=True,
+                          creationflags=flags, timeout=5).returncode != 0
+    finish = [*restore_options, '--staged', recorded, '--placed', placed,
+              '--decision-sha256', decision['decision_sha256']]
+    operator('finish-game-placement', *finish, accept=False)
+    operator('migrate-existing', '--database', recorded/'data'/'node.sqlite', '--node', node, accept=False)
+    placed_game.write_bytes((recorded/'games'/'dungeon-demo'/'state.sqlite').read_bytes())
+    subprocess.run([str(worker), '--verify-state', str(placed_game)], check=True, capture_output=True,
+                   creationflags=flags, timeout=5)
+    activated = operator('finish-game-placement', *finish)
+    assert activated['inventory_sha256'] == sealed['inventory_sha256']
+    assert activated['isolated_writer_ready'] and not activated['installed']
+    operator('migrate-existing', '--database', recorded/'data'/'node.sqlite', '--node', node)
 
 
 def main():

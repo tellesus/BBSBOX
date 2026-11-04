@@ -72,8 +72,10 @@ def install(bundle,verifier,public_key,name,enable=False,*,recovery=None):
             layout.application.mkdir(parents=True,exist_ok=True,mode=0o755);layout.application.chmod(0o755)
             staged=Path(stages.enter_context(tempfile.TemporaryDirectory(prefix='.install-',dir=layout.application)))/'verified'
             verified=candidate.inspect(verifier,Path(bundle),public_key,staged,minimum_sequence=recovery.minimum_sequence if recovery else 1)
+            game_package=all((staged/name).is_file() for name in candidate.GAME_UNITS)
             recovered=None
             if recovery is not None:
+                if recovery.game_node and not game_package:raise ValueError('Game recovery requires the signed worker package')
                 import restore_provisioning
                 work=Path(stages.enter_context(tempfile.TemporaryDirectory(prefix='first-restore-',dir=maintenance)))
                 recovered=restore_provisioning.prepare(recovery,staged/'bbsbox-node',verified,work)
@@ -95,13 +97,19 @@ def install(bundle,verifier,public_key,name,enable=False,*,recovery=None):
             ticket_body=dict(format='bbsbox.first-install/v1',release_id=release_id,request=request,revision=pending['revision'])
             if recovered:
                 ticket_body.update(format='bbsbox.first-restore/v1',node=recovery.node,source=recovery.source,inventory_sha256=recovered.evidence['inventory_sha256'],decision_sha256=recovered.evidence['decision_sha256'],minimum_sequence=recovery.minimum_sequence,release_control='explicit-fresh-bootstrap',post_snapshot_writes='not-reconciled',client_recovery='separate')
+                if recovery.game_node:ticket_body['scope']='game-node'
             base.write_new(ticket,base.payload.encoded(ticket_body),0o600,0,0)
             sync_path(ticket);sync_path(maintenance,True)
             uid,gid=base.service_account()
+            if game_package:
+                game_uid,game_gid=base.service_account('bbsbox-game')
+                if game_uid==uid or game_gid==gid or set(os.getgrouplist('bbsbox-game',game_gid))!={game_gid}:
+                    raise ValueError('Game worker requires a separate OS account and group')
             layout.config.mkdir(mode=0o750,parents=True,exist_ok=True);os.chown(layout.config,0,gid);layout.config.chmod(0o750)
             layout.data.mkdir(mode=0o700,parents=True,exist_ok=True);os.chown(layout.data,uid,gid);layout.data.chmod(0o700)
             config_path=layout.config/'node.json'
             if recovered:
+                if recovery.game_node:recovered.place_game(layout,game_uid,game_gid,release,recovery,work)
                 node_id,hostname,fingerprint,config=recovered.populate(layout,uid,gid)
             else:
                 config=dict(format='bbsbox.node-config/v1',name=name,bind='127.0.0.1:8443',origin='https://localhost:8443',database=str(layout.data/'node.sqlite'),certificate=str(layout.config/'tls/server.pem'),certificate_key=str(layout.config/'tls/server-key.pem'))
@@ -118,10 +126,7 @@ def install(bundle,verifier,public_key,name,enable=False,*,recovery=None):
             base.write_new(layout.unit,(release/'bbsbox.service').read_bytes(),0o644,0,0)
             (layout.application/'current').symlink_to(release,target_is_directory=True)
             units=[layout.unit]
-            if all((release/name).is_file() for name in candidate.GAME_UNITS):
-                game_uid,game_gid=base.service_account('bbsbox-game')
-                if game_uid==uid or game_gid==gid or set(os.getgrouplist('bbsbox-game',game_gid))!={game_gid}:
-                    raise ValueError('Game worker requires a separate OS account and group')
+            if game_package:
                 for name,unit in candidate.GAME_UNITS.items():
                     path=layout.unit.parent/unit
                     base.write_new(path,(release/name).read_bytes(),0o644,0,0)
@@ -147,7 +152,7 @@ def install(bundle,verifier,public_key,name,enable=False,*,recovery=None):
                 (wanted/layout.unit.name).symlink_to(layout.unit)
                 sync_path(wanted,True);sync_path(wanted.parent,True)
             if recovered:
-                return dict(format='bbsbox.recovered-install/v1',installation=installed,source=recovery.source,source_inventory_sha256=recovered.evidence['inventory_sha256'],decision_sha256=recovered.evidence['decision_sha256'],migration_applied=recovered.evidence['migration_required'],network='loopback',release_control='explicit-fresh-bootstrap',client_recovery='separate',post_snapshot_writes='not-reconciled')
+                return dict(format='bbsbox.recovered-install/v1',installation=installed,source=recovery.source,source_inventory_sha256=recovered.evidence['inventory_sha256'],decision_sha256=recovered.evidence['decision_sha256'],migration_applied=recovered.evidence['migration_required'],network='loopback',release_control='explicit-fresh-bootstrap',client_recovery='separate',post_snapshot_writes='not-reconciled',scope='game-node' if recovery.game_node else 'foundation-node')
             return installed
         finally:
             try:stages.close()

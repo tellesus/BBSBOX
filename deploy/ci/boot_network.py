@@ -40,7 +40,7 @@ def fetch(root, hostname, address, with_fingerprint=False):
     return (info,fingerprint) if with_fingerprint else info
 
 
-def exercise(root, output):
+def exercise(root, output, expect_saved_game=False):
     root = root.resolve(); work = (ROOT/'work').resolve()
     if os.geteuid()!=0 or os.readlink('/proc/self/ns/net')==os.readlink('/proc/1/ns/net') or any(link['ifname']!='lo' for link in json.loads(run('ip','-j','link').stdout)):
         raise RuntimeError('Require a fresh private Linux network with only loopback')
@@ -49,6 +49,8 @@ def exercise(root, output):
     profile = json.loads((root/'etc/bbsbox/network/profile.json').read_text())
     game_host = installed['hostname'].replace('bbsbox-', 'bbsbox-game-', 1) if profile.get('prepare_game_host') else None
     game_enabled = bool(json.loads((root/'etc/bbsbox/node.json').read_text()).get('game_origin'))
+    if expect_saved_game and not game_enabled:
+        raise RuntimeError('The recovered game fixture requires an enabled game origin')
     if installed['format'] not in ('bbsbox.development-install/v1','bbsbox.install/v1') or profile['interfaces']!=[dict(name='bbs-client',role='client',addresses=['192.168.50.1/24','fd42:bb50::1/64'])]:
         raise RuntimeError('Use only the known local client fixture, without peers')
     output.mkdir(parents=True,exist_ok=False); cases=[]
@@ -110,6 +112,9 @@ def exercise(root, output):
                 for unit in ['bbsbox-boundary.service','bbsbox-dns.service','systemd-networkd.service']:
                     assert service.enter(pid,root,['/usr/bin/systemctl','is-active',unit]).stdout.strip()==b'active'
                 service.service_identity(pid,root,'bbsbox-dns','dnsmasq','bbsbox-dns.service')
+                if expect_saved_game:
+                    check = "import sqlite3; c=sqlite3.connect('file:/var/lib/bbsbox-game/state.sqlite?mode=ro',uri=True); assert c.execute('SELECT chamber FROM dungeon').fetchone()==(1,); assert c.execute('SELECT count(*) FROM receipts').fetchone()==(1,)"
+                    service.enter(pid,root,['/usr/sbin/runuser','-u','bbsbox-game','--','/usr/bin/python3','-c',check])
                 for family in ['-4','-6']:
                     routes=json.loads(service.enter(pid,root,['/usr/sbin/ip',family,'-j','route','show','table','all']).stdout)
                     assert not any(route.get('gateway') or route.get('dst')=='default' for route in routes)
@@ -150,12 +155,12 @@ def exercise(root, output):
         if process.returncode: raise RuntimeError('Prepared network OS shutdown failed')
         assert capture.report['status']=='passed',capture.report
         cases[-1]['boot_packet_capture']=capture.report
-    report=dict(status='passed',cases=cases,local_leaf_renewal_and_restart_verified=True,prepared_game_alias_verified=bool(game_host),isolated_game_origin_served=game_enabled,complete_boot_link_capture=True,scope='Actual Debian userspace/systemd with simulated local link; physical router/radio/phone acceptance remains separate')
+    report=dict(status='passed',cases=cases,local_leaf_renewal_and_restart_verified=True,prepared_game_alias_verified=bool(game_host),isolated_game_origin_served=game_enabled,recovered_game_save_verified=expect_saved_game,complete_boot_link_capture=True,scope='Actual Debian userspace/systemd with simulated local link; physical router/radio/phone acceptance remains separate')
     (output/'evidence.json').write_text(json.dumps(report,indent=2)+'\n'); print(json.dumps(report,indent=2))
 
 
 def main():
-    parser=argparse.ArgumentParser(description=__doc__); parser.add_argument('--root',type=Path,required=True); parser.add_argument('--output',type=Path,default=ROOT/'work/debian-network'); args=parser.parse_args(); exercise(args.root,args.output)
+    parser=argparse.ArgumentParser(description=__doc__); parser.add_argument('--root',type=Path,required=True); parser.add_argument('--output',type=Path,default=ROOT/'work/debian-network'); parser.add_argument('--expect-saved-game',action='store_true'); args=parser.parse_args(); exercise(args.root,args.output,args.expect_saved_game)
 
 
 if __name__=='__main__': main()

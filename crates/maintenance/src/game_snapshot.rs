@@ -276,7 +276,10 @@ pub(crate) fn verify_restored(restored: &RestoredNode, records: &[CheckpointReco
     if restored.games() != records {
         return Err(Error::IncompleteSnapshot);
     }
-    let root = restored.node().directory();
+    verify_restored_files(restored.node().directory(), records)
+}
+
+pub(crate) fn verify_restored_files(root: &Path, records: &[CheckpointRecord]) -> Result<()> {
     let games = root.join("games");
     if !fs::symlink_metadata(&games)?.file_type().is_dir() {
         return Err(Error::UnsafePath);

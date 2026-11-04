@@ -93,7 +93,17 @@ def backup(destination, recipient, release=False):
                     if not stat.S_ISDIR(metadata.st_mode):raise ValueError('Expected a direct appliance game state directory')
                     game_backup=game_backup or any(path.name!='state.sqlite.lock' for path in game_state.iterdir())
             profile='backup-game-node' if game_backup else 'backup'
-            completed=run([str(executable),profile,'--config',str(configuration/'node.json'),'--node',installed['node_id'],'--recipient',recipient,'--output',str(destination),'--staging',str(stage)],timeout=1200)
+            socket_unit='bbsbox-game-worker.socket'
+            temporary_socket=False
+            try:
+                if game_backup:
+                    status=subprocess.run(['/usr/bin/systemctl','is-active',socket_unit],capture_output=True,timeout=20).stdout.strip()
+                    if status not in (b'active',b'inactive'):raise ValueError('Expected the installed game worker socket')
+                    if status==b'inactive':
+                        run(['/usr/bin/systemctl','start',socket_unit]);temporary_socket=True
+                completed=run([str(executable),profile,'--config',str(configuration/'node.json'),'--node',installed['node_id'],'--recipient',recipient,'--output',str(destination),'--staging',str(stage)],timeout=1200)
+            finally:
+                if temporary_socket:run(['/usr/bin/systemctl','stop',socket_unit])
             if len(completed.stdout)>65536:raise ValueError('Unexpected maintenance response size')
             result=json.loads(completed.stdout)
             if result.get('format')!='bbsbox.node-backup/v1' or result.get('node')!=installed['node_id']:raise ValueError('Unexpected backup result')

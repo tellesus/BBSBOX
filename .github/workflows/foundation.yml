@@ -77,7 +77,7 @@ jobs:
       - run: cargo clippy --locked --offline --manifest-path mls/Cargo.toml --all-targets -- -D warnings
   storage-foundation:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -175,11 +175,17 @@ jobs:
         run: sudo python3 deploy/ci/recover_service.py --source work/signed-debian-root --fixture work/signed-candidate-fixture --verifier target/debug/bbsbox-node --root work/source-loss-root --output work/source-loss-evidence
       - name: Reprovision local networking on the recovered appliance
         run: sudo unshare --net -- bash -c 'ip link set lo up && python3 deploy/configure_network.py --root work/source-loss-root --profile work/network-install.json --development --enable-game && python3 deploy/ci/boot_network.py --root work/source-loss-root --output work/source-loss-evidence/network'
+      - name: Recover the complete game-node archive onto fresh signed media
+        run: sudo python3 deploy/ci/recover_service.py --source work/signed-debian-root --fixture work/signed-candidate-fixture --verifier target/debug/bbsbox-node --root work/game-loss-root --output work/game-loss-evidence --game-node
+      - name: Reopen the recovered game through the isolated appliance worker
+        run: sudo unshare --net -- bash -c 'ip link set lo up && python3 deploy/configure_network.py --root work/game-loss-root --profile work/network-install.json --development --enable-game && python3 deploy/ci/boot_network.py --root work/game-loss-root --output work/game-loss-evidence/network --expect-saved-game'
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: recovered-appliance-evidence
-          path: work/source-loss-evidence/**
+          path: |
+            work/source-loss-evidence/**
+            work/game-loss-evidence/**
       - run: cargo run --release --locked --offline --example writer_load > writer-load.json
       - uses: actions/upload-artifact@v4
         with:

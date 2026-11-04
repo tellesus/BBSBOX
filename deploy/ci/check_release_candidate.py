@@ -72,6 +72,13 @@ def check(tool,binary,material_directory,commit,rebuild_evidence,root,output):
             target=next_bundle/path.relative_to(claims);target.parent.mkdir(parents=True,exist_ok=True,mode=0o700);os.link(path,target)
     next_input=root/'next.json';next_input.write_bytes(materials.encoded(manifest))
     candidate.command([tool,'release-sign','--bundle',next_bundle,'--manifest',next_input,'--key-file',key])
+    game_recovery=root/'game_recovery';game_recovery.mkdir(mode=0o700)
+    for path in claims.rglob('*'):
+        if path.is_file():
+            target=game_recovery/path.relative_to(claims);target.parent.mkdir(parents=True,exist_ok=True,mode=0o700);os.link(path,target)
+    game_input=root/'game-recovery.json'
+    game_input.write_bytes(materials.encoded(dict(manifest,issuer=wrong['key_id'],sequence=6)))
+    candidate.command([tool,'release-sign','--bundle',game_recovery,'--manifest',game_input,'--key-file',root/'other-ephemeral.key'])
     for sequence,name in [(3,'upgrade_rejecting'),(4,'upgrade_interrupted'),(5,'upgrade_successor')]:
         executable=binary.parent/'examples'/name
         evidence=rebuild_evidence.parent/('offline-'+name+'.json')

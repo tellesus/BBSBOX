@@ -34,7 +34,15 @@ fn main() {
 
 fn run() -> Result<(), Box<dyn Error>> {
     let mut arguments = std::env::args_os().skip(1);
-    let access = match arguments.next().as_deref().and_then(|arg| arg.to_str()) {
+    let mode = arguments.next().ok_or("missing worker mode")?;
+    let state = PathBuf::from(arguments.next().ok_or("missing worker state path")?);
+    if !state.is_absolute() || arguments.next().is_some() {
+        return Err("invalid worker state path".into());
+    }
+    if mode == "--verify-state" {
+        return verify_state(&state);
+    }
+    let access = match mode.to_str() {
         Some("--state") => Access::Development,
         Some("--checkpoint-state") => Access::Checkpoint,
         #[cfg(target_os = "linux")]
@@ -48,10 +56,6 @@ fn run() -> Result<(), Box<dyn Error>> {
         }
         _ => return Err("expected a worker state path".into()),
     };
-    let state = PathBuf::from(arguments.next().ok_or("missing worker state path")?);
-    if !state.is_absolute() || arguments.next().is_some() {
-        return Err("invalid worker state path".into());
-    }
     let mut lock_name = state.as_os_str().to_owned();
     lock_name.push(".lock");
     let worker_lock = std::fs::OpenOptions::new()
@@ -99,6 +103,39 @@ fn run() -> Result<(), Box<dyn Error>> {
                 result,
             },
         )?;
+    }
+    Ok(())
+}
+
+fn verify_state(path: &Path) -> Result<(), Box<dyn Error>> {
+    if !std::fs::symlink_metadata(path)?.file_type().is_file() {
+        return Err("game restore requires a regular checkpoint database".into());
+    }
+    let db = Connection::open_with_flags(path, OpenFlags::SQLITE_OPEN_READ_ONLY)?;
+    db.pragma_update(None, "trusted_schema", "OFF")?;
+    let app: i64 = db.pragma_query_value(None, "application_id", |row| row.get(0))?;
+    let schema: i64 = db.pragma_query_value(None, "user_version", |row| row.get(0))?;
+    let journal: String = db.pragma_query_value(None, "journal_mode", |row| row.get(0))?;
+    let health: String = db.query_row("PRAGMA quick_check(1)", [], |row| row.get(0))?;
+    let single: bool = db.query_row("SELECT count(*)=1 FROM dungeon", [], |row| row.get(0))?;
+    let foreign_keys: bool = db.query_row(
+        "SELECT NOT EXISTS(SELECT 1 FROM pragma_foreign_key_check)",
+        [],
+        |row| row.get(0),
+    )?;
+    let state = read(&db, 0)?;
+    if app != APPLICATION
+        || schema != SCHEMA
+        || journal != "delete"
+        || health != "ok"
+        || !single
+        || !foreign_keys
+        || state.players > 2
+        || state.turn > 1
+        || state.chamber > 3
+        || state.stamina > 3
+    {
+        return Err("game checkpoint failed state validation".into());
     }
     Ok(())
 }

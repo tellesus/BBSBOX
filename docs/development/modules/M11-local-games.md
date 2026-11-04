@@ -1,8 +1,8 @@
 # M11 — Game host and local multiplayer example
 
-Brief revision 1.1.13 · Roadmap baseline 1.1.0 · 2026-11-04 · Locked scope · Product baseline 0.6.0.
+Brief revision 1.1.14 · Roadmap baseline 1.1.0 · 2026-11-04 · Locked scope · Product baseline 0.6.0.
 
-**State:** In progress. Development browser and isolated game-node restore pass. Debian confirms the isolated worker. Fresh appliance enablement awaits Linux confirmation. Game-aware installed updates and recovery activation remain pending.
+**State:** In progress. Development browser, isolated game-node restore and save placement checks pass locally. Debian confirms worker isolation. Fresh appliance enablement and full recovery await Linux confirmation. Game-aware installed updates remain open.
 
 ## Read only this packet
 
@@ -31,7 +31,7 @@ The offline network preparer can reserve `bbsbox-game-<node suffix>.home.arpa` i
 
 `backup-game-node` captures the stopped node through M12's [game-node snapshot provider](../../../crates/maintenance/README.md#game-node-snapshot-profile). The signed appliance provider uses the separate worker account and socket for an existing save. `restore-game-node` verifies and stages a matching demo checkpoint for recovery. Foundation backup refuses retained game state. Appliance enablement and activation of restored game state remain pending.
 
-`restore-game-node-and-record` also binds the operator's retired or lost source decision to the verified game-node archive. It keeps the staged node and saves fenced for coordinated activation.
+`restore-game-node-and-record` binds the operator's retired or lost source decision to the verified game-node archive. Fresh signed recovery verifies the game save under its dedicated account, then compares the placed save and archived inventory before releasing the staged writer. The replacement boots on loopback before offline network preparation.
 
 Use the listed contracts. Disabling a game retains its state.
 

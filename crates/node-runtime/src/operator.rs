@@ -538,6 +538,15 @@ pub fn command_with_registry(
             "--reason",
             "--at",
         ],
+        "finish-game-placement" => &[
+            "--archive",
+            "--node",
+            "--identity-file",
+            "--staging",
+            "--staged",
+            "--placed",
+            "--decision-sha256",
+        ],
         _ => return Err("Unknown maintenance command".into()),
     };
     let mut options = BTreeMap::new();
@@ -582,6 +591,38 @@ pub fn command_with_registry(
         .parse()?;
     if command == "migrate-existing" {
         return migrate_existing(path("--database"), expected, registry);
+    }
+    if command == "finish-game-placement" {
+        let registry = foundation_registry(registry)?;
+        let identity = read_key(path("--identity-file"))?;
+        let mut decision = [0; 32];
+        let digest = options["--decision-sha256"]
+            .to_str()
+            .ok_or("Invalid recovery decision digest")?;
+        hex::decode_to_slice(digest, &mut decision)?;
+        if hex_id(&decision) != digest {
+            return Err("Invalid recovery decision digest".into());
+        }
+        let stage = private_stage(path("--staging"), "bbsbox-placement-")?;
+        let opened = archive::open(
+            path("--archive"),
+            &stage.path().join("opened"),
+            expected,
+            &identity,
+            Limits::default(),
+        )?;
+        let games = [game_requirement(&crate::games::bundled_manifest()?)];
+        let signed = bbsbox_maintenance::continuation::finish_game_placement(
+            path("--staged"),
+            path("--placed"),
+            &opened,
+            &registry,
+            &games,
+            decision,
+        )?;
+        return Ok(
+            serde_json::json!({"format":"bbsbox.game-node-placement/v1","node":expected.to_string(),"inventory_sha256":hex_id(opened.inventory().id()),"decision_sha256":hex_id(signed.id()),"isolated_writer_ready":true,"installed":false}),
+        );
     }
     if matches!(command, "backup" | "backup-game-node") {
         backup_with_scope(

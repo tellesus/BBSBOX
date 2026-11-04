@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
-"""Restore a lost or retired foundation node onto fresh signed Debian media."""
+"""Restore a lost or retired node onto fresh signed Debian media."""
 import argparse
 import json
 from pathlib import Path
@@ -17,8 +17,9 @@ def main():
     parser.add_argument('--source',choices=['lost','retired'],required=True)
     parser.add_argument('--reason',required=True)
     parser.add_argument('--enable',action='store_true')
+    parser.add_argument('--game-node',action='store_true')
     args=parser.parse_args()
-    request=Request(args.archive.absolute(),args.identity_file.absolute(),args.node,args.source,args.reason,args.minimum_sequence)
+    request=Request(args.archive.absolute(),args.identity_file.absolute(),args.node,args.source,args.reason,args.minimum_sequence,args.game_node)
     print(json.dumps(install_release.install(args.bundle,args.verifier,args.public_key,None,args.enable,recovery=request),indent=2))
 
 

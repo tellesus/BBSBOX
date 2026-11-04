@@ -97,6 +97,8 @@ def game_backup(pid, root, node):
     enter(pid,root,['/usr/bin/systemctl','reset-failed','bbsbox.service'])
     saved = json.loads(enter(pid,root,['/usr/bin/python3','/src/deploy/backup_node.py','--output',archive,'--recipient',recipient],timeout=120).stdout)
     assert saved['scope']=='game-node' and saved['game_checkpoints']==1 and saved['service_resumed']
+    with (root/'root/bbsbox-ci-game-backup-result.json').open('x') as report:
+        json.dump(saved,report)
     opened = json.loads(enter(pid,root,[binary,'restore-game-node','--archive',archive,'--node',node,'--identity-file',identity,'--output',restored,'--staging','/var/lib/bbsbox-maintenance'],timeout=120).stdout)
     assert opened['inventory_sha256']==saved['inventory_sha256'] and opened['state']=='recovery-required'
     save = root/restored.lstrip('/')/'games/dungeon-demo/state.sqlite'

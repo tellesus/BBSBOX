@@ -257,16 +257,57 @@ fn prepare_verified(
     {
         return Err(Error::InvalidContinuation);
     }
-    if restored
-        .directory()
-        .join(".restore-incomplete")
-        .try_exists()?
-    {
+    let report = validate_restore(restored.directory(), source, &descriptor, scope)?;
+    let inventory = source.inventory();
+    let mut recovery = Recovery::open(restored.database(), migrations)?;
+    let signer = NodeSigner::prepare_recovery(&mut recovery, inventory.node())?;
+    let decision = Decision {
+        format: DOMAIN.into(),
+        node: inventory.node().to_string(),
+        source_inventory_sha256: hex::encode(inventory.id()),
+        snapshot_time: descriptor.created_at,
+        source_incarnation: inventory.inventory().incarnation,
+        prepared_incarnation: *signer.incarnation(),
+        source: authorization.source,
+        reason: authorization.reason,
+        recorded_at: authorization.recorded_at,
+        scope: scope.into(),
+        module_owners: module_owners(migrations),
+        post_snapshot_writes: "not-reconciled".into(),
+        client_recovery: "separate".into(),
+    };
+    let signed = sign(decision, &signer)?;
+    Ok(Prepared {
+        recovery,
+        signed,
+        configuration: restored.configuration(),
+        report_path: restored.directory().join("recovery.json"),
+        report,
+    })
+}
+
+fn module_owners(migrations: &[Migration]) -> Vec<String> {
+    migrations
+        .iter()
+        .map(|m| m.module.to_owned())
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .collect()
+}
+
+fn validate_restore(
+    restored: &Path,
+    source: &archive::OpenedArchive,
+    descriptor: &Descriptor,
+    scope: &str,
+) -> Result<RestoreReport> {
+    if restored.join(".restore-incomplete").try_exists()? {
         return Err(Error::InvalidContinuation);
     }
+    let configuration = restored.join("configuration");
     // No configuration migration in this profile; only M12's current decision may change.
     let observed = archive::inventory(
-        &restored.configuration(),
+        &configuration,
         Limits {
             max_files: 121,
             max_member_bytes: 1024 * 1024,
@@ -287,7 +328,7 @@ fn prepare_verified(
         return Err(Error::InvalidContinuation);
     }
     let report: RestoreReport =
-        serde_json::from_slice(&read(&restored.directory().join("recovery.json"), 65536)?)
+        serde_json::from_slice(&read(&restored.join("recovery.json"), 65536)?)
             .map_err(|_| Error::InvalidContinuation)?;
     let inventory = source.inventory();
     if report.format != "bbsbox.isolated-node-restore/v1"
@@ -305,7 +346,7 @@ fn prepare_verified(
     if report.state == "continuation-authorized" {
         let previous = verify(
             &read(
-                &restored.configuration().join("maintenance/recovery.cose"),
+                &configuration.join("maintenance/recovery.cose"),
                 MAX_DECISION + 128,
             )?,
             inventory.node(),
@@ -317,37 +358,76 @@ fn prepare_verified(
             return Err(Error::InvalidContinuation);
         }
     }
-    let mut recovery = Recovery::open(restored.database(), migrations)?;
-    let signer = NodeSigner::prepare_recovery(&mut recovery, inventory.node())?;
-    let decision = Decision {
-        format: DOMAIN.into(),
-        node: inventory.node().to_string(),
-        source_inventory_sha256: hex::encode(inventory.id()),
-        snapshot_time: descriptor.created_at,
-        source_incarnation: inventory.inventory().incarnation,
-        prepared_incarnation: *signer.incarnation(),
-        source: authorization.source,
-        reason: authorization.reason,
-        recorded_at: authorization.recorded_at,
-        scope: scope.into(),
-        module_owners: migrations
-            .iter()
-            .map(|m| m.module.to_owned())
-            .collect::<BTreeSet<_>>()
-            .into_iter()
-            .collect(),
-        post_snapshot_writes: "not-reconciled".into(),
-        client_recovery: "separate".into(),
-    };
-    let signed = sign(decision, &signer)?;
-    Ok(Prepared {
-        recovery,
-        signed,
-        configuration: restored.configuration(),
-        report_path: restored.directory().join("recovery.json"),
-        report,
-    })
+    Ok(report)
 }
+
+/// The installer places one bundled game's complete checkpoint while appliance activation is held.
+/// Reopen the source and compare both copies before releasing the staged core's recovery marker.
+pub fn finish_game_placement(
+    staged: &Path,
+    placed: &Path,
+    source: &archive::OpenedArchive,
+    migrations: &[Migration],
+    games: &[game_snapshot::Requirement],
+    expected_decision: [u8; 32],
+) -> Result<SignedDecision> {
+    for root in [staged, placed] {
+        for path in std::path::absolute(root)?.ancestors() {
+            if !fs::symlink_metadata(path)?.file_type().is_dir() {
+                return Err(Error::UnsafePath);
+            }
+        }
+    }
+    let stage_root = staged.canonicalize()?;
+    let placed_root = placed.canonicalize()?;
+    if stage_root.starts_with(&placed_root) || placed_root.starts_with(&stage_root) {
+        return Err(Error::UnsafePath);
+    }
+    let (descriptor, records) =
+        game_snapshot::verify(&source.content(), source.inventory(), migrations, games)?;
+    game_snapshot::verify_restored_files(&stage_root, &records)?;
+    let [record] = records.as_slice() else {
+        return Err(Error::CheckpointUnavailable);
+    };
+    if archive::inventory(&placed_root, Limits::default())? != record.files {
+        return Err(Error::IncompleteSnapshot);
+    }
+    let report = validate_restore(&stage_root, source, &descriptor, GAME_NODE)?;
+    let path = stage_root.join("configuration/maintenance/recovery.cose");
+    let inventory = source.inventory();
+    let signed = verify(&read(&path, MAX_DECISION + 128)?, inventory.node())?;
+    let decision = signed.decision();
+    if signed.id() != &expected_decision
+        || decision.scope != GAME_NODE
+        || decision.source_inventory_sha256 != report.inventory_sha256
+        || decision.snapshot_time != descriptor.created_at
+        || decision.source_incarnation != inventory.inventory().incarnation
+        || decision.module_owners != module_owners(migrations)
+    {
+        return Err(Error::InvalidContinuation);
+    }
+    let database = stage_root.join("data/node.sqlite");
+    let recovery = Recovery::open(&database, migrations)?;
+    if NodeSigner::inspect_existing(&database)? != inventory.node() {
+        return Err(Error::WrongNode);
+    }
+    persist_report(&stage_root.join("recovery.json"), report)?;
+    recovery.finish_after_decision(path, *signed.id())?;
+    Ok(signed)
+}
+
+fn persist_report(path: &Path, mut report: RestoreReport) -> Result<()> {
+    let directory = path.parent().ok_or(Error::UnsafePath)?;
+    report.state = "continuation-authorized".into();
+    let mut replacement = tempfile::NamedTempFile::new_in(directory)?;
+    replacement.write_all(&serde_json::to_vec(&report).map_err(|_| Error::InvalidContinuation)?)?;
+    replacement.as_file().sync_all()?;
+    replacement
+        .persist(path)
+        .map_err(|error| Error::Io(error.error))?;
+    archive::sync_directory(directory)
+}
+
 impl Prepared {
     pub fn decision(&self) -> &SignedDecision {
         &self.signed
@@ -414,22 +494,12 @@ impl Prepared {
     }
 
     /// Save the protected current decision before releasing only the isolated foundation writer.
-    pub fn finish_isolated(mut self) -> Result<SignedDecision> {
+    pub fn finish_isolated(self) -> Result<SignedDecision> {
         if self.signed.decision().scope != FOUNDATION {
             return Err(Error::InvalidContinuation);
         }
         let record = self.persist_record()?;
-        self.report.state = "continuation-authorized".into();
-        let mut report =
-            tempfile::NamedTempFile::new_in(self.report_path.parent().ok_or(Error::UnsafePath)?)?;
-        report.write_all(
-            &serde_json::to_vec(&self.report).map_err(|_| Error::InvalidContinuation)?,
-        )?;
-        report.as_file().sync_all()?;
-        report
-            .persist(&self.report_path)
-            .map_err(|error| Error::Io(error.error))?;
-        archive::sync_directory(self.report_path.parent().ok_or(Error::UnsafePath)?)?;
+        persist_report(&self.report_path, self.report)?;
         self.recovery
             .finish_after_decision(&record, *self.signed.id())?;
         Ok(self.signed)

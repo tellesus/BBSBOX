@@ -33,6 +33,7 @@ pub async fn run(
                     | "restore"
                     | "restore-game-node"
                     | "restore-game-node-and-record"
+                    | "finish-game-placement"
                     | "backup-keygen"
                     | "backup-public"
                     | "backup-check-recipient"

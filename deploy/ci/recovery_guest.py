@@ -15,7 +15,7 @@ def exercise():
     request=json.loads((MEDIA/'request.json').read_text())
     layout=install_release.base.Layout(Path('/'))
     def provision(node,minimum):
-        source=Request(MEDIA/'source.age',MEDIA/'operator.key',node,'lost','CI removed the original appliance from service',minimum)
+        source=Request(MEDIA/'source.age',MEDIA/'operator.key',node,'lost','CI removed the original appliance from service',minimum,request.get('game_node',False))
         return install_release.install(MEDIA/'bundle',MEDIA/'bootstrap',request['public_key'],None,True,recovery=source)
     install_release.check_fresh(layout)
     try:provision(request['node'],7)
@@ -26,8 +26,10 @@ def exercise():
     except ValueError:pass
     else:raise AssertionError('Accepted the archive as another node')
     install_release.check_fresh(layout)
-    recovered=json.loads(subprocess.check_output([sys.executable,str(MEDIA/'deploy/recover_release.py'),'--bundle',str(MEDIA/'bundle'),'--verifier',str(MEDIA/'bootstrap'),'--public-key',request['public_key'],'--minimum-sequence',str(request['minimum_sequence']),'--archive',str(MEDIA/'source.age'),'--identity-file',str(MEDIA/'operator.key'),'--node',request['node'],'--source','lost','--reason','CI removed the original appliance from service','--enable'],timeout=240))
-    assert recovered['source_inventory_sha256']==request['inventory_sha256'] and recovered['migration_applied'] is True
+    options=['--game-node'] if request.get('game_node') else []
+    recovered=json.loads(subprocess.check_output([sys.executable,str(MEDIA/'deploy/recover_release.py'),'--bundle',str(MEDIA/'bundle'),'--verifier',str(MEDIA/'bootstrap'),'--public-key',request['public_key'],'--minimum-sequence',str(request['minimum_sequence']),'--archive',str(MEDIA/'source.age'),'--identity-file',str(MEDIA/'operator.key'),'--node',request['node'],'--source','lost','--reason','CI removed the original appliance from service','--enable',*options],timeout=240))
+    assert recovered['source_inventory_sha256']==request['inventory_sha256'] and recovered['migration_applied'] is (not options)
+    assert recovered['scope']==('game-node' if options else 'foundation-node')
     assert recovered['installation']['release_sequence']==6 and recovered['network']=='loopback'
     recovered.update(minimum_sequence_enforced=True,wrong_node_refused=True,failed_preflight_left_target_fresh=True)
     print(json.dumps(recovered))

@@ -1,8 +1,8 @@
 # M05 — Browser shell, navigation and SysOp themes
 
-Brief revision 1.1.2 · 2026-11-03 · Roadmap baseline 1.1.0 · Product baseline 0.6.0.
+Brief revision 1.1.3 · 2026-11-03 · Roadmap baseline 1.1.0 · Product baseline 0.6.0.
 
-**State:** In progress. Slice A local bootstrap/session transport passes local HTTPS. Landing/login UI and G1 device evidence remain pending.
+**State:** In progress. Slice A landing, sign-in and account work over local HTTPS. Debian release rebuild and G1 device evidence remain pending.
 
 ## Read only this packet
 
@@ -25,7 +25,7 @@ Use SvelteKit/TypeScript with static adapter output served by the node; all asse
 
 ## Ownership and interfaces
 
-Planned web/shell/, web/theme/ and crates/settings/; local theme/navigation config, welcome art and node identity presentation. Consumes feature navigation/profile contributions without owning their data.
+The browser shell lives in `web/shell/`. Planned `web/theme/` and `crates/settings/` own local theme/navigation config and welcome art. The shell consumes feature navigation/profile contributions without owning their data.
 
 The [runtime](../../../crates/node-runtime/README.md#local-account-access) owns HTTP sessions and private first-SysOp setup. The shell consumes that API. A disabled optional module retains its data and does not break unrelated local services.
 

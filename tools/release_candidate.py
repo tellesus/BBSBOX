@@ -106,6 +106,8 @@ def prepare(tool, binary, material_directory, commit, evidence_path, key_file, k
     evidence = materials.decoded(materials.read_file(evidence_path, 65536))
     if evidence.get('format') != 'bbsbox.offline-material-rebuild/v1' or evidence.get('source_commit') != commit or evidence.get('materials_sha256') != verified['sha256'] or evidence.get('binary_sha256') != materials.file_digest(binary) or not evidence.get('compiled_profile_matches_candidate'):
         raise ValueError('Candidate does not match its material rebuild evidence')
+    if verified.get('web_dependencies') and not (evidence.get('browser_templates_reproduced') is True and evidence.get('empty_npm_cache') is True):
+        raise ValueError('Candidate lacks matching offline browser rebuild evidence')
     profile = command([binary, '--release-profile'])
     if profile != evidence.get('compiled_profile') or profile.get('format') != 'bbsbox.release-runtime/v1' or profile.get('target') != 'debian13-amd64':
         raise ValueError('Candidate compiled profile differs from its rebuild evidence')

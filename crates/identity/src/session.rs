@@ -387,12 +387,20 @@ impl Auth {
     }
 }
 pub fn session_from_cookie_header(header: &str) -> Result<&str> {
+    token_from_cookie_header(header, "__Host-bbsbox_session")
+}
+
+pub fn csrf_from_cookie_header(header: &str) -> Result<&str> {
+    token_from_cookie_header(header, "__Host-bbsbox_csrf")
+}
+
+fn token_from_cookie_header<'a>(header: &'a str, cookie_name: &str) -> Result<&'a str> {
     let mut token = None;
     for part in header.split(';') {
         let Some((name, value)) = part.trim().split_once('=') else {
             continue;
         };
-        if name == "__Host-bbsbox_session" {
+        if name == cookie_name {
             if token.is_some() {
                 return Err(Error::InvalidSession);
             }

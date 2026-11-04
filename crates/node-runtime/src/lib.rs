@@ -280,10 +280,9 @@ async fn policy(State(state): State<AppState>, mut request: Request, next: Next)
         header::X_CONTENT_TYPE_OPTIONS,
         HeaderValue::from_static("nosniff"),
     );
-    headers.insert(
-        header::REFERRER_POLICY,
-        HeaderValue::from_static("no-referrer"),
-    );
+    headers
+        .entry(header::REFERRER_POLICY)
+        .or_insert(HeaderValue::from_static("no-referrer"));
     response
 }
 fn asset(content: &'static str, mime: &'static str) -> Response {
@@ -298,7 +297,10 @@ pub fn app(config: &Config, runtime: &Runtime) -> Result<Router> {
         authorities: config.authorities()?.into(),
     };
     Ok(Router::new()
-        .route("/", get(|| async { Html(include_str!("status.html")) }))
+        .route(
+            "/status/",
+            get(|| async { Html(include_str!("status.html")) }),
+        )
         .route("/api/v1/node", get(health))
         .route(
             "/assets/status.css",

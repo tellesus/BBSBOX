@@ -15,6 +15,7 @@ import sys
 import tempfile
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -99,6 +100,12 @@ def exercise(binary, state_root, host, isolated):
                 with request('/') as response:
                     html = response.read().decode()
                     assert 'default-src' in response.headers['Content-Security-Policy']
+                    assert 'Runtime fixture &lt;node&gt;' in html
+                    assert 'href="/login/"' in html and '<script' not in html
+                with request('/assets/shell.css') as response:
+                    assert b'color-scheme: dark' in response.read()
+                with request('/status/') as response:
+                    html = response.read().decode()
                 assets = re.findall(r'<(?:link|script)\b[^>]*(?:href|src)="([^"#]+)"', html)
                 assert set(assets) == {'/assets/status.css', '/assets/status.js'}
                 for path in assets:
@@ -126,6 +133,19 @@ def exercise(binary, state_root, host, isolated):
                     with request(session_path, 'DELETE', {'Origin': origin, 'X-BBSBOX-CSRF': proof}) as response:
                         assert response.status == 204
                     assert not any(cookie.name.startswith('__Host-bbsbox_') for cookie in cookies)
+                    form_headers = {'Origin': origin, 'Content-Type': 'application/x-www-form-urlencoded'}
+                    encoded = urllib.parse.urlencode(dict(username='operator', password=password.decode())).encode()
+                    with request('/login/', 'POST', form_headers, encoded) as response:
+                        account = response.read().decode()
+                        assert response.geturl().endswith('/account/') and '>operator<' in account
+                        assert response.headers['Cache-Control'] == 'no-store'
+                    hidden = re.search(r'name="csrf" value="([0-9a-f]{64})"', account)
+                    assert hidden is not None
+                    payload = urllib.parse.urlencode(dict(csrf=hidden.group(1))).encode()
+                    with request('/account/sign-out/', 'POST', form_headers, payload) as response:
+                        assert response.geturl() == origin + '/'
+                    with request('/account/') as response:
+                        assert response.geturl().endswith('/login/')
                 # A new client without the local CA must fail certificate verification.
                 untrusted = urllib.request.build_opener(urllib.request.ProxyHandler({}), urllib.request.HTTPSHandler(context=ssl.create_default_context()))
                 try:

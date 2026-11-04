@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 """Prepare and verify offline source/dependency materials; never install or sign a release."""
 import argparse
+import base64
+from concurrent.futures import ThreadPoolExecutor
 import hashlib
 import io
 import json
@@ -11,6 +13,7 @@ import stat
 import subprocess
 import tarfile
 import tomllib
+import urllib.request
 
 FORMAT = 'bbsbox.release-materials/v1'
 SOURCE_FILES = 2048
@@ -21,6 +24,12 @@ DEPENDENCY_MEMBER = 128 * 1024 * 1024
 DEPENDENCY_TOTAL = 2 * 1024 * 1024 * 1024
 MAX_METADATA = 8 * 1024 * 1024
 REGISTRY = 'registry+https://github.com/rust-lang/crates.io-index'
+WEB_LOCK = 'web/shell/package-lock.json'
+WEB_NOTICE = 'deploy/materials/web-mit-notices.txt'
+WEB_BUILD = ("For the browser shell, prepare the pinned Node.js/npm tools on Debian 13 amd64.\n"
+             "From source/web/shell, run npm cache add --offline --cache ../../../npm-cache ../../../npm-packages/*.tgz,\n"
+             "then npm ci --offline --cache ../../../npm-cache --ignore-scripts --no-audit --no-fund and npm run verify.\n").encode()
+WEB_PACKAGE = 24 * 1024 * 1024
 BUILD = ('Use the pinned rust-toolchain.toml and prepared native compiler/linker on Debian 13 amd64.\n'
          'Extract source.tar and dependencies.tar into one fresh directory. From source/, run:\n'
          'cargo --config \'source.crates-io.replace-with="vendored-sources"\' '
@@ -255,7 +264,7 @@ def inspect_source(path, commit, consume=None):
             raise ValueError('Source content/mode does not match commit tree')
         if consume:
             consume(name, raw, mode)
-        if relative in ('Cargo.lock', 'deploy/materials/supplements.json') or relative.startswith('deploy/materials/licenses/'):
+        if relative in ('Cargo.lock', WEB_LOCK, WEB_NOTICE, 'deploy/materials/supplements.json') or relative.startswith('deploy/materials/licenses/'):
             selected[relative] = raw
     if remaining or 'Cargo.lock' not in selected:
         raise ValueError('Incomplete source archive')
@@ -282,8 +291,114 @@ def license_path(name):
     return path.name.upper().startswith(('LICENSE', 'COPYING', 'NOTICE', 'COPYRIGHT', 'AUTHORS')) or any(p.upper() == 'LICENSES' for p in path.parts)
 
 
+def locked_web_packages(raw):
+    if raw is None:
+        return {}
+    lock = decoded(raw)
+    entries = lock.get('packages', {})
+    if lock.get('lockfileVersion') != 3 or not 2 <= len(entries) <= 512:
+        raise ValueError('Unsupported browser package lock')
+    packages = {}
+    for path, entry in entries.items():
+        if not path or 'linux' not in entry.get('os', ['linux']) or 'x64' not in entry.get('cpu', ['x64']):
+            continue
+        name = path.rsplit('node_modules/', 1)[-1]
+        version = entry.get('version', '')
+        if not re.fullmatch(r'(?:@[a-z0-9_.-]+/)?[a-z0-9_.-]+', name) or not re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+(?:-[a-zA-Z0-9.-]+)?', version):
+            raise ValueError('Unsupported browser dependency identity')
+        registry = f'https://registry.npmjs.org/{name}/-/{name.rsplit("/", 1)[-1]}-{version}.tgz'
+        integrity = entry.get('integrity', '')
+        if entry.get('resolved') != registry or not re.fullmatch(r'sha512-[A-Za-z0-9+/]{86}==', integrity):
+            raise ValueError('Unsupported browser dependency source or integrity')
+        checksum = base64.b64decode(integrity[7:], validate=True).hex()
+        package = (name, version, registry, integrity)
+        if checksum in packages and packages[checksum] != package:
+            raise ValueError('Ambiguous browser dependency identity')
+        packages[checksum] = package
+    if not packages:
+        raise ValueError('Browser package lock has no Debian dependencies')
+    return packages
+
+
+def web_package(raw, checksum, package):
+    name, version, registry, integrity = package
+    if not raw or len(raw) > WEB_PACKAGE or hashlib.sha512(raw).hexdigest() != checksum:
+        raise ValueError('Browser package checksum mismatch: ' + name)
+    metadata = None
+    licenses = []
+    total = 0
+    paths = set()
+    with tarfile.open(fileobj=io.BytesIO(raw), mode='r|gz') as archive:
+        for item in archive:
+            path = safe_name(item.name)
+            total += item.size
+            if path in paths or len(paths) >= 20000 or not (item.isreg() or item.isdir()) or total > 128 * 1024 * 1024 or item.size > WEB_PACKAGE:
+                raise ValueError('Unsupported browser package member: ' + name)
+            paths.add(path)
+            if item.isreg() and path.count('/') == 1 and path.endswith('/package.json'):
+                if metadata is not None or item.size > 256 * 1024:
+                    raise ValueError('Invalid browser package metadata')
+                metadata = decoded(archive.extractfile(item).read())
+            if item.isreg() and license_path(path):
+                if not 0 < item.size <= 512 * 1024:
+                    raise ValueError('Invalid browser license member')
+                licenses.append({'path': path, 'sha256': digest(archive.extractfile(item).read())})
+    if not metadata or metadata.get('name') != name or metadata.get('version') != version or not isinstance(metadata.get('license'), str) or not metadata['license']:
+        raise ValueError('Browser package metadata differs from its lock: ' + name)
+    return dict(name=name, version=version, source=registry, integrity=integrity, license=metadata['license'], license_files=sorted(licenses, key=lambda record: record['path']))
+
+
+def web_path(checksum):
+    name = base64.urlsafe_b64encode(bytes.fromhex(checksum)).decode().rstrip('=')
+    return f'npm-packages/{name}.tgz'
+
+
+def web_notices(records, selected):
+    if not records:
+        return {}
+    by_identity = {(record['name'], record['version']): record for record in records}
+    supplemented = {
+        ('@napi-rs/lzma-linux-x64-gnu', '1.5.1'),
+        ('@polka/url', '1.0.0-next.29'),
+        ('sirv', '3.0.2'),
+        ('is-reference', '3.0.3'),
+        ('locate-character', '3.0.0'),
+    }
+    for identity, record in by_identity.items():
+        if record['license_files']:
+            continue
+        name, version = identity
+        if name.startswith(('@esbuild/', '@rollup/')):
+            parent = 'esbuild' if name.startswith('@esbuild/') else 'rollup'
+            inherited = by_identity.get((parent, version), {})
+            if inherited.get('license') == record['license'] and inherited.get('license_files'):
+                record['license_package'] = parent + '@' + version
+                continue
+        if identity not in supplemented or record['license'] != 'MIT' or not selected.get(WEB_NOTICE):
+            raise ValueError('Browser dependency needs a reviewed license supplement: ' + name)
+        record['license_supplement'] = WEB_NOTICE
+    return {'web_dependencies': sorted(records, key=lambda record: (record['name'], record['version']))}
+
+
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+def download_web_package(package):
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
+    with opener.open(package[2], timeout=30) as response:
+        raw = response.read(WEB_PACKAGE + 1)
+    if len(raw) > WEB_PACKAGE:
+        raise ValueError('Browser dependency exceeds package limit')
+    return raw
+
+
 def inspect_dependencies(entries, selected, consume=None):
     packages = locked_packages(selected['Cargo.lock'])
+    web = {web_path(checksum): (checksum, package) for checksum, package in locked_web_packages(selected.get(WEB_LOCK)).items()}
+    web_records = []
+    build_instructions = BUILD + (WEB_BUILD if web else b'')
     observed = {name: {} for name in packages}
     metadata = {name: {} for name in packages}
     licenses = {name: [] for name in packages}
@@ -293,9 +408,17 @@ def inspect_dependencies(entries, selected, consume=None):
         if mode != 0o644:
             raise ValueError('Dependency material modes must be regular 0644')
         if path == 'offline-build.txt':
-            if raw != BUILD or build_seen:
+            if raw != build_instructions or build_seen:
                 raise ValueError('Unsupported build instructions')
             build_seen = True
+            if consume:
+                consume(path, raw, mode)
+            continue
+        if path.startswith('npm-packages/'):
+            package = web.pop(path, None)
+            if package is None:
+                raise ValueError('Unlisted browser dependency')
+            web_records.append(web_package(raw, *package))
             if consume:
                 consume(path, raw, mode)
             continue
@@ -317,8 +440,8 @@ def inspect_dependencies(entries, selected, consume=None):
             metadata[package][name] = raw
         if license_path(name):
             licenses[package].append({'path': name, 'size': len(raw), 'sha256': digest(raw)})
-    if not build_seen:
-        raise ValueError('Missing offline build instructions')
+    if not build_seen or web:
+        raise ValueError('Missing offline build instructions or browser dependencies')
     supplement = decoded(selected.get('deploy/materials/supplements.json', b'{}'))
     if supplement.get('format') != 'bbsbox.license-supplements/v1' or set(supplement) != {'format', 'files', 'packages'}:
         raise ValueError('Missing/invalid reviewed license supplements')
@@ -347,7 +470,7 @@ def inspect_dependencies(entries, selected, consume=None):
         notices.append({'name': lock['name'], 'version': lock['version'], 'source': REGISTRY, 'checksum': lock['checksum'], 'license': package['license'], 'authors': package.get('authors', []), 'repository': package.get('repository'), 'license_files': sorted(licenses[name], key=lambda f: f['path']), 'supplement': extra})
     if set(supplement['packages']) - set(packages):
         raise ValueError('Stale license supplements require review')
-    return notices
+    return dict(dependencies=notices, **web_notices(web_records, selected))
 
 
 def vendor_entries(vendor):
@@ -384,15 +507,22 @@ def build(repository, commit, vendor, output):
     output.mkdir(mode=0o700)
     commit = build_source(repository, commit, output / 'source.tar')
     selected = inspect_source(output / 'source.tar', commit)
+    web = locked_web_packages(selected.get(WEB_LOCK))
     with tarfile.open(output / 'dependencies.tar', 'x', format=tarfile.USTAR_FORMAT, encoding='utf-8') as archive:
-        add(archive, 'offline-build.txt', BUILD)
+        add(archive, 'offline-build.txt', BUILD + (WEB_BUILD if web else b''))
+        if web:
+            with ThreadPoolExecutor(max_workers=6) as pool:
+                for checksum, raw in zip(web, pool.map(download_web_package, web.values()), strict=True):
+                    if hashlib.sha512(raw).hexdigest() != checksum:
+                        raise ValueError('Downloaded browser package differs from its lock')
+                    add(archive, web_path(checksum), raw)
         for path, raw, mode in vendor_entries(vendor):
             add(archive, path, raw, mode)
         for path, raw in sorted(selected.items()):
             if path.startswith('deploy/materials/licenses/'):
                 add(archive, 'supplemental-licenses/' + path.rsplit('/', 1)[1], raw)
     notices = inspect_dependencies(tar_entries(output / 'dependencies.tar', DEPENDENCY_FILES, DEPENDENCY_MEMBER, DEPENDENCY_TOTAL), selected)
-    (output / 'notices.json').write_bytes(encoded({'format': FORMAT, 'source_commit': commit, 'dependencies': notices}))
+    (output / 'notices.json').write_bytes(encoded({'format': FORMAT, 'source_commit': commit, **notices}))
     return verify(output, commit)
 
 
@@ -402,10 +532,13 @@ def verify(materials, expected_commit):
         raise ValueError('Invalid material set/source commit')
     selected = inspect_source(materials / 'source.tar', expected_commit)
     notices = inspect_dependencies(tar_entries(materials / 'dependencies.tar', DEPENDENCY_FILES, DEPENDENCY_MEMBER, DEPENDENCY_TOTAL), selected)
-    expected = {'format': FORMAT, 'source_commit': expected_commit, 'dependencies': notices}
+    expected = {'format': FORMAT, 'source_commit': expected_commit, **notices}
     if read_file(materials / 'notices.json', MAX_METADATA) != encoded(expected):
         raise ValueError('Notices do not match committed source/dependencies/licenses')
-    return {'format': FORMAT, 'source_commit': expected_commit, 'dependencies': len(notices), 'source_proof': 'git-objects-and-complete-blobs', 'sha256': {name: file_digest(materials / name) for name in ('source.tar', 'dependencies.tar', 'notices.json')}, 'installation_authority': False}
+    report = {'format': FORMAT, 'source_commit': expected_commit, 'dependencies': len(notices['dependencies']), 'source_proof': 'git-objects-and-complete-blobs', 'sha256': {name: file_digest(materials / name) for name in ('source.tar', 'dependencies.tar', 'notices.json')}, 'installation_authority': False}
+    if 'web_dependencies' in notices:
+        report['web_dependencies'] = len(notices['web_dependencies'])
+    return report
 
 
 def extract(materials, expected_commit, output):
@@ -424,7 +557,7 @@ def extract(materials, expected_commit, output):
         target.chmod(mode)
     selected = inspect_source(Path(materials) / 'source.tar', expected_commit, copy)
     notices = inspect_dependencies(tar_entries(Path(materials) / 'dependencies.tar', DEPENDENCY_FILES, DEPENDENCY_MEMBER, DEPENDENCY_TOTAL), selected, copy)
-    if read_file(Path(materials) / 'notices.json', MAX_METADATA) != encoded({'format': FORMAT, 'source_commit': expected_commit, 'dependencies': notices}):
+    if read_file(Path(materials) / 'notices.json', MAX_METADATA) != encoded({'format': FORMAT, 'source_commit': expected_commit, **notices}):
         raise ValueError('Notices changed during material extraction')
     marker.unlink()
     return result

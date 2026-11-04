@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 """Material/provenance refusal tests; dependency text is explicitly synthetic fixture data."""
+import base64
 import hashlib
 import io
 import json
@@ -8,6 +9,7 @@ import subprocess
 import tarfile
 import tempfile
 import unittest
+from unittest.mock import patch
 import release_materials as materials
 
 
@@ -76,6 +78,36 @@ class Materials(unittest.TestCase):
         with self.assertRaises(ValueError): materials.verify(self.output, self.commit)
         with self.assertRaises(ValueError): materials.extract(self.output, self.commit, self.root/'bad-extract')
         self.assertFalse((self.root/'bad-extract').exists())
+
+    def test_browser_tarballs_are_required_and_bound_to_the_committed_lock(self):
+        archive = io.BytesIO()
+        with tarfile.open(fileobj=archive, mode='w:gz') as package:
+            materials.add(package, 'package/package.json', materials.encoded(dict(name='web-fixture', version='1.0.0', license='MIT')))
+            materials.add(package, 'package/LICENSE', b'Synthetic browser package license fixture\n')
+        tarball = archive.getvalue()
+        checksum = hashlib.sha512(tarball).hexdigest()
+        integrity = 'sha512-' + base64.b64encode(bytes.fromhex(checksum)).decode()
+        dependency = dict(version='1.0.0', integrity=integrity, resolved='https://registry.npmjs.org/web-fixture/-/web-fixture-1.0.0.tgz')
+        lock = self.repo / materials.WEB_LOCK
+        lock.parent.mkdir(parents=True)
+        lock.write_bytes(materials.encoded(dict(lockfileVersion=3, packages={'': {}, 'node_modules/web-fixture': dependency})))
+        self.git('add', '.')
+        self.git('-c', 'user.name=BBSBOX fixture', '-c', 'user.email=fixture@example.invalid', 'commit', '--quiet', '-m', 'browser fixture')
+        self.commit = self.git('rev-parse', 'HEAD').decode().strip()
+
+        with patch.object(materials, 'download_web_package', return_value=tarball):
+            self.assertEqual(self.build()['web_dependencies'], 1)
+        extracted = self.root / 'extracted'
+        self.assertEqual(materials.extract(self.output, self.commit, extracted)['web_dependencies'], 1)
+        path = materials.web_path(checksum)
+        self.assertEqual((extracted / path).read_bytes(), tarball)
+        dependencies = self.output / 'dependencies.tar'
+        self.rewrite(dependencies, lambda entries: [(name, b'changed' if name == path else raw, mode) for name, raw, mode in entries])
+        with self.assertRaisesRegex(ValueError, 'checksum mismatch'):
+            materials.verify(self.output, self.commit)
+        self.rewrite(dependencies, lambda entries: [entry for entry in entries if entry[0] != path])
+        with self.assertRaisesRegex(ValueError, 'browser dependencies'):
+            materials.verify(self.output, self.commit)
 
     def test_missing_source_member_and_forged_git_object_are_rejected(self):
         self.build()

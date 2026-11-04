@@ -2,7 +2,7 @@
 
 Implementation reference for [M01](../../docs/development/modules/M01-offline-appliance.md) and [C01](../../docs/development/contracts/C01-storage-runtime.md). Product canon remains the roadmap and current user instructions. M01 is complete as a software provider; [deployment evidence](../../deploy/README.md) covers actual Debian installation, network provisioning and B/C lifecycle checks. Physical router/radio/phone acceptance remains G1.
 
-`bbsbox-node --config <node.json>` starts the M02 single writer with M03 identity and M04 event migrations, activates the node signer, and serves bundled status assets and local account sessions over TLS. Node identity survives restart. Recovery-marked storage stays blocked. The runtime keeps signing capability private. Public `/api/v1/node` reports format, name, node ID, software version and readiness.
+`bbsbox-node --config <node.json>` starts the M02 single writer with M03 identity and M04 event migrations, activates the node signer, and serves the bundled shell and local account sessions over TLS. Node identity survives restart. Recovery-marked storage stays blocked. The runtime keeps signing capability private. Public `/api/v1/node` reports format, name, node ID, software version and readiness.
 
 [The OpenAPI contract](../../protocol/http/node-runtime.openapi.json) describes public status and local account sessions.
 
@@ -21,7 +21,9 @@ sudo systemctl start bbsbox.service
 
 Setup is available only on an existing initialized node, uses its exclusive writer and succeeds once. Keep passwords out of shell arguments and history. Restart the service after setup or a failed setup attempt.
 
-`POST /api/v1/session` accepts the username and password in JSON. It sets the host-only session and CSRF cookies after commit. `GET` reads the current account. `PATCH` records activity and `DELETE` revokes the session. Both require the value of `__Host-bbsbox_csrf` in `X-BBSBOX-CSRF`. All three mutations require an `Origin` that exactly matches the addressed HTTPS origin. Node aliases share cooldown and boot state. Restart expires existing sessions. M05 will attach the landing and sign-in pages to these endpoints.
+The landing page at `/` links to `/login/`, `/account/` and `/status/`. The account page requires an active session. Its native sign-out form uses the same CSRF proof and storage transaction as the API. Landing and account pages use prerendered SvelteKit templates and a local stylesheet. They work with JavaScript disabled.
+
+`POST /api/v1/session` accepts the username and password in JSON. It sets the host-only session and CSRF cookies after commit. `GET` reads the current account. `PATCH` records activity and `DELETE` revokes the session. Both require the value of `__Host-bbsbox_csrf` in `X-BBSBOX-CSRF`. All three mutations require an `Origin` that exactly matches the addressed HTTPS origin. Node aliases share cooldown and boot state. Restart expires existing sessions.
 
 ## Local verification
 

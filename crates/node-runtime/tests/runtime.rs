@@ -300,6 +300,9 @@ async fn status_surface_uses_exact_authority_and_exposes_no_private_state_or_mut
     );
     for (path, mime) in [
         ("/", "text/html"),
+        ("/login/", "text/html"),
+        ("/status/", "text/html"),
+        ("/assets/shell.css", "text/css"),
         ("/assets/status.js", "text/javascript"),
         ("/assets/status.css", "text/css"),
     ] {

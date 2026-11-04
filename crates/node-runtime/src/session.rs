@@ -22,6 +22,8 @@ use std::{path::PathBuf, sync::Arc};
 use tokio::sync::Semaphore;
 use zeroize::Zeroizing;
 
+mod pages;
+
 #[derive(Clone)]
 pub(crate) struct RequestOrigin(pub String);
 
@@ -31,6 +33,7 @@ struct Sessions {
     database: PathBuf,
     writer: Handle,
     workers: Arc<Semaphore>,
+    node_name: Arc<str>,
 }
 
 pub(super) fn router(config: &crate::Config, writer: Handle) -> crate::Result<Router> {
@@ -45,12 +48,14 @@ pub(super) fn router(config: &crate::Config, writer: Handle) -> crate::Result<Ro
         database: config.database.clone(),
         writer,
         workers: Arc::new(Semaphore::new(2)),
+        node_name: Arc::from(config.name.as_str()),
     };
     Ok(Router::new()
         .route(
             "/api/v1/session",
             get(current).post(login).patch(refresh).delete(logout),
         )
+        .merge(pages::routes())
         .layer(DefaultBodyLimit::max(8192))
         .with_state(state))
 }
@@ -123,7 +128,7 @@ fn check_origin(headers: &HeaderMap, origin: &RequestOrigin) -> Result<(), Statu
     Ok(())
 }
 
-fn token(headers: &HeaderMap) -> Result<Zeroizing<String>, StatusCode> {
+fn cookie_header(headers: &HeaderMap) -> Result<Zeroizing<String>, StatusCode> {
     let mut cookies = Zeroizing::new(String::new());
     for value in headers.get_all(header::COOKIE) {
         let value = value.to_str().map_err(|_| StatusCode::UNAUTHORIZED)?;
@@ -133,15 +138,24 @@ fn token(headers: &HeaderMap) -> Result<Zeroizing<String>, StatusCode> {
         cookies.push_str(value);
         cookies.push(';');
     }
+    Ok(cookies)
+}
+
+fn token(headers: &HeaderMap) -> Result<Zeroizing<String>, StatusCode> {
+    let cookies = cookie_header(headers)?;
     let token = session_from_cookie_header(&cookies).map_err(failure)?;
     Ok(Zeroizing::new(token.to_owned()))
 }
 
-fn public_account(account: Account) -> Json<serde_json::Value> {
-    let role = match account.role {
+fn role_name(role: Role) -> &'static str {
+    match role {
         Role::Member => "member",
         Role::Sysop => "sysop",
-    };
+    }
+}
+
+fn public_account(account: Account) -> Json<serde_json::Value> {
+    let role = role_name(account.role);
     Json(
         serde_json::json!({"format":"bbsbox.local-session/v1","username":account.username,"role":role}),
     )
@@ -179,6 +193,19 @@ async fn login(
 ) -> Result<Response, StatusCode> {
     check_origin(&headers, &origin)?;
     let Json(credentials) = payload.map_err(|error| error.status())?;
+    let login = sign_in(state, origin, credentials).await?;
+    let [session, csrf] = login.cookie_headers().map(Zeroizing::new);
+    Ok(with_cookies(
+        public_account(login.account),
+        [&session, &csrf],
+    ))
+}
+
+async fn sign_in(
+    state: Sessions,
+    origin: RequestOrigin,
+    credentials: Credentials,
+) -> Result<Login, StatusCode> {
     let proof = state
         .read(move |auth, database| {
             let reader = bbsbox_storage::open_reader(database)?;
@@ -190,32 +217,30 @@ async fn login(
             )
         })
         .await?;
-    let login = state
+    state
         .write(move |auth, database| {
             database.write(Class::Control, 64 * 1024, |tx| {
                 auth.complete_login(tx, proof)
             })
         })
-        .await?;
-    let [session, csrf] = login.cookie_headers().map(Zeroizing::new);
-    Ok(with_cookies(
-        public_account(login.account),
-        [&session, &csrf],
-    ))
+        .await
 }
 
 async fn current(
     State(state): State<Sessions>,
     headers: HeaderMap,
 ) -> Result<impl IntoResponse, StatusCode> {
-    let token = token(&headers)?;
+    current_account(&state, &headers).await.map(public_account)
+}
+
+async fn current_account(state: &Sessions, headers: &HeaderMap) -> Result<Account, StatusCode> {
+    let token = token(headers)?;
     state
         .read(move |auth, database| {
             let reader = bbsbox_storage::open_reader(database)?;
             auth.authenticate(&reader, &token)
         })
         .await
-        .map(public_account)
 }
 
 async fn refresh(
@@ -223,7 +248,7 @@ async fn refresh(
     Extension(origin): Extension<RequestOrigin>,
     headers: HeaderMap,
 ) -> Result<StatusCode, StatusCode> {
-    change_session(state, origin, headers, false).await?;
+    change_api_session(state, origin, headers, false).await?;
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -232,14 +257,14 @@ async fn logout(
     Extension(origin): Extension<RequestOrigin>,
     headers: HeaderMap,
 ) -> Result<Response, StatusCode> {
-    change_session(state, origin, headers, true).await?;
+    change_api_session(state, origin, headers, true).await?;
     Ok(with_cookies(
         StatusCode::NO_CONTENT,
         Login::clear_cookie_headers(),
     ))
 }
 
-async fn change_session(
+async fn change_api_session(
     state: Sessions,
     origin: RequestOrigin,
     headers: HeaderMap,
@@ -251,6 +276,16 @@ async fn change_session(
         .filter(|value| value.len() == 64)
         .ok_or(StatusCode::FORBIDDEN)?;
     let csrf = Zeroizing::new(csrf.to_owned());
+    change_session(state, origin, token, csrf, logout).await
+}
+
+async fn change_session(
+    state: Sessions,
+    origin: RequestOrigin,
+    token: Zeroizing<String>,
+    csrf: Zeroizing<String>,
+    logout: bool,
+) -> Result<(), StatusCode> {
     state
         .write(move |auth, database| {
             database.write(Class::Control, 64 * 1024, |tx| {

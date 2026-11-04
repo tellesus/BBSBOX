@@ -21,6 +21,7 @@ bbsbox-mail = { path = "../mail" }
 bbsbox-profiles = { path = "../profiles" }
 bbsbox-social = { path = "../social" }
 bbsbox-gatherings = { path = "../gatherings" }
+bbsbox-groups = { path = "../groups" }
 bbsbox-credentials = { path = "../credentials" }
 tempfile = "3"
 zeroize = "1"

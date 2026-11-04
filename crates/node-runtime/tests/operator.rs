@@ -70,7 +70,7 @@ fn known_foundation_backup_can_recover_before_the_theme_migration() {
     previous.retain(|migration| {
         !matches!(
             migration.module,
-            "settings" | "discussions" | "mail" | "profiles" | "social" | "gatherings"
+            "settings" | "discussions" | "mail" | "profiles" | "social" | "gatherings" | "groups"
         )
     });
     let fixture = Fixture::with_registry(&previous);

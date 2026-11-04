@@ -13,6 +13,7 @@ const pages = [
   ['directory/index.html', 'directory.html', ['DIRECTORY_TITLE', 'DIRECTORY_CONTENT']],
   ['feeds/index.html', 'feeds.html', ['FEED_TITLE', 'FEED_CONTENT']],
   ['events/index.html', 'events.html', ['EVENTS_TITLE', 'EVENTS_CONTENT']],
+  ['groups/index.html', 'groups.html', ['GROUPS_TITLE', 'GROUPS_CONTENT']],
   ['unavailable/index.html', 'unavailable.html', ['PAGE_TITLE', 'PAGE_MESSAGE']]
 ];
 

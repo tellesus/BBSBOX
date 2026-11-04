@@ -1,8 +1,8 @@
 # M09 — Local clans and cohorts
 
-Version 1.1.0 · 2026-10-25 · Locked development baseline · Product baseline 0.6.0.
+Brief revision 1.1.1 · 2026-11-04 · Roadmap baseline 1.1.0 · Product baseline 0.6.0.
 
-**State:** Approved for implementation under U19; unstarted. Runtime and hardware evidence remains pending.
+**State:** In progress. A passes locally. Membership management is next.
 
 ## Read only this packet
 
@@ -23,9 +23,9 @@ Use a local group table with kind, home node, display data and membership record
 
 ## Ownership and interfaces
 
-Planned crates/groups/; local groups, memberships, invitations and group profile configuration. Foreign identifiers may appear in historical game records but cannot create local memberships.
+`crates/groups/` owns local groups, memberships, invitations and group profiles. A foreign identifier in a game record grants no local membership.
 
-Paths above are planned implementation locations, not existing code. Consume the contracts in the reading packet; changes to them need affected-consumer updates. A disabled optional module retains its data and does not break unrelated local services.
+Use the listed contracts. Disabling a module retains its data.
 
 ## Sequential work slices
 

@@ -170,7 +170,7 @@ def exercise(binary, state_root, host, isolated):
                         updated = response.read().decode()
                         assert 'Neighbors &lt;welcome&gt;' in updated and '&lt;text art&gt;' in updated
                         menu = updated.split('<nav aria-label="Main">', 1)[1].split('</nav>', 1)[0]
-                        assert re.findall(r'<a href="([^"]+)"', menu) == ['/status/', '/', '/account/', '/discussions/', '/mail/', '/directory/', '/feeds/', '/events/']
+                        assert re.findall(r'<a href="([^"]+)"', menu) == ['/status/', '/', '/account/', '/discussions/', '/mail/', '/directory/', '/feeds/', '/events/', '/groups/']
                     def discussion_proof(page):
                         return {key: re.search(r'name="'+key+r'" value="([0-9a-f]+)"', page).group(1) for key in ['csrf', 'request']}
                     def submit(path, fields):
@@ -562,6 +562,48 @@ def exercise(binary, state_root, host, isolated):
                     with request(event_path) as response:
                         attendee = response.read().decode()
                         assert '0 going, 1 maybe' in attendee and '<option value="maybe" selected>' not in attendee
+                    def group_proof(path):
+                        with request(path) as response:
+                            group_form = response.read().decode()
+                        return discussion_proof(group_form), group_form
+
+                    clan_fields = dict(kind='clan', name='Library <clan>', description='Bring *dice*.')
+                    clan = dict(group_proof('/groups/new/')[0], **clan_fields)
+                    with submit('/groups/new/', clan) as response:
+                        clan_path = urllib.parse.urlsplit(response.geturl()).path
+                        group = response.read()
+                        assert b'Library &lt;clan&gt;' in group and b'<em>dice</em>' in group
+                        assert 'href="/directory/other/">other</a> · Creator'.encode() in group
+                    with submit('/groups/new/', clan) as response:
+                        assert urllib.parse.urlsplit(response.geturl()).path == clan_path
+                    with submit('/groups/new/', dict(group_proof('/groups/new/')[0], kind='cohort', name='Coffee cohort', description='')) as response:
+                        cohort_path = urllib.parse.urlsplit(response.geturl()).path
+                    with request('/groups/?kind=cohort') as response:
+                        groups = response.read()
+                        assert cohort_path.encode() in groups and clan_path.encode() not in groups
+                    sign_out()
+                    sign_in('operator', password.decode())
+                    with request(clan_path) as response:
+                        public_group = response.read()
+                        assert b'Library &lt;clan&gt;' in public_group
+                        assert b'/directory/other/' not in public_group
+                    try:
+                        request(clan_path + 'edit/')
+                        raise AssertionError('An unrelated SysOp could edit a group')
+                    except urllib.error.HTTPError as error:
+                        assert error.code == 403
+                    sign_out()
+                    sign_in(other['username'], other['password'])
+                    proof, editor = group_proof(clan_path + 'edit/')
+                    revision = re.search(r'name="revision" value="([0-9]+)"', editor).group(1)
+                    with submit(clan_path + 'edit/', dict(proof, revision=revision, name='Library clan', description='', public_roster='on')) as response:
+                        assert b'Visible to all signed-in accounts.' in response.read()
+                    sign_out()
+                    sign_in(member['username'], member['password'])
+                    with request(clan_path) as response:
+                        assert b'/directory/other/' in response.read()
+                    with request(cohort_path) as response:
+                        assert b'/directory/other/' not in response.read()
                 # A new client without the local CA must fail certificate verification.
                 untrusted = urllib.request.build_opener(urllib.request.ProxyHandler({}), urllib.request.HTTPSHandler(context=ssl.create_default_context()))
                 try:
@@ -590,7 +632,7 @@ def exercise(binary, state_root, host, isolated):
                 text = trace.read_text(encoding='utf-8')
                 traces.append(audit.audit_trace(text))
                 (state_root/f'runtime-{"ipv6" if family == socket.AF_INET6 else "ipv4"}-{attempt}.trace').write_text(text, encoding='utf-8')
-        return dict(family='IPv6' if family == socket.AF_INET6 else 'IPv4', simultaneous_dual_stack=True, tls=True, untrusted_ca_rejected=True, local_assets=4, identity_preserved_after_restart=True, configured_alias_accepted=True, unexpected_authority_rejected=True, public_status_read_only=True, local_session_lifecycle=True, restart_invalidates_session=True, palette_preview_apply_reset=True, welcome_and_menu_settings=True, member_onboarding=True, unavailable_section_status=True, local_board_thread_reply=True, discussion_retry_and_csrf=True, discussion_edit_and_withdraw=True, local_mail_participants=True, directory_and_profile_privacy=True, chronological_followed_feed=True, mutual_local_friendship=True, local_gathering_revisions=True, recipient_addressed_invitations=True, local_calendar_rsvp_and_reminders=True, initialization_audit=initial_audit, network_audit=traces)
+        return dict(family='IPv6' if family == socket.AF_INET6 else 'IPv4', simultaneous_dual_stack=True, tls=True, untrusted_ca_rejected=True, local_assets=4, identity_preserved_after_restart=True, configured_alias_accepted=True, unexpected_authority_rejected=True, public_status_read_only=True, local_session_lifecycle=True, restart_invalidates_session=True, palette_preview_apply_reset=True, welcome_and_menu_settings=True, member_onboarding=True, unavailable_section_status=True, local_board_thread_reply=True, discussion_retry_and_csrf=True, discussion_edit_and_withdraw=True, local_mail_participants=True, directory_and_profile_privacy=True, chronological_followed_feed=True, mutual_local_friendship=True, local_gathering_revisions=True, recipient_addressed_invitations=True, local_calendar_rsvp_and_reminders=True, local_groups_and_roster_privacy=True, initialization_audit=initial_audit, network_audit=traces)
 
 
 def main():

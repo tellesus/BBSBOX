@@ -1,6 +1,6 @@
 # Development work ledger
 
-Version 1.1.0 · 2026-10-25 · Locked roadmap. M01–M07 and M12 software providers Complete. M00 and M08 In progress. Other modules Unstarted. Execution updated 2026-11-03.
+Version 1.1.0 · 2026-10-25 · Locked roadmap. M01–M07 and M12 software providers Complete. M00, M08 and M09 In progress. Other modules Unstarted. Execution updated 2026-11-04.
 
 Evidence log — not an independent source of scope authority. Current choices live in the canonical roadmap and user instructions.
 
@@ -18,7 +18,7 @@ Design review is complete and the first M00 prototype has real local implementat
 | [M06](modules/M06-boards-mail.md) | Approved | Complete | A–C: signed discussions and participant-restricted mail pass Debian CI 41769646693 | G1 device checks and later complaint integration |
 | [M07](modules/M07-directory-profiles.md) | Approved | Complete | A–C: directory, profile privacy and component hooks pass signed Debian CI 41770621736 | Bind live providers in their owning modules |
 | [M08](modules/M08-friends-events.md) | Approved | In progress | A–C: feed, friendship, events, invitations and calendar pass local HTTPS | Confirm full signed Debian run |
-| [M09](modules/M09-clans-cohorts.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
+| [M09](modules/M09-clans-cohorts.md) | Approved | In progress | A: clans, cohorts and roster privacy pass local HTTPS | Add invitation, membership and handover flows |
 | [M10](modules/M10-local-files.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
 | [M11](modules/M11-local-games.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
 | [M13](modules/M13-encrypted-forums.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
@@ -590,3 +590,9 @@ IPv4 and IPv6 HTTPS verify rollback of an invalid recipient batch, deduplication
 Gatherings migration 3 adds signed RSVP choices per event and account, last recorded aggregate counts, and private reminder preferences. A stale RSVP cannot replace a newer choice. Cancellation retains the last recorded totals and closes attendance changes. The calendar is an upcoming agenda with a personal due section. Reminders are evaluated when the calendar opens, against the current event time. Moving an event moves its reminder. Cancelled events have no due reminder.
 
 Local IPv4 and IPv6 HTTPS exercise signed response revisions, duplicate and stale forms, due reminders after sign-in, privacy between accounts, and rescheduling. Signed Debian confirmation is pending. M09 starts with local clan and cohort membership.
+
+## 2026-11-04 — M09 A: clan and cohort profiles
+
+Groups migration 1 creates node-bound clans and cohorts with stable local links and directory filters. A creator joins with management authority. A manager can edit the profile and make its roster visible to other signed-in accounts. The default roster is members-only. The directory and group descriptions are available to signed-in local accounts.
+
+IPv4 and IPv6 HTTPS create both types, verify duplicate submission, change roster visibility and refuse an unrelated SysOp's editor request. The provider fixture refuses lookups under a foreign node ID, confirms the default roster filtering and refuses a stale settings edit. B adds invitation acceptance and management handover. Signed Debian confirmation is pending.

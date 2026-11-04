@@ -32,6 +32,7 @@ mod accounts;
 mod discussions;
 pub(super) mod feeds;
 pub(super) mod gatherings;
+mod groups;
 mod mail;
 mod profiles;
 mod site;
@@ -51,6 +52,7 @@ pub(super) fn routes() -> Router<Sessions> {
         .merge(discussions::routes())
         .merge(feeds::routes())
         .merge(gatherings::routes())
+        .merge(groups::routes())
         .merge(mail::routes())
         .merge(profiles::routes())
         .merge(site::routes())
@@ -82,6 +84,7 @@ fn template(state: &Sessions, mut source: &str, slots: &[(&str, &str)]) -> Strin
             body.push_str("<a href=\"/directory/\">Directory</a>");
             body.push_str("<a href=\"/feeds/\">Feed</a>");
             body.push_str("<a href=\"/events/\">Events</a>");
+            body.push_str("<a href=\"/groups/\">Groups</a>");
         } else {
             body.push_str(
                 slots

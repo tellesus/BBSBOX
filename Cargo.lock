@@ -327,6 +327,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "bbsbox-groups"
+version = "0.1.0"
+dependencies = [
+ "bbsbox-credentials",
+ "bbsbox-identity",
+ "bbsbox-storage",
+ "hex",
+ "rand_core",
+ "rusqlite",
+]
+
+[[package]]
 name = "bbsbox-identity"
 version = "0.1.0"
 dependencies = [
@@ -397,6 +409,7 @@ dependencies = [
  "bbsbox-event-codec",
  "bbsbox-event-core",
  "bbsbox-gatherings",
+ "bbsbox-groups",
  "bbsbox-identity",
  "bbsbox-mail",
  "bbsbox-maintenance",

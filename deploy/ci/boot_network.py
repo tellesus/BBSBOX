@@ -22,18 +22,22 @@ ROOT = Path(__file__).resolve().parents[2]
 def run(*args): return subprocess.run(args, check=True, capture_output=True, timeout=10)
 
 
-def fetch(root, hostname, address, with_fingerprint=False, expected_status=200):
+def request(root, hostname, address, path, cookie=None):
     context = ssl.create_default_context(cafile=str(root/'etc/bbsbox/tls/ca.pem'))
     with socket.create_connection((address,8443),timeout=2) as plain:
         with context.wrap_socket(plain,server_hostname=hostname) as secure:
             fingerprint=hashlib.sha256(secure.getpeercert(binary_form=True)).hexdigest()
-            secure.sendall(f'GET /api/v1/node HTTP/1.1\r\nHost: {hostname}:8443\r\nConnection: close\r\n\r\n'.encode())
+            cookie_header = f'Cookie: {cookie}\r\n' if cookie else ''
+            secure.sendall(f'GET {path} HTTP/1.1\r\nHost: {hostname}:8443\r\n{cookie_header}Connection: close\r\n\r\n'.encode())
             response = http.client.HTTPResponse(secure); response.begin()
-            assert response.status == expected_status
-            if expected_status != 200:
-                return fingerprint
-            info=json.loads(response.read(8192))
-            return (info,fingerprint) if with_fingerprint else info
+            return response.status, response.read(8192), response.headers, fingerprint
+
+
+def fetch(root, hostname, address, with_fingerprint=False):
+    status, body, _, fingerprint = request(root,hostname,address,'/api/v1/node')
+    assert status==200
+    info = json.loads(body)
+    return (info,fingerprint) if with_fingerprint else info
 
 
 def exercise(root, output):
@@ -44,6 +48,7 @@ def exercise(root, output):
     installed = json.loads((root/'etc/bbsbox/installation.json').read_text())
     profile = json.loads((root/'etc/bbsbox/network/profile.json').read_text())
     game_host = installed['hostname'].replace('bbsbox-', 'bbsbox-game-', 1) if profile.get('prepare_game_host') else None
+    game_enabled = bool(json.loads((root/'etc/bbsbox/node.json').read_text()).get('game_origin'))
     if installed['format'] not in ('bbsbox.development-install/v1','bbsbox.install/v1') or profile['interfaces']!=[dict(name='bbs-client',role='client',addresses=['192.168.50.1/24','fd42:bb50::1/64'])]:
         raise RuntimeError('Use only the known local client fixture, without peers')
     output.mkdir(parents=True,exist_ok=False); cases=[]
@@ -93,7 +98,14 @@ def exercise(root, output):
                     if game_host:
                         _,code,count=query(address,game_host,version)
                         assert code==0 and count
-                        assert fetch(root,game_host,address,expected_status=421)==fetch(root,installed['hostname'],address,True)[1]
+                        status,body,headers,leaf = request(root,game_host,address,'/')
+                        assert leaf==fetch(root,installed['hostname'],address,True)[1]
+                        if game_enabled:
+                            assert status==200 and b'Dungeon demo' in body and 'Set-Cookie' not in headers
+                            assert request(root,game_host,address,'/account/')[0]==404
+                            assert request(root,game_host,address,'/','__Host-bbsbox_session=fixture')[0]==403
+                        else:
+                            assert status==421
                     _,code,count=query(address,'unconfigured.example',version); assert code==3 and count==0
                 for unit in ['bbsbox-boundary.service','bbsbox-dns.service','systemd-networkd.service']:
                     assert service.enter(pid,root,['/usr/bin/systemctl','is-active',unit]).stdout.strip()==b'active'
@@ -138,7 +150,7 @@ def exercise(root, output):
         if process.returncode: raise RuntimeError('Prepared network OS shutdown failed')
         assert capture.report['status']=='passed',capture.report
         cases[-1]['boot_packet_capture']=capture.report
-    report=dict(status='passed',cases=cases,local_leaf_renewal_and_restart_verified=True,prepared_game_alias_verified=bool(game_host),complete_boot_link_capture=True,scope='Actual Debian userspace/systemd with simulated local link; physical router/radio/phone acceptance remains separate')
+    report=dict(status='passed',cases=cases,local_leaf_renewal_and_restart_verified=True,prepared_game_alias_verified=bool(game_host),isolated_game_origin_served=game_enabled,complete_boot_link_capture=True,scope='Actual Debian userspace/systemd with simulated local link; physical router/radio/phone acceptance remains separate')
     (output/'evidence.json').write_text(json.dumps(report,indent=2)+'\n'); print(json.dumps(report,indent=2))
 
 

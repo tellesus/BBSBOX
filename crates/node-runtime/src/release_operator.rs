@@ -303,6 +303,13 @@ pub fn check_installed_node(
     database: &Path,
     installation: &Path,
 ) -> Result<bbsbox_credentials::NodeId> {
+    Ok(check_registration(database, installation)?.0)
+}
+
+pub(super) fn check_registration(
+    database: &Path,
+    installation: &Path,
+) -> Result<(bbsbox_credentials::NodeId, bool)> {
     for path in [database, installation] {
         let metadata = fs::symlink_metadata(path)?;
         if !metadata.is_file() || metadata.file_type().is_symlink() {
@@ -327,7 +334,7 @@ pub fn check_installed_node(
     if bbsbox_identity::node::NodeSigner::inspect_existing(database)? != expected {
         return Err("installed node identity differs from its saved registration".into());
     }
-    Ok(expected)
+    Ok((expected, installed["format"] == "bbsbox.install/v1"))
 }
 
 fn serialized_boot() -> Result<serde_json::Value> {
@@ -422,9 +429,6 @@ fn installed_boot() -> Result<serde_json::Value> {
         protected(&configuration.join("installation.json"), false)?;
         protected(&configuration.join("node.json"), false)?;
         let config = crate::Config::read(&configuration.join("node.json"))?;
-        if config.game_origin.is_some() {
-            return Err("game service requires the isolated appliance worker".into());
-        }
         if config.database != Path::new("/var/lib/bbsbox/node.sqlite") {
             return Err("installed node storage differs from the fixed appliance layout".into());
         }
@@ -445,6 +449,50 @@ fn installed_boot() -> Result<serde_json::Value> {
             .as_str()
             .ok_or("installed node identity is missing")?
             .parse()?;
+        if let Some(origin) = &config.game_origin {
+            let node_id = hex::encode(node.bytes());
+            let expected = format!(
+                "https://bbsbox-game-{}.home.arpa:{}",
+                &node_id[..16],
+                config.bind.port()
+            );
+            if origin != &expected {
+                return Err("game origin must use the prepared appliance hostname".into());
+            }
+            let network = configuration.join("network");
+            protected(&network, true)?;
+            let origins = network.join("origins.json");
+            protected(&origins, false)?;
+            if fs::metadata(&origins)?.len() > 65536 {
+                return Err("prepared network origins exceed their bound".into());
+            }
+            let prepared: serde_json::Value =
+                serde_json::from_reader(File::open(origins)?.take(65537))?;
+            if prepared["game_origin"].as_str() != Some(origin.as_str()) {
+                return Err("game origin differs from the offline network preparation".into());
+            }
+            protected(&worker, false)?;
+            let units = Path::new("/etc/systemd/system");
+            protected(units, true)?;
+            for (asset, unit) in [
+                ("game-worker.socket", "bbsbox-game-worker.socket"),
+                (
+                    "game-worker-template.service",
+                    "bbsbox-game-worker@.service",
+                ),
+            ] {
+                let asset = selected.join(asset);
+                let installed_unit = units.join(unit);
+                protected(&asset, false)?;
+                protected(&installed_unit, false)?;
+                if fs::metadata(&asset)?.len() > 16384
+                    || fs::metadata(&installed_unit)?.len() > 16384
+                    || fs::read(asset)? != fs::read(installed_unit)?
+                {
+                    return Err("installed game worker units differ from the signed release".into());
+                }
+            }
+        }
         Ok(
             serde_json::json!({"format":"bbsbox.release-boot-check/v1","selection":active,"expected_node":node.to_string()}),
         )

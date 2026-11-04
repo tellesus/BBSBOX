@@ -64,13 +64,14 @@ pub async fn run(
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => false,
         Err(error) => return Err(error.into()),
     };
-    let expected = match present {
-        true => Some(crate::release_operator::check_installed_node(
+    let registration = match present {
+        true => Some(crate::release_operator::check_registration(
             &config.database,
             &installation,
         )?),
         false => None,
     };
+    let expected = registration.map(|(node, _)| node);
     if bootstrap {
         let username = bbsbox_identity::normalize_username(args[3].to_str().unwrap_or_default())?;
         let account = tokio::task::spawn_blocking(move || {
@@ -138,8 +139,23 @@ pub async fn run(
         );
         runtime.shutdown().await
     } else {
-        match expected {
-            Some(node) => crate::serve_existing_with_registry(config, registry, node).await,
+        match registration {
+            Some((node, true)) if config.game_origin.is_some() => {
+                let parent = installation
+                    .parent()
+                    .ok_or("missing appliance configuration directory")?;
+                if !crate::games::is_appliance_layout(parent, &config.database) {
+                    return Err("game worker requires the signed appliance layout".into());
+                }
+                crate::serve_existing_with_game_backend(
+                    config,
+                    registry,
+                    node,
+                    crate::games::Backend::Appliance,
+                )
+                .await
+            }
+            Some((node, _)) => crate::serve_existing_with_registry(config, registry, node).await,
             None => crate::serve_with_registry(config, registry).await,
         }
     }

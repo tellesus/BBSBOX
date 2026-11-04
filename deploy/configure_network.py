@@ -6,6 +6,7 @@ import os
 import re
 from pathlib import Path
 import shutil
+import stat
 import subprocess
 from urllib.parse import urlsplit
 
@@ -83,15 +84,44 @@ def dns_account(root):
         raise ValueError('Existing DNS account does not match the dedicated unprivileged service')
 
 
-def configure(root, profile):
+def check_game_preparation(root, installed, profile):
+    release_id = installed.get('release_id', '')
+    if (installed['format'] != 'bbsbox.install/v1' or not re.fullmatch(r'[0-9a-f]{64}', release_id)
+            or not network_profile.game_origin(profile)):
+        raise ValueError('Game enablement requires the fresh signed installation and a prepared game hostname')
+    selected = '/opt/bbsbox/releases/'+release_id
+    if os.readlink(target(root,'opt/bbsbox/current')) != selected:
+        raise ValueError('Game enablement requires the selected signed game package')
+    maintenance = root/'var/lib/bbsbox-maintenance'
+    tickets = [path for path in (maintenance/'first-install.json',maintenance/'first-restore.json') if path.is_file()]
+    if len(tickets)!=1 or enrollment.read_json(tickets[0]).get('release_id')!=release_id:
+        raise ValueError('Game enablement requires a fresh signed installation or recovery')
+    for asset,unit in [('game-worker.socket','bbsbox-game-worker.socket'),('game-worker-template.service','bbsbox-game-worker@.service')]:
+        bundle=target(root,selected.lstrip('/')+'/'+asset)
+        installed_unit=target(root,'etc/systemd/system/'+unit)
+        for path in [bundle,installed_unit]:
+            metadata=path.lstat()
+            if not stat.S_ISREG(metadata.st_mode) or metadata.st_uid!=0 or metadata.st_mode&0o022 or metadata.st_size>16384:
+                raise ValueError('Expected a protected signed worker unit')
+        if bundle.read_bytes()!=installed_unit.read_bytes():
+            raise ValueError('Installed game worker unit differs from the selected package')
+
+
+def configure(root, profile, enable_game=False):
     if os.name != 'posix' or os.geteuid() != 0: raise ValueError('Prepare an inactive Debian OS tree as root')
     root, installed, config, profile = preflight(root, profile)
+    if enable_game:
+        check_game_preparation(root,installed,profile)
     config_path = root/'etc/bbsbox/node.json'; gid = config_path.stat().st_gid
     marker = write_new(root, 'etc/bbsbox/.network-prepare-incomplete', b'Network preparation must finish before boot.\n', 0o600)
     dns_account(root)
     # This guard remains if preparation is interrupted. Local services cannot start
     # with an incomplete mix of configuration/certificate/network files.
-    write_new(root, 'etc/systemd/system/bbsbox.service.d/30-local-network.conf', b'[Unit]\nConditionPathExists=!/etc/bbsbox/.network-prepare-incomplete\nRequires=bbsbox-boundary.service\nAfter=bbsbox-boundary.service systemd-networkd.service\nStartLimitIntervalSec=0\n')
+    dependency = ' bbsbox-game-worker.socket' if enable_game else ''
+    unit = ('[Unit]\nConditionPathExists=!/etc/bbsbox/.network-prepare-incomplete\n'
+            f'Requires=bbsbox-boundary.service{dependency}\n'
+            f'After=bbsbox-boundary.service systemd-networkd.service{dependency}\nStartLimitIntervalSec=0\n')
+    write_new(root, 'etc/systemd/system/bbsbox.service.d/30-local-network.conf', unit.encode())
     files = network_profile.render(profile)
     for name, content in files.items(): write_new(root, 'etc/bbsbox/network/'+name, content.encode())
     for name, content in files.items():
@@ -111,6 +141,8 @@ def configure(root, profile):
     hosts = [address.split('/')[0] for interface in profile['interfaces'] for address in interface['addresses']]
     if game:
         hosts.append(urlsplit(game).hostname)
+    if enable_game:
+        addresses['game_origin'] = game
     leaf = local_tls.issue(root/'etc/bbsbox/tls/ca.pem', root/'etc/bbsbox/tls/ca-key.pem', [profile['hostname'], *hosts], root/'etc/bbsbox/network')
     write_new(root, 'etc/bbsbox/network/tls/server.pem', leaf['certificate'], 0o644, gid)
     write_new(root, 'etc/bbsbox/network/tls/server-key.pem', leaf['key'], 0o640, gid)
@@ -131,12 +163,12 @@ def configure(root, profile):
         destination.symlink_to(source)
     prepared.replace(config_path)
     marker.unlink()
-    return dict(format='bbsbox.development-network-install/v1', node_id=installed['node_id'], hostname=profile['hostname'], ca_sha256=installed['ca_sha256'], activated=False, next_boot=True)
+    return dict(format='bbsbox.development-network-install/v1', node_id=installed['node_id'], hostname=profile['hostname'], ca_sha256=installed['ca_sha256'], activated=False, next_boot=True, game_enabled=enable_game)
 
 
 def main():
-    parser = argparse.ArgumentParser(description=__doc__); parser.add_argument('--root', type=Path, required=True); parser.add_argument('--profile', type=Path, required=True); parser.add_argument('--development', action='store_true', required=True); args = parser.parse_args()
-    print(json.dumps(configure(args.root, enrollment.read_json(args.profile)), indent=2))
+    parser = argparse.ArgumentParser(description=__doc__); parser.add_argument('--root', type=Path, required=True); parser.add_argument('--profile', type=Path, required=True); parser.add_argument('--development', action='store_true', required=True); parser.add_argument('--enable-game', action='store_true'); args = parser.parse_args()
+    print(json.dumps(configure(args.root, enrollment.read_json(args.profile), args.enable_game), indent=2))
 
 
 if __name__ == '__main__': main()

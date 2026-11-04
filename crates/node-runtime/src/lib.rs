@@ -234,19 +234,26 @@ impl Runtime {
         Self::start_with_registry(config, migrations()).await
     }
     pub async fn start_with_registry(config: &Config, registry: Vec<Migration>) -> Result<Self> {
-        Self::start_expected(config, registry, None).await
+        Self::start_expected(config, registry, None, games::Backend::Development).await
     }
     pub async fn start_existing_with_registry(
         config: &Config,
         registry: Vec<Migration>,
         expected: bbsbox_credentials::NodeId,
     ) -> Result<Self> {
-        Self::start_expected(config, registry, Some(expected)).await
+        Self::start_expected(
+            config,
+            registry,
+            Some(expected),
+            games::Backend::Development,
+        )
+        .await
     }
     async fn start_expected(
         config: &Config,
         registry: Vec<Migration>,
         expected: Option<bbsbox_credentials::NodeId>,
+        game_backend: games::Backend,
     ) -> Result<Self> {
         config.validate()?;
         if let Some(node) = expected
@@ -283,8 +290,10 @@ impl Runtime {
             let database = config.database.clone();
             let node = signer.id();
             Some(Arc::new(
-                tokio::task::spawn_blocking(move || games::Service::start(origin, database, node))
-                    .await??,
+                tokio::task::spawn_blocking(move || {
+                    games::Service::start(origin, database, node, game_backend)
+                })
+                .await??,
             ))
         } else {
             None
@@ -436,6 +445,15 @@ pub async fn serve_existing_with_registry(
     registry: Vec<Migration>,
     expected: bbsbox_credentials::NodeId,
 ) -> Result<()> {
+    serve_existing_with_game_backend(config, registry, expected, games::Backend::Development).await
+}
+
+async fn serve_existing_with_game_backend(
+    config: Config,
+    registry: Vec<Migration>,
+    expected: bbsbox_credentials::NodeId,
+    game_backend: games::Backend,
+) -> Result<()> {
     config.validate()?;
     rustls::crypto::ring::default_provider()
         .install_default()
@@ -456,7 +474,7 @@ pub async fn serve_existing_with_registry(
         prepared.push(axum_server::from_tcp_rustls(listener, tls.clone())?.handle(handle.clone()));
         handles.push(handle);
     }
-    let runtime = Runtime::start_existing_with_registry(&config, registry, expected).await?;
+    let runtime = Runtime::start_expected(&config, registry, Some(expected), game_backend).await?;
     let router = app(&config, &runtime)?;
     let mut servers = tokio::task::JoinSet::new();
     for server in prepared {

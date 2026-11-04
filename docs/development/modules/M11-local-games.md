@@ -1,8 +1,8 @@
 # M11 — Game host and local multiplayer example
 
-Brief revision 1.1.12 · Roadmap baseline 1.1.0 · 2026-11-04 · Locked scope · Product baseline 0.6.0.
+Brief revision 1.1.13 · Roadmap baseline 1.1.0 · 2026-11-04 · Locked scope · Product baseline 0.6.0.
 
-**State:** In progress. Development browser and isolated game-node restore pass. Debian confirms signed worker packaging and a separate worker account. Installer-managed worker units, appliance enablement and recovery activation are the remaining appliance work.
+**State:** In progress. Development browser and isolated game-node restore pass. Debian confirms the isolated worker. Fresh appliance enablement awaits Linux confirmation. Game-aware installed updates and recovery activation remain pending.
 
 ## Read only this packet
 
@@ -27,7 +27,7 @@ Use locally installed HTML/TypeScript game assets and an isolated worker with JS
 
 The offline release build signs the bundled worker and both of its service files. The fresh installer provisions a dedicated worker account and installs the verified service files inactive. The signed service requires appliance enablement before it accepts a game origin.
 
-The offline network preparer can reserve `bbsbox-game-<node suffix>.home.arpa` in local DNS and the node certificate. The prepared alias becomes a game endpoint when the isolated appliance service is enabled.
+The offline network preparer can reserve `bbsbox-game-<node suffix>.home.arpa` in local DNS and the node certificate. An explicit `--enable-game` during fresh signed network preparation connects that hostname to the isolated worker socket at the next boot.
 
 `backup-game-node` captures the stopped node through M12's [game-node snapshot provider](../../../crates/maintenance/README.md#game-node-snapshot-profile). The signed appliance provider uses the separate worker account and socket for an existing save. `restore-game-node` verifies and stages a matching demo checkpoint for recovery. Foundation backup refuses retained game state. Appliance enablement and activation of restored game state remain pending.
 

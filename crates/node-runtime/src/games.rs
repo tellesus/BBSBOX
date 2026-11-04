@@ -32,6 +32,12 @@ const CSS: &str = include_str!("../../../games/demo/assets/game.css");
 const GAME_ID: &str = "dungeon-demo";
 pub(super) const APPLIANCE_STATE: &str = "/var/lib/bbsbox-game";
 
+#[derive(Clone, Copy)]
+pub(super) enum Backend {
+    Development,
+    Appliance,
+}
+
 pub(super) fn is_appliance_layout(config: &Path, database: &Path) -> bool {
     cfg!(target_os = "linux")
         && config == Path::new("/etc/bbsbox")
@@ -85,17 +91,58 @@ pub(super) fn appliance_checkpoint(manifest: &Manifest) -> crate::Result<(PathBu
                 return Err("unexpected appliance game state entry".into());
             }
         }
-        let worker = Worker::connect(
-            Path::new("/run/bbsbox-game/worker.sock"),
-            manifest,
-            Duration::from_secs(3),
-        )?;
+        let worker = connect_appliance(manifest)?;
         Ok((root, worker))
     }
     #[cfg(not(target_os = "linux"))]
     {
         let _ = manifest;
         Err("appliance game checkpoints require Debian".into())
+    }
+}
+
+fn connect_appliance(manifest: &Manifest) -> crate::Result<Worker> {
+    #[cfg(target_os = "linux")]
+    {
+        use std::os::unix::fs::{FileTypeExt, MetadataExt};
+        let directory = Path::new("/run/bbsbox-game");
+        let metadata = std::fs::symlink_metadata(directory)?;
+        if !metadata.file_type().is_dir() || metadata.uid() != 0 || metadata.mode() & 0o022 != 0 {
+            return Err("expected the protected appliance game socket directory".into());
+        }
+        let socket = directory.join("worker.sock");
+        let metadata = std::fs::symlink_metadata(&socket)?;
+        if !metadata.file_type().is_socket()
+            || metadata.uid() == 0
+            || metadata.mode() & 0o777 != 0o600
+        {
+            return Err("expected the protected appliance game socket".into());
+        }
+        let deadline = std::time::Instant::now() + Duration::from_secs(3);
+        loop {
+            let remaining = deadline.saturating_duration_since(std::time::Instant::now());
+            match Worker::connect(&socket, manifest, remaining) {
+                Err(error)
+                    if remaining > Duration::from_millis(50)
+                        && matches!(
+                            error.kind(),
+                            std::io::ErrorKind::ConnectionReset
+                                | std::io::ErrorKind::ConnectionRefused
+                                | std::io::ErrorKind::BrokenPipe
+                                | std::io::ErrorKind::UnexpectedEof
+                                | std::io::ErrorKind::WouldBlock
+                        ) =>
+                {
+                    std::thread::sleep(Duration::from_millis(50));
+                }
+                result => return Ok(result?),
+            }
+        }
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = manifest;
+        Err("appliance game connections require Debian".into())
     }
 }
 
@@ -211,9 +258,17 @@ fn check_authority(database: &Path, scope: &Scope) -> Result<(), StatusCode> {
 }
 
 impl Service {
-    pub fn start(origin: String, database: PathBuf, node: NodeId) -> crate::Result<Self> {
+    pub fn start(
+        origin: String,
+        database: PathBuf,
+        node: NodeId,
+        backend: Backend,
+    ) -> crate::Result<Self> {
         let manifest = bundled_manifest()?;
-        let (_, worker) = bundled_worker(&database, &manifest, true)?;
+        let worker = match backend {
+            Backend::Development => bundled_worker(&database, &manifest, true)?.1,
+            Backend::Appliance => connect_appliance(&manifest)?,
+        };
         Ok(Self {
             origin,
             database,

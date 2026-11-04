@@ -50,5 +50,15 @@ class InactiveTreeTests(unittest.TestCase):
             (self.root/'etc/group').write_text('bbsbox-dns:x:12:\n',encoding='utf-8')
             with self.assertRaises(ValueError):configure_network.dns_account(self.root)
 
+    def test_game_enablement_requires_a_signed_installation_and_opt_in(self):
+        self.profile.update(hostname=self.node['hostname'],prepare_game_host=True)
+        with self.assertRaisesRegex(ValueError,'fresh signed installation'):
+            configure_network.check_game_preparation(self.root,self.node,self.profile)
+        self.profile['prepare_game_host']=False
+        signed=dict(self.node,format='bbsbox.install/v1',release_id='1'*64)
+        with self.assertRaisesRegex(ValueError,'prepared game hostname'):
+            configure_network.check_game_preparation(self.root,signed,self.profile)
+        self.assertFalse((self.config/'.network-prepare-incomplete').exists())
+
 
 if __name__=='__main__':unittest.main()

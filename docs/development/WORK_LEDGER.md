@@ -656,3 +656,7 @@ The appliance socket worker separates gameplay and maintenance using the connect
 ## 2026-11-04 — M11 signed worker unit installation
 
 [Signed worker packaging](https://github.com/tellesus/BBSBOX/actions/runs/41887083293) passed all four Linux jobs and reached `main`. The signed boot exercise also ran the worker under a separate account through a local socket. The fresh installer now stages both game units from the same signed release and checks the dedicated account before publishing them inactive. Old bundles without game units still verify. Partial packages and previous game state or unit overrides fail preflight. The Debian fixture now uses the installed signed unit files. Confirmation of this installer change is pending.
+
+## 2026-11-04 — M11 fresh appliance game enablement
+
+`--enable-game` requires a fresh signed release, matching installed worker units and an opt-in game hostname. The offline preparer makes the socket a boot dependency and writes the game origin in the same guarded preparation as DNS and TLS. The signed boot check verifies the alias and installed unit bytes. The signed runtime connects to the protected worker socket, while development continues to use a child process. Portable runtime and network checks pass. The containing Debian run checks IPv4 and IPv6, core-route and cookie separation, renewal and restart. Installed game recovery and updates are still pending.

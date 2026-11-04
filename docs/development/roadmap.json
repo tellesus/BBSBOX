@@ -374,7 +374,7 @@
         "T10"
       ],
       "gate": "G1",
-      "execution_status": "unstarted"
+      "execution_status": "in_progress"
     },
     {
       "id": "M12",
@@ -1118,5 +1118,5 @@
       "scope": "Desktop/core and isolated-runtime evidence; G1/G2 device, appliance and private-client acceptance remain open"
     }
   },
-  "execution_revision": "1.1.11"
+  "execution_revision": "1.1.12"
 }

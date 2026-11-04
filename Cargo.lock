@@ -260,6 +260,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "bbsbox-demo-worker"
+version = "0.1.0"
+dependencies = [
+ "bbsbox-game-host",
+ "bbsbox-maintenance",
+ "hex",
+ "rusqlite",
+ "serde_json",
+ "tempfile",
+]
+
+[[package]]
 name = "bbsbox-discussions"
 version = "0.1.0"
 dependencies = [
@@ -318,6 +330,23 @@ dependencies = [
  "hex",
  "rand_core",
  "rusqlite",
+]
+
+[[package]]
+name = "bbsbox-game-host"
+version = "0.1.0"
+dependencies = [
+ "bbsbox-credentials",
+ "bbsbox-identity",
+ "bbsbox-maintenance",
+ "bbsbox-storage",
+ "hex",
+ "rand_core",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "zeroize",
 ]
 
 [[package]]

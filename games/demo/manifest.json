@@ -1,0 +1,9 @@
+{
+  "game_id": "dungeon-demo",
+  "worker_version": "0.1.0",
+  "state_schema": 1,
+  "passport_schemas": [],
+  "launch_entry": "index.html",
+  "mode": "turn-based-pair",
+  "profile_components": []
+}

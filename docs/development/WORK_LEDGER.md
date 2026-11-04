@@ -1,6 +1,6 @@
 # Development work ledger
 
-Version 1.1.0 · 2026-10-25 · Locked roadmap. M01–M08 and M12 software providers Complete. M00, M09 and M10 In progress. Other modules Unstarted. Execution updated 2026-11-04.
+Version 1.1.0 · 2026-10-25 · Locked roadmap. M01–M08 and M12 software providers Complete. M00 and M09–M11 In progress. Other modules Unstarted. Execution updated 2026-11-04.
 
 Evidence log — not an independent source of scope authority. Current choices live in the canonical roadmap and user instructions.
 
@@ -20,7 +20,7 @@ Design review is complete and the first M00 prototype has real local implementat
 | [M08](modules/M08-friends-events.md) | Approved | Complete | A–C: local feeds, friendships, events, invitations and calendar pass signed Debian CI 41808835341 | Promote verified commit when GitHub branch update succeeds |
 | [M09](modules/M09-clans-cohorts.md) | Approved | In progress | A–C: roster privacy, invitations, handover and game membership lookup pass locally | Confirm signed Debian. Bind games in M11/M18 |
 | [M10](modules/M10-local-files.md) | Approved | In progress | A–C: local permissions, streaming, quota and restore tests pass | Confirm signed Debian. M15/M16 own actual exchange tests |
-| [M11](modules/M11-local-games.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
+| [M11](modules/M11-local-games.md) | Approved | In progress | Game launch tickets, child worker, retry/restart and real checkpoint pass local fixtures | Integrate verified browser origin, installation and game-node backup |
 | [M13](modules/M13-encrypted-forums.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
 | [M14](modules/M14-complaints-moderation.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
 | [M15](modules/M15-selected-federation.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
@@ -610,3 +610,9 @@ Local IPv4 and IPv6 HTTPS check member consent, a private roster before acceptan
 Files migration 1 adds area permissions, quota accounting and local file entries. The browser streams uploads to a private disk spool. The storage writer rechecks access, verifies the staged bytes and publishes the file entry, blob reference and retry receipt in one transaction. Downloads require current area access and use attachment headers. Owners and SysOps can remove permitted files. Cleanup follows the reference and recovery rules in C01.
 
 Local IPv4 and IPv6 HTTPS verify member upload/download permission, denial for a SysOp-only area, interrupted multipart submission, duplicate upload, quota refusal, a UTF-8 attachment filename and removal. Storage tests verify rollback and orphan cleanup. Encrypted restore preserves the bytes and area permissions. The local event inventory contains no file-library events. M15/M16 own real exchange exclusion tests. Signed Debian confirmation is pending.
+
+## 2026-11-04 — M11 A: game launch, worker and checkpoint fixtures
+
+The first-party demo manifest binds its game ID, version, state schema and entry asset. A one-time two-minute launch ticket exchanges for a 15-minute game-scoped session. The worker identity is derived per node, game and local account. The registry keeps token hashes and checks expiry against the monotonic clock.
+
+The demo runs as a separate child process with bounded, correlated JSON messages and a locked SQLite database. Local fixtures fill two player seats, refuse a third, apply one action once across retries and restart, and verify the exact pause/checkpoint/resume fence through M12's checkpoint coordinator. A second worker resumes from the copied SQLite checkpoint. Browser origin separation, signed installation, appliance isolation, profile and group bindings, and full game-node backup commands remain open. The shipped node serves no game launch route yet.

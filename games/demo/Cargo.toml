@@ -1,0 +1,16 @@
+[package]
+name = "bbsbox-demo-worker"
+version = "0.1.0"
+edition = "2024"
+license = "AGPL-3.0-or-later"
+publish = false
+
+[dependencies]
+bbsbox-game-host = { path = "../../crates/game-host" }
+hex = "0.4"
+rusqlite = { version = "0.41", features = ["bundled", "backup"] }
+serde_json = "1"
+tempfile = "3"
+
+[dev-dependencies]
+bbsbox-maintenance = { path = "../../crates/maintenance" }

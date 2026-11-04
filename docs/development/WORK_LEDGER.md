@@ -16,7 +16,7 @@ Design review is complete and the first M00 prototype has real local implementat
 | [M12](modules/M12-maintenance-recovery.md) | Approved | Complete | A–C: Debian signed install/update/rollback, fresh recovery, scheduled backup and retention; CI 41718200103 | Begin M05 A. M11 owns real game adapter acceptance. G1 physical tests remain |
 | [M05](modules/M05-interface-themes.md) | Approved | Complete | A–C: local HTTPS, Edge, signed Debian install/rebuild and settings restore; CI 41751474936 | Integrate real feature navigation, visual review and G1 device checks |
 | [M06](modules/M06-boards-mail.md) | Approved | In progress | A–C: signed local discussions and participant-restricted mail pass local HTTPS | Confirm signed Debian |
-| [M07](modules/M07-directory-profiles.md) | Approved | In progress | A: local account directory and owner-controlled profile fields | Add profile component registration and visibility fixtures |
+| [M07](modules/M07-directory-profiles.md) | Approved | In progress | A–C: directory, profile privacy and component hooks pass local checks | Confirm signed Debian. Bind live providers in their owning modules |
 | [M08](modules/M08-friends-events.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
 | [M09](modules/M09-clans-cohorts.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
 | [M10](modules/M10-local-files.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
@@ -541,16 +541,22 @@ The local IPv4 and IPv6 HTTPS tests created a board, signed in as a member, post
 
 Discussions migration 2 adds immutable signed edit and withdrawal rows plus a separate current head. Edits change the post body and preserve its stable ID. The author must supply the currently observed revision. Unchanged edits and stale writes add no revision. Withdrawal displays a tombstone and keeps replies and parent links. Ordinary routes use the current view. An internal exact-revision lookup can support authorized complaint handling later.
 
-Local IPv4 and IPv6 HTTPS exercised author edits, stale withdrawal refusal and a successful withdrawal. The provider tests refused a different account and rebuilt the projection in a fixture from accepted signed bytes while preserving the receipts. The encrypted restore test checks the current and original bodies. Debian release confirmation remains pending. A production rebuild command and a complaint consumer remain separate. Next is local mailbox and operator contact in slice C.
+Local IPv4 and IPv6 HTTPS exercised author edits, stale withdrawal refusal and a successful withdrawal. The provider tests refused a different account and rebuilt the projection in a fixture from accepted signed bytes while preserving the receipts. The encrypted restore test checks the current and original bodies. [Signed Debian CI](https://github.com/tellesus/BBSBOX/actions/runs/41768345544) passed at `2baa31e`, promoted to main. A production rebuild command and a complaint consumer remain separate.
 
 ## 2026-11-03 — M06 C: local mail and operator contact
 
 Mail migration 1 adds conversations and messages to the core node snapshot. Signed starts and replies carry a local-only participant scope. Participants can use the mailbox and follow stable message references. An unrelated SysOp sees no mail in the ordinary browser endpoints. The mailbox explains that the operator can access stored messages.
 
-Local IPv4 and IPv6 HTTPS checks sent mail between members, checked duplicate-send handling and signed-out redirects, refused an unaddressed SysOp, delivered a member's operator contact, and returned a reply to the original sender. Provider tests also refuse replies from outsiders or another conversation. Signed Debian confirmation is pending. M07 can use the existing identity provider for the account directory.
+Local IPv4 and IPv6 HTTPS checks sent mail between members, checked duplicate-send handling and signed-out redirects, refused an unaddressed SysOp, delivered a member's operator contact, and returned a reply to the original sender. Provider tests also refuse replies from outsiders or another conversation. An encrypted restore preserved the original message ID and both mailbox views. [Signed Debian confirmation](https://github.com/tellesus/BBSBOX/actions/runs/41769646693) is pending.
 
 ## 2026-11-03 — M07 A: local account directory and profile privacy
 
 Profiles migration 1 stores owner-controlled display preferences, with no backfill needed for existing accounts. Signed-in directory readers see every local username and its stable profile link. A new profile starts private. Its owner may save drafts and publish any combination of bio, short message, email, phone and contact text. The published query returns only fields selected by a public profile. Writes bind to the current account and reject stale revisions.
 
 Real IPv4 and IPv6 HTTPS checks found the same user while public and private, verified that unpublished values were absent from a SysOp's response, refused stale saves and required a session. Local Rust tests, Clippy and Svelte checks passed. Debian confirmation and component registration fixtures are next.
+
+## 2026-11-03 — M07 B–C: profile component contracts and registration
+
+Profiles migration 2 records separate display choices for the feed, hosted events, games and Lump Drop count. Feed, event and game display requires both a public profile and the owner's choice. The provider also receives the local viewer and owner and must enforce its own audience. Count visibility is independent. Uninstalled providers supply no sections and their preferences remain intact.
+
+Fixtures check an older profile migrating with its field choices intact, baseline lookup of inactive accounts, a denied feed audience, hidden providers, an actual zero from an installed count provider, and hiding the count on a private profile. The encrypted node restore preserves private drafts and the separate count choice. Local HTTPS verifies that uninstalled components produce no output. Live bindings are owned by M08, M11/M18 and M16. Signed Debian confirmation is pending.

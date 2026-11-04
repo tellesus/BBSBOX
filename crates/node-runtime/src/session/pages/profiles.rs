@@ -10,7 +10,10 @@ use axum::{
     response::{IntoResponse, Redirect, Response},
     routing::get,
 };
-use bbsbox_profiles::{self as profiles, Error, Field, Preferences};
+use bbsbox_profiles::{
+    self as profiles, Error, Field, Preferences,
+    components::{Link, Selection},
+};
 use bbsbox_storage::{disk::Class, open_reader};
 use serde::Deserialize;
 use std::fmt::Write;
@@ -111,8 +114,13 @@ async fn profile(
     let Some((account, _)) = form_access(&state, &headers).await else {
         return Ok(Redirect::to("/login/").into_response());
     };
+    let providers = state.profile_providers.clone();
     let result = state
-        .read(move |_, path| Ok(profiles::profile(&open_reader(path)?, &username)))
+        .read(move |_, path| {
+            let reader = open_reader(path)?;
+            let tx = reader.unchecked_transaction()?;
+            Ok(profiles::profile(&tx, &username, account.id, &providers))
+        })
         .await?;
     let profile = match result {
         Ok(profile) => profile,
@@ -141,7 +149,35 @@ async fn profile(
             );
         }
     }
+    let components = profile.components;
+    if let Some(feed) = components.feed {
+        links(&mut content, "Feed", std::slice::from_ref(&feed));
+    }
+    links(&mut content, "Hosted events", &components.events);
+    links(&mut content, "Games and characters", &components.games);
+    if let Some(count) = components.drops {
+        let _ = write!(
+            content,
+            "<section><h2>Lump Drops</h2><p>{count}</p></section>"
+        );
+    }
     Ok(page(&state, StatusCode::OK, &profile.username, &content))
+}
+
+fn links(content: &mut String, title: &str, items: &[Link]) {
+    if items.is_empty() {
+        return;
+    }
+    let _ = write!(content, "<section><h2>{title}</h2><ul>");
+    for link in items {
+        let _ = write!(
+            content,
+            "<li><a href=\"{}\">{}</a></li>",
+            escape(link.path()),
+            escape(link.label())
+        );
+    }
+    content.push_str("</ul></section>");
 }
 
 async fn editor(State(state): State<Sessions>, headers: HeaderMap) -> Result<Response, StatusCode> {
@@ -188,6 +224,33 @@ async fn editor(State(state): State<Sessions>, headers: HeaderMap) -> Result<Res
             field.publish,
         );
     }
+    let installed = state.profile_providers.installed();
+    let chosen = fields.components;
+    for (enabled, key, label, value) in [
+        (installed.feed, "show_feed", "Show feed link", chosen.feed),
+        (
+            installed.events,
+            "show_events",
+            "Show hosted events",
+            chosen.events,
+        ),
+        (
+            installed.games,
+            "show_games",
+            "Show games and characters",
+            chosen.games,
+        ),
+        (
+            installed.drops,
+            "show_drops",
+            "Show Lump Drop count",
+            chosen.drops,
+        ),
+    ] {
+        if enabled {
+            checkbox(&mut content, key, label, value);
+        }
+    }
     content.push_str("<button type=\"submit\">Save profile</button></form>");
     Ok(page(&state, StatusCode::OK, "Edit your profile", &content))
 }
@@ -217,6 +280,10 @@ struct Change {
     show_email: Option<String>,
     show_phone: Option<String>,
     show_contact: Option<String>,
+    show_feed: Option<String>,
+    show_events: Option<String>,
+    show_games: Option<String>,
+    show_drops: Option<String>,
 }
 
 fn field(text: String, choice: Option<String>) -> Field {
@@ -235,19 +302,42 @@ async fn save(
     check_origin(&headers, &origin)?;
     let session = token(&headers)?;
     let Form(change) = payload.map_err(|error| error.status())?;
-    let value = Preferences {
+    let mut value = Preferences {
         public: change.public.as_deref() == Some("on"),
         bio: field(change.bio, change.show_bio),
         message: field(change.message, change.show_message),
         email: field(change.email, change.show_email),
         phone: field(change.phone, change.show_phone),
         contact: field(change.contact, change.show_contact),
+        components: Selection {
+            feed: change.show_feed.as_deref() == Some("on"),
+            events: change.show_events.as_deref() == Some("on"),
+            games: change.show_games.as_deref() == Some("on"),
+            drops: change.show_drops.as_deref() == Some("on"),
+        },
     };
+    let installed = state.profile_providers.installed();
     let status = state
         .write(move |auth, database| {
             database.write(Class::Control, 64 * 1024, |tx| {
                 let actor = auth.authorize_mutation(tx, &session, &change.csrf, &origin.0)?;
                 let account = auth.mutation_account(tx, &actor)?;
+                let current = profiles::editor(tx, account.id)
+                    .map_err(|_| bbsbox_identity::Error::InvalidConfiguration)?
+                    .preferences
+                    .components;
+                if !installed.feed {
+                    value.components.feed = current.feed;
+                }
+                if !installed.events {
+                    value.components.events = current.events;
+                }
+                if !installed.games {
+                    value.components.games = current.games;
+                }
+                if !installed.drops {
+                    value.components.drops = current.drops;
+                }
                 Ok(
                     match profiles::save(tx, account.id, change.revision, &value) {
                         Ok(()) => Ok(account.username),

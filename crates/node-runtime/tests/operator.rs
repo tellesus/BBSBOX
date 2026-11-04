@@ -369,6 +369,14 @@ fn local_operator_round_trip_keeps_identity_configuration_and_restore_block() {
             )
         })
         .unwrap();
+    database
+        .write(bbsbox_storage::disk::Class::Control, 65536, |tx| {
+            let mut profile = bbsbox_profiles::Preferences::default();
+            profile.email.text = "backup-private@example.invalid".into();
+            profile.components.drops = false;
+            bbsbox_profiles::save(tx, member.id, 0, &profile)
+        })
+        .unwrap();
     drop(database);
     let secret = f.root.join("operator.key");
     let generated = operator::keygen(&secret).unwrap();
@@ -402,6 +410,17 @@ fn local_operator_round_trip_keeps_identity_configuration_and_restore_block() {
         bbsbox_mail::conversations(&reader, member.id, None).unwrap()[0].id,
         mail_thread
     );
+    let owner = bbsbox_profiles::editor(&reader, member.id).unwrap();
+    assert_eq!(
+        owner.preferences.email.text,
+        "backup-private@example.invalid"
+    );
+    assert!(!owner.preferences.components.drops);
+    let tx = reader.unchecked_transaction().unwrap();
+    let profile = bbsbox_profiles::profile(&tx, "member", author.id, &Default::default()).unwrap();
+    assert_eq!(profile.username, "member");
+    assert!(profile.fields.email.is_none());
+    drop(tx);
     drop(reader);
     assert_eq!(
         fs::read(target.join("configuration/tls/ca-key.pem")).unwrap(),

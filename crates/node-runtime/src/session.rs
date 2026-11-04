@@ -43,6 +43,7 @@ struct Sessions {
     signer: Arc<NodeSigner>,
     boards: Arc<bbsbox_discussions::Boards>,
     mailbox: Arc<bbsbox_mail::Mailbox>,
+    profile_providers: Arc<bbsbox_profiles::components::Providers>,
 }
 
 pub(super) fn router(
@@ -69,6 +70,7 @@ pub(super) fn router(
         site: Arc::new(RwLock::new(site)),
         boards: Arc::new(bbsbox_discussions::Boards::new(&signer)),
         mailbox: Arc::new(bbsbox_mail::Mailbox::new(&signer)),
+        profile_providers: Arc::default(),
         signer,
     };
     Ok(Router::new()

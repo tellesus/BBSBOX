@@ -342,7 +342,7 @@ def exercise(binary, state_root, host, isolated):
                         assert response.headers['Cache-Control'] == 'no-store'
                         assert b'Meet me at &lt;the library&gt;' in public_profile
                         assert b'555-fixture' in public_profile
-                        for hidden_value in (b'fixture@example.invalid', b'Fixture private address', b'Private short message'):
+                        for hidden_value in (b'fixture@example.invalid', b'Fixture private address', b'Private short message', b'Lump Drops', b'Hosted events', b'Games and characters'):
                             assert hidden_value not in public_profile
                     sign_out()
                     sign_in(member['username'], member['password'])

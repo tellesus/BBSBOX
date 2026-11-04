@@ -15,6 +15,7 @@ use std::{
 pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 pub const PROFILE: &str = "bbsbox.release-runtime/v1";
 pub const MANIFEST: &str = "manifest.cose";
+pub const DEMO_WORKER: &str = "bbsbox-demo-worker";
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -125,15 +126,18 @@ fn check_files(root: &Path, signed: &SignedRelease, manifest_present: bool) -> R
             return Err("release file does not match its signed commitment".into());
         }
     }
-    check_elf(root)?;
+    check_elf(&root.join("bbsbox-node"))?;
+    if manifest.files.iter().any(|file| file.path == DEMO_WORKER) {
+        check_elf(&root.join(DEMO_WORKER))?;
+    }
     if manifest_present && read_manifest(root)? != signed.encoded() {
         return Err("release manifest changed during verification".into());
     }
     Ok(())
 }
-fn check_elf(root: &Path) -> Result<()> {
+fn check_elf(path: &Path) -> Result<()> {
     let mut header = [0; 64];
-    File::open(root.join("bbsbox-node"))?.read_exact(&mut header)?;
+    File::open(path)?.read_exact(&mut header)?;
     if &header[..7] != b"\x7fELF\x02\x01\x01"
         || !matches!(header[7], 0 | 3)
         || !matches!(&header[16..18], [2, 0] | [3, 0])
@@ -163,7 +167,23 @@ pub(crate) fn verify_selected_binary(
     {
         return Err("selected release binary changed".into());
     }
-    check_elf(&root)?;
+    check_elf(&root.join("bbsbox-node"))?;
+    let worker = root.join(DEMO_WORKER);
+    let worker_commitment = signed
+        .manifest()
+        .files
+        .iter()
+        .find(|r| r.path == DEMO_WORKER);
+    match (worker_commitment, fs::symlink_metadata(&worker)) {
+        (Some(record), Ok(metadata)) if metadata.file_type().is_file() => {
+            if archive::hash_file(&worker, record.size)? != (record.size, record.sha256.clone()) {
+                return Err("selected demo worker changed".into());
+            }
+            check_elf(&worker)?;
+        }
+        (None, Err(error)) if error.kind() == std::io::ErrorKind::NotFound => (),
+        _ => return Err("selected demo worker does not match its signed inventory".into()),
+    }
     if read_manifest(&root)? != signed.encoded() {
         return Err("selected release manifest changed".into());
     }

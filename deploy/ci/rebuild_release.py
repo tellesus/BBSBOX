@@ -56,7 +56,7 @@ def rebuild(root, material_directory, source_commit, cargo, rustc, expected_prof
     if not version.startswith('rustc 1.99.1 '):
         raise ValueError('Rebuild compiler differs from the pinned version')
     web_node = verify_web_build(root, node, npm, environment) if material_report.get('web_dependencies') else None
-    command = [str(cargo), '--config', 'source.crates-io.replace-with="vendored-sources"', '--config', 'source.vendored-sources.directory='+json.dumps(str(root/'vendor')), 'build', '--frozen', '-p', 'bbsbox-node-runtime', '--bins', '--examples']
+    command = [str(cargo), '--config', 'source.crates-io.replace-with="vendored-sources"', '--config', 'source.vendored-sources.directory='+json.dumps(str(root/'vendor')), 'build', '--frozen', '-p', 'bbsbox-node-runtime', '-p', 'bbsbox-demo-worker', '--bins', '--examples']
     started = time.monotonic()
     result = subprocess.run(command, cwd=root/'source', env=environment, capture_output=True, text=True, timeout=600)
     if result.returncode:
@@ -69,6 +69,7 @@ def rebuild(root, material_directory, source_commit, cargo, rustc, expected_prof
     if len(expected) > 65536 or information != json.loads(expected) or information.get('format') != 'bbsbox.release-runtime/v1' or information.get('target') != 'debian13-amd64':
         raise ValueError('Rebuilt executable does not report the expected target/profile')
     report = dict(format='bbsbox.offline-material-rebuild/v1', compiler=version, elapsed_seconds=round(time.monotonic()-started, 2), source_commit=source_commit, materials_sha256=material_report['sha256'], binary_sha256=materials.file_digest(binary), empty_cargo_home=True, empty_target=True, network='isolated-loopback-only', compiled_profile_matches_candidate=True, compiled_profile=information)
+    report['demo_worker_sha256'] = materials.file_digest(binary.with_name('bbsbox-demo-worker'))
     if web_node:
         report.update(browser_templates_reproduced=True, empty_npm_cache=True, node=web_node)
     # Real first-party assemblies with distinct compiled SQL, built from the same committed materials.

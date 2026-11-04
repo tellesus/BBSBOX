@@ -404,6 +404,12 @@ fn installed_boot() -> Result<serde_json::Value> {
         protected(&selected, true)?;
         protected(&selected.join("bbsbox-node"), false)?;
         protected(&selected.join("manifest.cose"), false)?;
+        let worker = selected.join(release_payload::DEMO_WORKER);
+        match fs::symlink_metadata(&worker) {
+            Ok(_) => protected(&worker, false)?,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => (),
+            Err(error) => return Err(error.into()),
+        }
         let store = bbsbox_maintenance::release_trust::Store::open(control)?;
         let active = store.check_selected(&selected)?;
         if selected.file_name().and_then(|p| p.to_str())
@@ -416,6 +422,9 @@ fn installed_boot() -> Result<serde_json::Value> {
         protected(&configuration.join("installation.json"), false)?;
         protected(&configuration.join("node.json"), false)?;
         let config = crate::Config::read(&configuration.join("node.json"))?;
+        if config.game_origin.is_some() {
+            return Err("game service requires the isolated appliance worker".into());
+        }
         if config.database != Path::new("/var/lib/bbsbox/node.sqlite") {
             return Err("installed node storage differs from the fixed appliance layout".into());
         }

@@ -14,6 +14,8 @@ STATIC = {'bbsbox.service':'deploy/systemd/bbsbox-release.service', 'node.exampl
 MAX_MEMBER = 2 * 1024 * 1024 * 1024
 MAX_TOTAL = 4 * 1024 * 1024 * 1024
 PACKAGE_COMMANDS = frozenset({'release-sign','release-inspect','release-stage','release-control-begin'})
+GAME_WORKER = 'bbsbox-demo-worker'
+EXECUTABLES = frozenset({'bbsbox-node', GAME_WORKER})
 
 
 def bounded_run(arguments, timeout=20):
@@ -99,7 +101,7 @@ def committed_assets(material_directory):
     return found
 
 
-def prepare(tool, binary, material_directory, commit, evidence_path, key_file, key_info, sequence, created_at, output, next_public=None):
+def prepare(tool, binary, material_directory, commit, evidence_path, key_file, key_info, sequence, created_at, output, next_public=None, game_worker=None):
     if not 1 <= sequence <= 2**64-1 or not -(2**63) <= created_at < 2**63:
         raise ValueError('Invalid release sequence/time')
     verified = materials.verify(material_directory, commit)
@@ -108,6 +110,14 @@ def prepare(tool, binary, material_directory, commit, evidence_path, key_file, k
         raise ValueError('Candidate does not match its material rebuild evidence')
     if verified.get('web_dependencies') and not (evidence.get('browser_templates_reproduced') is True and evidence.get('empty_npm_cache') is True):
         raise ValueError('Candidate lacks matching offline browser rebuild evidence')
+    worker_digest = evidence.get('demo_worker_sha256')
+    if game_worker is not None:
+        if (not worker_digest or materials.linked(game_worker) or not game_worker.is_file()
+                or not 0 < game_worker.stat().st_size <= MAX_MEMBER
+                or materials.file_digest(game_worker) != worker_digest):
+            raise ValueError('Candidate demo worker does not match its material rebuild evidence')
+    elif worker_digest is not None:
+        raise ValueError('Candidate must include the demo worker from the material rebuild')
     profile = command([binary, '--release-profile'])
     if profile != evidence.get('compiled_profile') or profile.get('format') != 'bbsbox.release-runtime/v1' or profile.get('target') != 'debian13-amd64':
         raise ValueError('Candidate compiled profile differs from its rebuild evidence')
@@ -123,6 +133,10 @@ def prepare(tool, binary, material_directory, commit, evidence_path, key_file, k
     _, binary_hash = copy_file(binary, output/'bbsbox-node')
     if binary_hash != evidence['binary_sha256']:
         raise ValueError('Candidate binary changed while copying')
+    if game_worker is not None:
+        size, copied = copy_file(game_worker, output/GAME_WORKER)
+        if size == 0 or copied != worker_digest:
+            raise ValueError('Candidate demo worker changed while copying')
     for name, raw in committed_assets(material_directory).items():
         target = output/name
         target.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -180,6 +194,7 @@ def main():
     prepare_parser=commands.add_parser('prepare')
     prepare_parser.add_argument('--tool',type=Path,required=True)
     prepare_parser.add_argument('--binary',type=Path,required=True)
+    prepare_parser.add_argument('--game-worker',type=Path)
     prepare_parser.add_argument('--materials',type=Path,required=True)
     prepare_parser.add_argument('--source-commit',required=True)
     prepare_parser.add_argument('--rebuild-evidence',type=Path,required=True)
@@ -196,7 +211,7 @@ def main():
     inspect_parser.add_argument('--output',type=Path,required=True)
     args=parser.parse_args()
     if args.command=='prepare':
-        result=prepare(args.tool.resolve(),args.binary.resolve(),args.materials,args.source_commit,args.rebuild_evidence,args.key_file,args.key_info,args.sequence,args.created_at,args.output,args.next_public_key)
+        result=prepare(args.tool.resolve(),args.binary.resolve(),args.materials,args.source_commit,args.rebuild_evidence,args.key_file,args.key_info,args.sequence,args.created_at,args.output,args.next_public_key,args.game_worker)
     else:
         result=inspect(args.tool.resolve(),args.bundle,args.public_key,args.output)
     print(json.dumps(result,indent=2))

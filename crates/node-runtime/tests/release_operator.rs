@@ -174,8 +174,13 @@ fn role_wrong_inventory_and_strict_options_fail_before_manifest_publication() {
 }
 
 #[test]
-fn operator_control_commands_fence_boot_until_exact_completion_and_recheck_the_binary() {
+fn operator_control_commands_fence_boot_until_exact_completion_and_recheck_executables() {
     let f = Fixture::new();
+    let worker = f.bundle.join(release_payload::DEMO_WORKER);
+    fs::copy(f.bundle.join("bbsbox-node"), &worker).unwrap();
+    let mut manifest: Manifest = serde_json::from_slice(&fs::read(&f.input).unwrap()).unwrap();
+    manifest.files = release_payload::inventory_unsigned(&f.bundle).unwrap();
+    fs::write(&f.input, serde_json::to_vec(&manifest).unwrap()).unwrap();
     let signed = f.sign().unwrap();
     let control = f.root.join("control");
     let path = |p: &Path| p.as_os_str().to_os_string();
@@ -231,6 +236,13 @@ fn operator_control_commands_fence_boot_until_exact_completion_and_recheck_the_b
     fs::write(&binary, b"changed").unwrap();
     assert!(release_operator::command(&check).is_err());
     fs::write(binary, original).unwrap();
+    assert!(release_operator::command(&check).is_ok());
+    let original_worker = fs::read(&worker).unwrap();
+    fs::write(&worker, b"changed worker").unwrap();
+    assert!(release_operator::command(&check).is_err());
+    fs::remove_file(&worker).unwrap();
+    assert!(release_operator::command(&check).is_err());
+    fs::write(worker, original_worker).unwrap();
     assert!(release_operator::command(&check).is_ok());
     assert!(!f.root.join("node.sqlite").exists());
     assert!(!control.join("node.sqlite").exists());

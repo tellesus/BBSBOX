@@ -143,6 +143,11 @@ def boot(root,output,signed=False,maintenance_check=None):
     if not root.is_relative_to(work) or root==work:raise RuntimeError('Test root must be beneath repository work/')
     installed=json.loads((root/'etc/bbsbox/installation.json').read_text())
     if installed['format']!=('bbsbox.install/v1' if signed else 'bbsbox.development-install/v1'):raise RuntimeError('Unexpected installation fixture format')
+    if signed:
+        worker=root/'opt/bbsbox/releases'/installed['release_id']/'bbsbox-demo-worker'
+        metadata=worker.lstat()
+        assert stat.S_ISREG(metadata.st_mode) and stat.S_IMODE(metadata.st_mode)==0o755
+        assert metadata.st_uid==0 and metadata.st_gid==0
     cases=[]
     for attempt in range(2):
         log=output.parent/f'debian-boot-{attempt}.log'

@@ -76,7 +76,7 @@ def install(bundle,verifier,public_key,name,enable=False,*,recovery=None):
             release_id=verified['release_id'];release=releases/release_id
             staged.rename(release)
             for path in release.rglob('*'):
-                path.chmod(0o755 if path.is_dir() or path.name=='bbsbox-node' else 0o644)
+                path.chmod(0o755 if path.is_dir() or (path.parent==release and path.name in candidate.EXECUTABLES) else 0o644)
             release.chmod(0o755)
             operator_directory=layout.application/'maintenance';operator_directory.mkdir(mode=0o700)
             operator=operator_directory/'bbsbox-operator'

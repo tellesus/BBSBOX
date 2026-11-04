@@ -91,7 +91,8 @@ def durable_tree(root,uid=0,gid=0,public=False):
         elif stat.S_ISREG(metadata.st_mode):
             descriptor=os.open(path,os.O_RDONLY|os.O_NOFOLLOW)
             try:
-                os.fchown(descriptor,uid,gid);os.fchmod(descriptor,(0o755 if path.name=='bbsbox-node' else 0o644) if public else 0o600);os.fsync(descriptor)
+                executable=path.parent==root and path.name in candidate.EXECUTABLES
+                os.fchown(descriptor,uid,gid);os.fchmod(descriptor,(0o755 if executable else 0o644) if public else 0o600);os.fsync(descriptor)
             finally:os.close(descriptor)
         else:raise ValueError('Unexpected linked/special maintenance entry')
     for directory in sorted(directories,key=lambda p:len(p.parts),reverse=True):sync(directory)

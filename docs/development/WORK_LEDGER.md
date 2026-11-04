@@ -20,7 +20,7 @@ Design review is complete and the first M00 prototype has real local implementat
 | [M08](modules/M08-friends-events.md) | Approved | Complete | A–C: local feeds, friendships, events, invitations and calendar pass signed Debian CI 41808835341 | G1 device acceptance |
 | [M09](modules/M09-clans-cohorts.md) | Approved | Complete | A–C: roster privacy, consent, handover and typed membership pass signed Debian CI 41810057605 | M11/M18 bind game consumers |
 | [M10](modules/M10-local-files.md) | Approved | Complete | A–C: permission, streaming, quota and restore pass signed Debian CI 41811437491 | M15/M16 own actual exchange tests |
-| [M11](modules/M11-local-games.md) | Approved | In progress | Two-origin development launch, profile/group checks and encrypted game-node restore pass locally | Signed game install, appliance isolation and recovery activation |
+| [M11](modules/M11-local-games.md) | Approved | In progress | Development browser and encrypted game-node restore pass CI 41814817663 | Confirm signed worker package, then appliance isolation and recovery activation |
 | [M13](modules/M13-encrypted-forums.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
 | [M14](modules/M14-complaints-moderation.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
 | [M15](modules/M15-selected-federation.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
@@ -628,3 +628,9 @@ The HTTPS fixture verifies two-player play, discussions, restart, command retry,
 ## 2026-11-04 — M11 game-node cold backup and isolated restore
 
 The development operator commands hold the core maintenance lock and use the matching bundled worker in checkpoint-only mode. The worker opens existing state and supplies its request-fenced save to M12's encrypted archive. The development fixture plays two turns, disables the game, then restores both seats, the dungeon state and both command receipts. The test rejects backup during play, missing or uninitialized state, an unregistered game and a foundation restore of a game-node archive. The restored directory stays in recovery-required state. Next steps are signed worker installation, appliance isolation and recovery activation.
+
+The [browser](https://github.com/tellesus/BBSBOX/actions/runs/41814207093) and [game recovery](https://github.com/tellesus/BBSBOX/actions/runs/41814817663) checkpoints passed the four Linux jobs through `c10d2df`.
+
+## 2026-11-04 — M11 signed worker packaging
+
+The offline rebuild produces the worker from the committed source and records its digest. Candidate preparation binds that rebuilt executable in the existing signed file inventory. Staging checks its signature commitment and Debian executable format. Install and update give the top-level worker a root-owned executable mode. Boot preflight rechecks the worker against its signed commitment. The signed service requires appliance isolation before a game origin can be enabled. Earlier worker-free release inventories remain readable. Debian installation confirmation for this checkpoint is pending.

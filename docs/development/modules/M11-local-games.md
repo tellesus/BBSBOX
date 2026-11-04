@@ -1,8 +1,8 @@
 # M11 — Game host and local multiplayer example
 
-Brief revision 1.1.5 · Roadmap baseline 1.1.0 · 2026-11-04 · Locked scope · Product baseline 0.6.0.
+Brief revision 1.1.6 · Roadmap baseline 1.1.0 · 2026-11-04 · Locked scope · Product baseline 0.6.0.
 
-**State:** In progress. Development browser, worker, profile, group and isolated game-node restore pass locally. Signed game installation, appliance isolation and recovery activation remain pending.
+**State:** In progress. Development browser, worker, profile, group and isolated game-node restore pass. Signed worker packaging awaits Debian confirmation. Appliance worker isolation and recovery activation remain pending.
 
 ## Read only this packet
 
@@ -24,6 +24,8 @@ Use locally installed HTML/TypeScript game assets and an isolated worker with JS
 ## Ownership and interfaces
 
 `crates/game-host/` owns manifests, launch tickets and framed worker requests. `games/demo/` owns the demo's rules, SQLite state and command receipts.
+
+The offline release build can include the bundled worker as a signed executable. The signed service requires a separate appliance worker boundary before it accepts a game origin.
 
 `backup-game-node` captures the stopped development node through M12's [game-node snapshot provider](../../../crates/maintenance/README.md#game-node-snapshot-profile). `restore-game-node` verifies and stages a matching demo checkpoint for recovery. Foundation backup refuses retained game state. Appliance installation and activation of restored game state remain pending.
 

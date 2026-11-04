@@ -25,7 +25,8 @@ def check(tool,binary,material_directory,commit,rebuild_evidence,root,output):
     public=candidate.command([tool,'release-keygen','--output',key])
     key_info.write_bytes(materials.encoded(public))
     bundle=root/'bundle'
-    prepared=candidate.prepare(tool,binary,material_directory,commit,rebuild_evidence,key,key_info,1,0,bundle)
+    worker=binary.with_name(candidate.GAME_WORKER)
+    prepared=candidate.prepare(tool,binary,material_directory,commit,rebuild_evidence,key,key_info,1,0,bundle,game_worker=worker)
     verified=candidate.inspect(tool,bundle,public['public_key'],root/'verified')
     if prepared['release_id']!=verified['release_id'] or verified['installation_authority'] is not False:
         raise ValueError('Candidate round trip did not preserve its exact identity/boundary')
@@ -41,6 +42,19 @@ def check(tool,binary,material_directory,commit,rebuild_evidence,root,output):
     else: raise AssertionError('tampered material accepted')
     if (root/'tampered').exists(): raise AssertionError('tampered content created staging output')
     notices.write_bytes(original)
+    staged_worker=root/'verified'/candidate.GAME_WORKER
+    if materials.file_digest(staged_worker)!=materials.file_digest(worker):
+        raise AssertionError('Signed worker was missing or altered during staging')
+    with (bundle/candidate.GAME_WORKER).open('r+b') as stream:
+        original=stream.read(1)
+        stream.seek(0);stream.write(bytes([original[0]^1]));stream.flush()
+        try:
+            try: candidate.inspect(tool,bundle,public['public_key'],root/'tampered-worker')
+            except ValueError: pass
+            else: raise AssertionError('tampered demo worker accepted')
+        finally:
+            stream.seek(0);stream.write(original)
+    if (root/'tampered-worker').exists(): raise AssertionError('tampered worker created staging output')
     # Keep large public fixture files immutable through hard links; staged outputs are fresh copies.
     claims=root/'false-claims';claims.mkdir(mode=0o700)
     files=[]
@@ -59,8 +73,8 @@ def check(tool,binary,material_directory,commit,rebuild_evidence,root,output):
     for sequence,name in [(3,'upgrade_rejecting'),(4,'upgrade_interrupted'),(5,'upgrade_successor')]:
         executable=binary.parent/'examples'/name
         evidence=rebuild_evidence.parent/('offline-'+name+'.json')
-        candidate.prepare(tool,executable,material_directory,commit,evidence,key,key_info,sequence,0,root/name,wrong['public_key'] if name=='upgrade_successor' else None)
-    candidate.prepare(tool,binary.parent/'examples/upgrade_successor',material_directory,commit,rebuild_evidence.parent/'offline-upgrade_successor.json',root/'other-ephemeral.key',root/'rotation-public.json',6,0,root/'source_loss_successor')
+        candidate.prepare(tool,executable,material_directory,commit,evidence,key,key_info,sequence,0,root/name,wrong['public_key'] if name=='upgrade_successor' else None,game_worker=worker)
+    candidate.prepare(tool,binary.parent/'examples/upgrade_successor',material_directory,commit,rebuild_evidence.parent/'offline-upgrade_successor.json',root/'other-ephemeral.key',root/'rotation-public.json',6,0,root/'source_loss_successor',game_worker=worker)
     manifest['module_migrations'][0]['sha256']='00'*32
     input_path=root/'false-claims.json';input_path.write_bytes(materials.encoded(manifest))
     candidate.command([tool,'release-sign','--bundle',claims,'--manifest',input_path,'--key-file',key])
@@ -68,6 +82,7 @@ def check(tool,binary,material_directory,commit,rebuild_evidence,root,output):
     except ValueError: pass
     else: raise AssertionError('authenticated false compiled-profile claim accepted')
     report=dict(format='bbsbox.signed-candidate-fixture/v1',source_commit=commit,release_id=verified['release_id'],dependencies=verified['materials']['dependencies'],ephemeral_test_authority=True,private_copy=True,compiled_profile_matched=True,wrong_authority_rejected=True,tampered_material_rejected=True,authenticated_false_profile_rejected=True,network='isolated-loopback-only',installation_authority=False)
+    report.update(worker_rebuilt_and_signed=True,tampered_worker_rejected=True)
     with output.open('x',encoding='utf-8') as destination:json.dump(report,destination,indent=2);destination.write('\n')
     output.chmod(0o644) # Only this public evidence is uploaded; private test keys remain excluded.
     return report

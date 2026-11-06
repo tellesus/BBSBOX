@@ -1,11 +1,15 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 """Cold backup of the installed Debian development node; restore stays isolated/recovery-blocked."""
 import argparse
+from contextlib import contextmanager
 import json
 import os
 from pathlib import Path
 import stat
 import subprocess
+
+GAME_STATE=Path('/var/lib/bbsbox-game')
+GAME_SOCKET='bbsbox-game-worker.socket'
 
 
 def regular(path, owners):
@@ -42,6 +46,29 @@ def prepare_stage(path):
         raise ValueError('Maintenance staging must be a private root-owned directory')
 
 
+def game_state_retained(config):
+    try: metadata=GAME_STATE.lstat()
+    except FileNotFoundError: return bool(config.get('game_origin'))
+    if not stat.S_ISDIR(metadata.st_mode):
+        raise ValueError('Expected a direct appliance game state directory')
+    return bool(config.get('game_origin')) or any(path.name!='state.sqlite.lock' for path in GAME_STATE.iterdir())
+
+
+@contextmanager
+def checkpoint_socket(required):
+    temporary=False
+    try:
+        if required:
+            status=subprocess.run(['/usr/bin/systemctl','is-active',GAME_SOCKET],capture_output=True,timeout=20).stdout.strip()
+            if status not in (b'active',b'inactive'):
+                raise ValueError('Expected the installed game worker socket')
+            if status==b'inactive':
+                run(['/usr/bin/systemctl','start',GAME_SOCKET]);temporary=True
+        yield
+    finally:
+        if temporary:run(['/usr/bin/systemctl','stop',GAME_SOCKET])
+
+
 def backup(destination, recipient, release=False):
     if os.name!='posix' or os.geteuid()!=0:raise ValueError('Use the Debian development node as root')
     import fcntl
@@ -51,8 +78,7 @@ def backup(destination, recipient, release=False):
     install_development.platform_preflight()
     destination=Path(destination).absolute()
     configuration=Path('/etc/bbsbox');database=Path('/var/lib/bbsbox/node.sqlite')
-    game_state=Path('/var/lib/bbsbox-game')
-    if destination!=destination.resolve() or any(destination.is_relative_to(path) for path in [configuration,database.parent,game_state]):
+    if destination!=destination.resolve() or any(destination.is_relative_to(path) for path in [configuration,database.parent,GAME_STATE]):
         raise ValueError('Use fresh backup media outside configuration and node storage')
     if destination.exists():raise ValueError('Backup output already exists')
     if not isinstance(recipient,str) or len(recipient)>1024 or not recipient.startswith('age1') or any(c.isspace() for c in recipient):
@@ -84,26 +110,10 @@ def backup(destination, recipient, release=False):
         was_active=active==b'active'
         try:
             if was_active:run(['/usr/bin/systemctl','stop','bbsbox.service'])
-            game_backup=False
-            if release:
-                game_backup=bool(config.get('game_origin'))
-                try: metadata=game_state.lstat()
-                except FileNotFoundError: pass
-                else:
-                    if not stat.S_ISDIR(metadata.st_mode):raise ValueError('Expected a direct appliance game state directory')
-                    game_backup=game_backup or any(path.name!='state.sqlite.lock' for path in game_state.iterdir())
+            game_backup=release and game_state_retained(config)
             profile='backup-game-node' if game_backup else 'backup'
-            socket_unit='bbsbox-game-worker.socket'
-            temporary_socket=False
-            try:
-                if game_backup:
-                    status=subprocess.run(['/usr/bin/systemctl','is-active',socket_unit],capture_output=True,timeout=20).stdout.strip()
-                    if status not in (b'active',b'inactive'):raise ValueError('Expected the installed game worker socket')
-                    if status==b'inactive':
-                        run(['/usr/bin/systemctl','start',socket_unit]);temporary_socket=True
+            with checkpoint_socket(game_backup):
                 completed=run([str(executable),profile,'--config',str(configuration/'node.json'),'--node',installed['node_id'],'--recipient',recipient,'--output',str(destination),'--staging',str(stage)],timeout=1200)
-            finally:
-                if temporary_socket:run(['/usr/bin/systemctl','stop',socket_unit])
             if len(completed.stdout)>65536:raise ValueError('Unexpected maintenance response size')
             result=json.loads(completed.stdout)
             if result.get('format')!='bbsbox.node-backup/v1' or result.get('node')!=installed['node_id']:raise ValueError('Unexpected backup result')

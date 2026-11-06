@@ -1,8 +1,8 @@
 # M11 — Game host and local multiplayer example
 
-Brief revision 1.1.15 · Roadmap baseline 1.1.0 · 2026-11-04 · Locked scope · Product baseline 0.6.0.
+Brief revision 1.1.16 · Roadmap baseline 1.1.0 · 2026-11-06 · Locked scope · Product baseline 0.6.0.
 
-**State:** In progress. Debian confirms isolated game backup, signed installation and fresh appliance enablement. Full replacement-media recovery awaits Linux confirmation. Game-aware installed updates remain open.
+**State:** In progress. Debian confirms isolated game backup, signed installation and fresh appliance enablement. Complete replacement recovery and coordinated installed update/rollback await the corrected Linux fixture.
 
 ## Read only this packet
 
@@ -29,9 +29,11 @@ The offline release build signs the bundled worker and both of its service files
 
 The offline network preparer can reserve `bbsbox-game-<node suffix>.home.arpa` in local DNS and the node certificate. An explicit `--enable-game` during fresh signed network preparation connects that hostname to the isolated worker socket at the next boot.
 
-`backup-game-node` captures the stopped node through M12's [game-node snapshot provider](../../../crates/maintenance/README.md#game-node-snapshot-profile). The signed appliance provider uses the separate worker account and socket for an existing save. `restore-game-node` verifies and stages a matching demo checkpoint for recovery. Foundation backup refuses retained game state. Appliance enablement and activation of restored game state remain pending.
+`backup-game-node` captures the stopped node through M12's [game-node snapshot provider](../../../crates/maintenance/README.md#game-node-snapshot-profile). The signed appliance provider uses the separate worker account and socket for an existing save. `restore-game-node` verifies and stages a matching demo checkpoint for recovery. Foundation backup refuses retained game state.
 
 `restore-game-node-and-record` binds the operator's retired or lost source decision to the verified game-node archive. Fresh signed recovery verifies the game save under its dedicated account, then compares the placed save and archived inventory before releasing the staged writer. The replacement boots on loopback before offline network preparation.
+
+Installed updates select the complete game-node snapshot whenever a game origin or retained save exists. This provider requires identical signed worker and service files across the update. Failed updates and recorded rollback restore the matching game/core pair under maintenance control. Rollback retains the newer complete encrypted snapshot and displaced saves for separate reconciliation. Changing the worker or its save format requires a subsequent compatible migration provider.
 
 Use the listed contracts. Disabling a game retains its state.
 

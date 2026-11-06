@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
-"""Offline foundation-node updates and matching pre-update recovery on the signed Debian layout."""
+"""Offline signed Debian updates with matching core and game recovery."""
 import argparse
-from contextlib import contextmanager
+from contextlib import ExitStack, contextmanager
 import json
 import os
 from pathlib import Path
@@ -13,6 +13,7 @@ import time
 
 import install_release as install
 import maintenance_lock
+import restore_provisioning
 
 candidate=install.candidate
 materials=candidate.materials
@@ -80,6 +81,35 @@ def compatible(previous,successor):
     new={(m['module'],m['version']):m['sha256'] for m in successor['module_migrations']}
     if any(owner not in ['identity', 'events', 'settings', 'discussions', 'mail', 'profiles', 'social', 'gatherings', 'groups', 'files'] for owner, _ in new) or any(new.get(key)!=digest for key,digest in old.items()):
         raise ValueError('Update removed/changed applied SQL or needs another module snapshot provider')
+
+
+def compatible_game_package(previous, successor):
+    for name in [candidate.GAME_WORKER,*candidate.GAME_UNITS]:
+        old=previous/name;new=successor/name
+        if not old.is_file() or not new.is_file() or materials.file_digest(old)!=materials.file_digest(new):
+            raise ValueError('Retained game state requires the same signed worker and service files')
+
+
+def stop_game_worker():
+    manager='/usr/bin/systemctl'
+    install.backup.run([manager,'stop',install.backup.GAME_SOCKET])
+    units=install.backup.run([manager,'list-units','--all','--no-legend','--plain','bbsbox-game-worker@*.service']).stdout.decode().splitlines()
+    workers=[line.split()[0] for line in units if line.split()]
+    if workers:
+        if any(not name.startswith('bbsbox-game-worker@') or not name.endswith('.service') for name in workers):
+            raise ValueError('Unexpected game worker unit')
+        install.backup.run([manager,'stop',*workers])
+
+
+def replace_game_save(staged):
+    target=install.backup.GAME_STATE
+    try:metadata=target.lstat()
+    except FileNotFoundError:pass
+    else:
+        if not stat.S_ISDIR(metadata.st_mode):raise ValueError('Unexpected installed game data path')
+        displaced=Path(tempfile.mkdtemp(prefix='.bbsbox-game-displaced-',dir=target.parent))
+        target.rename(displaced/'previous');sync(displaced);sync(target.parent)
+    staged.rename(target);sync(staged.parent);sync(target.parent)
 
 
 def durable_tree(root,uid=0,gid=0,public=False):
@@ -208,11 +238,15 @@ def restore_pending(directory,plan,identity,current):
     # Check the old receipt/binary using its saved authority, independently of a newer pending key.
     installed_release(previous,plan['previous_authority'],plan['previous'])
     work=DATA/'.maintenance';install.backup.prepare_stage(work)
-    with tempfile.TemporaryDirectory(prefix='restore-',dir=work) as temporary:
+    with ExitStack() as stages:
+        temporary=stages.enter_context(tempfile.TemporaryDirectory(prefix='restore-',dir=work))
         restored=Path(temporary)/'restored'
         reason=('Recorded rollback; stopped source: '+plan['reason']) if plan['format']=='bbsbox.offline-rollback-plan/v1' else 'Failed or interrupted update; source service stopped on this appliance'
-        evidence=command(previous/'bbsbox-node','restore-and-authorize','--archive',directory/'before.age','--node',plan['node'],'--identity-file',identity,'--output',restored,'--staging',MAINTENANCE,'--source','retired','--reason',reason,'--at',str(int(time.time())))
-        if evidence.get('inventory_sha256')!=plan['snapshot'] or evidence.get('isolated_writer_ready') is not True or evidence.get('installed') is not False:raise ValueError('Recovery does not match the pre-update snapshot')
+        game=plan.get('snapshot_scope')=='game-node'
+        command_name='restore-game-node-and-record' if game else 'restore-and-authorize'
+        evidence=command(previous/'bbsbox-node',command_name,'--archive',directory/'before.age','--node',plan['node'],'--identity-file',identity,'--output',restored,'--staging',MAINTENANCE,'--source','retired','--reason',reason,'--at',str(int(time.time())))
+        authorized=(evidence.get('format')=='bbsbox.game-node-recovery-record/v1' and evidence.get('state')=='recovery-required') if game else (evidence.get('isolated_writer_ready') is True and evidence.get('installed') is False)
+        if evidence.get('inventory_sha256')!=plan['snapshot'] or not authorized:raise ValueError('Recovery does not match the pre-update snapshot')
         configuration_matches(restored/'configuration')
         installed=install.enrollment.read_json(restored/'configuration/installation.json')
         if installed.get('node_id')!=plan['node'] or installed.get('release_id')!=plan['previous']:raise ValueError('Snapshot does not belong to the previous selection')
@@ -225,9 +259,21 @@ def restore_pending(directory,plan,identity,current):
         import pwd
         user=pwd.getpwnam('bbsbox')
         if not user.pw_uid or not user.pw_gid:raise ValueError('Expected the unprivileged node account')
+        game_save=None
+        if game:
+            stop_game_worker()
+            worker=pwd.getpwnam('bbsbox-game')
+            if not worker.pw_uid or not worker.pw_gid or worker.pw_uid==user.pw_uid or worker.pw_gid==user.pw_gid:
+                raise ValueError('Expected a separate game worker account')
+            parent=Path(stages.enter_context(tempfile.TemporaryDirectory(prefix='.bbsbox-game-restore-',dir=install.backup.GAME_STATE.parent)))
+            parent.chmod(0o711)
+            game_save=parent/'game'
+            restore_provisioning.stage_game_save(restored,game_save,previous,worker.pw_uid,worker.pw_gid)
+            restore_provisioning.finish_game_restore(restored,game_save,previous,directory/'before.age',identity,plan['node'],evidence,MAINTENANCE)
         durable_tree(restored/'data',user.pw_uid,user.pw_gid)
         displaced=work/('displaced-'+os.urandom(16).hex());displaced.mkdir(mode=0o700);sync(work)
         save(directory,plan,'restoring',pending_revision=current['revision'])
+        if game_save is not None:replace_game_save(game_save)
         for name in sorted(DATA_NAMES):
             if name=='node.sqlite.writer.lock':continue # Retain its inode and exclusion across retries.
             original=DATA/name
@@ -275,12 +321,15 @@ def apply_locked(bundle,identity):
     installed=install.enrollment.read_json(CONFIGURATION/'installation.json')
     config=install.enrollment.read_json(CONFIGURATION/'node.json')
     if installed.get('format')!='bbsbox.install/v1' or installed.get('release_id')!=previous or config.get('database')!=str(DATA/'node.sqlite'):
-        raise ValueError('Expected the current signed foundation-node installation')
+        raise ValueError('Expected the current signed node installation')
+    game=install.backup.game_state_retained(config)
+    scope='game-node' if game else 'foundation-node'
     recipient=command(previous_release/'bbsbox-node','backup-public','--identity-file',identity,timeout=20)['recipient']
     with tempfile.TemporaryDirectory(prefix='.update-',dir=APPLICATION/'releases') as temporary:
         staged=Path(temporary)/'verified'
         verified=candidate.inspect(OPERATOR,Path(bundle),bytes(before['trusted_key']).hex(),staged,minimum_sequence=before['highest_sequence']+1)
         compatible(command(previous_release/'bbsbox-node','--release-profile',timeout=20),command(staged/'bbsbox-node','--release-profile',timeout=20))
+        if game:compatible_game_package(previous_release,staged)
         release=APPLICATION/'releases'/verified['release_id']
         if release.exists() or release.is_symlink():
             # A preparation crash may have published this exact verified release before its plan.
@@ -292,16 +341,17 @@ def apply_locked(bundle,identity):
     active=service('is-active',False)
     if active not in [b'active',b'inactive',b'failed']:raise ValueError('Wait for the service state transition')
     was_active=active==b'active'
-    plan=dict(format='bbsbox.offline-update-plan/v1',request=request,node=installed['node_id'],previous=previous,previous_authority=bytes(before['active']['authority']).hex(),candidate=verified['release_id'],sequence=verified['sequence'],snapshot=None,begin_revision=before['revision'],service_was_active=was_active)
+    plan=dict(format='bbsbox.offline-update-plan/v1',request=request,node=installed['node_id'],previous=previous,previous_authority=bytes(before['active']['authority']).hex(),candidate=verified['release_id'],sequence=verified['sequence'],snapshot=None,snapshot_scope=scope,begin_revision=before['revision'],service_was_active=was_active)
     save(directory,plan,'preparing')
     try:
         service('stop')
-        snapshot=command(previous_release/'bbsbox-node','backup','--config',CONFIGURATION/'node.json','--node',installed['node_id'],'--recipient',recipient,'--output',directory/'before.age','--staging',MAINTENANCE)
-        if snapshot.get('node')!=installed['node_id'] or snapshot.get('format')!='bbsbox.node-backup/v1':raise ValueError('Unexpected pre-update snapshot')
+        with install.backup.checkpoint_socket(game):
+            snapshot=command(previous_release/'bbsbox-node','backup-game-node' if game else 'backup','--config',CONFIGURATION/'node.json','--node',installed['node_id'],'--recipient',recipient,'--output',directory/'before.age','--staging',MAINTENANCE)
+        if snapshot.get('node')!=installed['node_id'] or snapshot.get('format')!='bbsbox.node-backup/v1' or snapshot.get('scope')!=scope:raise ValueError('Unexpected pre-update snapshot')
         sync(directory)
         # Prove this exact encrypted snapshot can be opened with the supplied identity first.
         with tempfile.TemporaryDirectory(prefix='pre-update-',dir=MAINTENANCE) as temporary:
-            checked=command(previous_release/'bbsbox-node','restore','--archive',directory/'before.age','--node',installed['node_id'],'--identity-file',identity,'--output',Path(temporary)/'checked','--staging',MAINTENANCE)
+            checked=command(previous_release/'bbsbox-node','restore-game-node' if game else 'restore','--archive',directory/'before.age','--node',installed['node_id'],'--identity-file',identity,'--output',Path(temporary)/'checked','--staging',MAINTENANCE)
             if checked.get('inventory_sha256')!=snapshot['inventory_sha256'] or checked.get('state')!='recovery-required':raise ValueError('Pre-update snapshot could not be verified')
         save(directory,plan,'snapshot-ready',snapshot=snapshot['inventory_sha256'])
         pending=state('begin','--revision',str(before['revision']),'--bundle',release,'--request',request)
@@ -345,6 +395,7 @@ def validate_plan(plan,operation):
     if not isinstance(plan.get('node'),str) or not re.fullmatch('node:[0-9a-f]{64}',plan['node']) or type(plan.get('service_was_active')) is not bool:raise ValueError('Invalid source binding in recovery plan')
     if type(plan.get('begin_revision')) is not int or not 0<=plan['begin_revision']<2**63 or type(plan.get('sequence')) is not int or not 1<=plan['sequence']<2**64:raise ValueError('Invalid recovery plan fence')
     if plan.get('snapshot') is not None and (not isinstance(plan['snapshot'],str) or not re.fullmatch('[0-9a-f]{64}',plan['snapshot'])):raise ValueError('Invalid snapshot binding in recovery plan')
+    if plan.get('snapshot_scope','foundation-node') not in ('foundation-node','game-node'):raise ValueError('Unknown update snapshot scope')
     if plan.get('phase') not in ['preparing','snapshot-ready','migrating','selection-durable','completed','restoring','rollback-durable','recovered','rolled-back','cancelled']:raise ValueError('Unknown recovery plan phase')
     if 'pending_revision' in plan and (type(plan['pending_revision']) is not int or plan['pending_revision']!=plan['begin_revision']+1):raise ValueError('Invalid pending revision in recovery plan')
     if plan['format']=='bbsbox.offline-rollback-plan/v1':

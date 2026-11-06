@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shutil
 import sqlite3
 import subprocess
 import sys
@@ -42,6 +43,9 @@ def exercise(source,fixture,verifier,root,output,game_node=False):
         assert evidence['scope']=='game-node' and evidence['node']==installed['node_id']
         inventory=evidence['inventory_sha256']
     authority=candidate.public_info(fixture/'rotation-public.json')
+    recovery_bundle=fixture/('game_recovery' if game_node else 'source_loss_successor')
+    release=candidate.command([verifier,'release-inspect','--bundle',recovery_bundle,'--public-key',authority['public_key']])
+    expected_migrations=[(item['module'],item['version'],item['sha256']) for item in release['expected_profile']['module_migrations']]
     control_file=source/'var/lib/bbsbox-maintenance/release-control/release-trust.sqlite'
     with closing(sqlite3.connect('file:'+str(control_file)+'?mode=ro',uri=True)) as database:
         control=json.loads(database.execute('SELECT body FROM control WHERE id=1').fetchone()[0])
@@ -56,7 +60,7 @@ def exercise(source,fixture,verifier,root,output,game_node=False):
             files['deploy/'+name]=ROOT/'deploy'/name
         for name in ['runtime_bundle.py','release_candidate.py','release_materials.py']:
             files['tools/'+name]=ROOT/'tools'/name
-        bundle=fixture/('game_recovery' if game_node else 'source_loss_successor')
+        bundle=recovery_bundle
         for path in bundle.rglob('*'):
             if path.is_file():files['bundle/'+path.relative_to(bundle).as_posix()]=path
         for name,path in files.items():
@@ -81,7 +85,8 @@ def exercise(source,fixture,verifier,root,output,game_node=False):
     assert ticket.get('scope','foundation-node')==('game-node' if game_node else 'foundation-node')
     assert candidate.materials.file_digest(root/'etc/bbsbox/maintenance/recovery.cose')==ticket['decision_sha256']
     with closing(sqlite3.connect('file:'+str(root/'var/lib/bbsbox/node.sqlite')+'?mode=ro',uri=True)) as database:
-        assert database.execute('SELECT count(*) FROM core_migrations').fetchone()[0]==(23 if game_node else 24)
+        applied=database.execute('SELECT module,version,lower(hex(digest)) FROM core_migrations ORDER BY module,version').fetchall()
+        assert applied==expected_migrations, 'Restored migrations differ from the verified release profile'
         assert database.execute("SELECT count(*) FROM core_command_receipts WHERE command_id='same-id' AND response=?",(b'kept',)).fetchone()[0]==2
         if not game_node:assert database.execute('SELECT count(*) FROM events_upgrade_receipts').fetchone()[0]==2
         assert database.execute('SELECT revision, background FROM settings_theme WHERE id=1').fetchone()==(1,'#111111')
@@ -92,6 +97,14 @@ def exercise(source,fixture,verifier,root,output,game_node=False):
             assert database.execute('SELECT chamber FROM dungeon').fetchone()==(1,)
             assert database.execute('SELECT count(*) FROM players').fetchone()==(2,)
             assert database.execute('SELECT count(*) FROM receipts').fetchone()==(1,)
+        shutil.copytree(fixture/'game_update',root/'root/bbsbox-ci-game-update',copy_function=os.link)
+        for name in ['update_release.py','rollback_release.py','restore_provisioning.py','install_release.py','install_development.py','enrollment.py','local_tls.py','backup_development.py','maintenance_lock.py']:
+            (root/'src/deploy'/name).write_bytes((ROOT/'deploy'/name).read_bytes())
+        for name in ['release_candidate.py','release_materials.py']:
+            (root/'src/tools'/name).write_bytes((ROOT/'tools'/name).read_bytes())
+        probe=root/'usr/local/lib/bbsbox-game-worker-probe.py'
+        probe.parent.mkdir(parents=True,exist_ok=True)
+        probe.write_bytes((ROOT/'deploy/ci/game_worker_case.py').read_bytes());probe.chmod(0o644)
     def verify_boot(pid,guest,node):
         operator='/opt/bbsbox/maintenance/bbsbox-operator'
         checked=json.loads(boot_service.enter(pid,guest,[operator,'release-control-boot']).stdout)
@@ -103,6 +116,29 @@ def exercise(source,fixture,verifier,root,output,game_node=False):
             boot_service.enter(pid,guest,['/opt/bbsbox/current/bbsbox-node','backup-keygen','--output','/root/bbsbox-ci-backup.key'])
             result['retained_game_backup']=boot_service.game_backup(pid,guest,node)
             assert boot_service.enter(pid,guest,['/usr/bin/systemctl','is-active','bbsbox-game-worker.socket'],False).stdout.strip()==b'inactive'
+            key='/root/bbsbox-ci-backup.key'
+            update=json.loads(boot_service.enter(pid,guest,['/usr/bin/python3','/src/deploy/update_release.py','apply','--bundle','/root/bbsbox-ci-game-update','--identity-file',key],timeout=300).stdout)
+            assert update['state']=='completed' and update['highest_sequence']==7
+            plan=json.loads((guest/'var/lib/bbsbox-maintenance/updates'/update['operation']/'plan.json').read_text())
+            assert plan['snapshot_scope']=='game-node'
+            socket_unit='bbsbox-game-worker.socket'
+            boot_service.enter(pid,guest,['/usr/bin/systemctl','start',socket_unit])
+            try:
+                boot_service.enter(pid,guest,['/usr/sbin/runuser','-u','bbsbox','--','/usr/bin/python3','/usr/local/lib/bbsbox-game-worker-probe.py','play-more'])
+            finally:
+                boot_service.enter(pid,guest,['/usr/bin/systemctl','stop',socket_unit])
+            rolled=json.loads(boot_service.enter(pid,guest,['/usr/bin/python3','/src/deploy/rollback_release.py','--operation',update['operation'],'--identity-file',key,'--reason','Restore matching game and core snapshot'],timeout=300).stdout)
+            assert rolled['state']=='rolled-back' and rolled['highest_sequence']==7
+            with closing(sqlite3.connect(game.as_uri()+'?mode=ro',uri=True)) as database:
+                assert database.execute('SELECT chamber FROM dungeon').fetchone()==(1,)
+            newer='/var/lib/bbsbox-maintenance/updates/'+rolled['operation']+'/displaced-before.age'
+            retained='/root/bbsbox-ci-game-update-retained'
+            restored=boot_service.enter(pid,guest,['/opt/bbsbox/releases/'+update['release_id']+'/bbsbox-node','restore-game-node','--archive',newer,'--node',node,'--identity-file',key,'--output',retained,'--staging','/var/lib/bbsbox-maintenance'],timeout=120)
+            assert json.loads(restored.stdout)['state']=='recovery-required'
+            newer_save=guest/retained.lstrip('/')/'games/dungeon-demo/state.sqlite'
+            with closing(sqlite3.connect(newer_save.as_uri()+'?mode=ro',uri=True)) as database:
+                assert database.execute('SELECT chamber FROM dungeon').fetchone()==(2,)
+            result.update(highest_sequence=7,game_update=True,game_rollback=True,newer_game_saved_separately=True)
         else:
             result['scheduled_backup']=backup_schedule_cases.exercise(pid,guest,node)
         return result

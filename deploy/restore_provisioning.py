@@ -101,6 +101,33 @@ def check_closed_data(data):
         raise ValueError('Unexpected restored core storage type')
 
 
+def stage_game_save(staged,target,release,uid,gid):
+    source=staged/'games/dungeon-demo'
+    if not stat.S_ISDIR(source.lstat().st_mode) or set(path.name for path in source.iterdir())!={'state.sqlite'}:
+        raise ValueError('Unexpected bundled game checkpoint layout')
+    target.mkdir(mode=0o700)
+    save=target/'state.sqlite'
+    copy_new(source/'state.sqlite',save,0o600,uid,gid)
+    os.chown(target,uid,gid)
+    base.run(['runuser','-u','bbsbox-game','--',str(release/candidate.GAME_WORKER),'--verify-state',str(save)],timeout=30)
+    for directory in (target,target.parent):
+        descriptor=os.open(directory,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
+        try:os.fsync(descriptor)
+        finally:os.close(descriptor)
+
+
+def finish_game_restore(staged,target,release,archive,identity,node,evidence,work):
+    result=run([release/'bbsbox-node','finish-game-placement','--archive',archive,'--node',node,
+                '--identity-file',identity,'--staging',work,'--staged',staged,'--placed',target,
+                '--decision-sha256',evidence['decision_sha256']])
+    if (result.get('format')!='bbsbox.game-node-placement/v1' or result.get('node')!=node
+            or result.get('inventory_sha256')!=evidence['inventory_sha256']
+            or result.get('decision_sha256')!=evidence['decision_sha256']
+            or result.get('isolated_writer_ready') is not True or result.get('installed') is not False):
+        raise ValueError('Game state placement did not release the staged core')
+    check_closed_data(staged/'data')
+
+
 @dataclass(frozen=True)
 class Prepared:
     configuration: Path
@@ -112,28 +139,9 @@ class Prepared:
     evidence: dict
 
     def place_game(self,layout,uid,gid,release,request,work):
-        source=self.data.parent/'games/dungeon-demo'
-        if set(path.name for path in source.iterdir())!={'state.sqlite'}:
-            raise ValueError('Unexpected bundled game checkpoint layout')
         target=layout.root/'var/lib/bbsbox-game'
-        target.mkdir(mode=0o700)
-        save=target/'state.sqlite'
-        copy_new(source/'state.sqlite',save,0o600,uid,gid)
-        os.chown(target,uid,gid)
-        base.run(['runuser','-u','bbsbox-game','--',str(release/candidate.GAME_WORKER),'--verify-state',str(save)],timeout=30)
-        for directory in (target,target.parent):
-            descriptor=os.open(directory,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
-            try:os.fsync(descriptor)
-            finally:os.close(descriptor)
-        result=run([release/'bbsbox-node','finish-game-placement','--archive',request.archive,'--node',request.node,
-                    '--identity-file',request.identity,'--staging',work,'--staged',self.data.parent,'--placed',target,
-                    '--decision-sha256',self.evidence['decision_sha256']])
-        if (result.get('format')!='bbsbox.game-node-placement/v1' or result.get('node')!=request.node
-                or result.get('inventory_sha256')!=self.evidence['inventory_sha256']
-                or result.get('decision_sha256')!=self.evidence['decision_sha256']
-                or result.get('isolated_writer_ready') is not True or result.get('installed') is not False):
-            raise ValueError('Game state placement did not release the staged core')
-        check_closed_data(self.data)
+        stage_game_save(self.data.parent,target,release,uid,gid)
+        finish_game_restore(self.data.parent,target,release,request.archive,request.identity,request.node,self.evidence,work)
 
     def populate(self,layout,uid,gid):
         check_closed_data(self.data)

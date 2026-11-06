@@ -107,6 +107,57 @@ class CompiledUpgradeTests(unittest.TestCase):
             with self.subTest(change=change),self.assertRaises(ValueError):update.compatible(previous,altered)
 
 
+class GameUpdateGuards(unittest.TestCase):
+    def test_retained_games_require_identical_worker_and_service_bytes(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root=Path(temporary);previous=root/'previous';successor=root/'successor'
+            previous.mkdir();successor.mkdir()
+            names=[update.candidate.GAME_WORKER,*update.candidate.GAME_UNITS]
+            for name in names:
+                (previous/name).write_bytes(name.encode());(successor/name).write_bytes(name.encode())
+            update.compatible_game_package(previous,successor)
+            for name in names:
+                with self.subTest(name=name):
+                    target=successor/name;original=target.read_bytes()
+                    target.write_bytes(b'changed')
+                    with self.assertRaises(ValueError):update.compatible_game_package(previous,successor)
+                    target.unlink()
+                    with self.assertRaises(ValueError):update.compatible_game_package(previous,successor)
+                    target.write_bytes(original)
+
+    def test_legacy_scope_and_exact_game_scope_are_the_only_admitted_profiles(self):
+        operation='ab'*16
+        plan=dict(format='bbsbox.offline-update-plan/v1',request=operation,
+                  previous='01'*32,candidate='02'*32,previous_authority='03'*32,
+                  node='node:'+'04'*32,service_was_active=False,begin_revision=0,
+                  sequence=1,snapshot=None,phase='preparing')
+        update.validate_plan(plan,operation)
+        for scope in ['foundation-node','game-node']:
+            update.validate_plan(dict(plan,snapshot_scope=scope),operation)
+        for scope in [None,'games',[],True]:
+            with self.subTest(scope=scope),self.assertRaises(ValueError):
+                update.validate_plan(dict(plan,snapshot_scope=scope),operation)
+
+    def test_interrupted_game_placement_can_retry_and_preserves_displaced_save(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root=Path(temporary);target=root/'game';target.mkdir()
+            (target/'state.sqlite').write_bytes(b'newer accepted play')
+            staged=root/'staged';staged.mkdir();(staged/'state.sqlite').write_bytes(b'matching snapshot')
+            rename=Path.rename
+            def interrupt(path,destination):
+                if path==staged:raise OSError('Simulated interruption after displacement')
+                return rename(path,destination)
+            with patch.object(update.install.backup,'GAME_STATE',target),patch.object(update,'sync'):
+                with patch.object(Path,'rename',interrupt),self.assertRaises(OSError):
+                    update.replace_game_save(staged)
+                self.assertFalse(target.exists())
+                update.replace_game_save(staged)
+            self.assertEqual((target/'state.sqlite').read_bytes(),b'matching snapshot')
+            displaced=list(root.glob('.bbsbox-game-displaced-*/previous/state.sqlite'))
+            self.assertEqual(len(displaced),1)
+            self.assertEqual(displaced[0].read_bytes(),b'newer accepted play')
+
+
 class RecoveryExclusionTests(unittest.TestCase):
     @unittest.skipUnless(sys.platform=='linux' and (ROOT/'target/debug/examples/upgrade_interrupted').is_file(),'Actual Linux migration process and writer flock')
     def test_live_migration_process_excludes_replacement_without_changing_its_lock_inode(self):

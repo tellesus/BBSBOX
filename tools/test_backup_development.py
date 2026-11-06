@@ -4,6 +4,7 @@ from pathlib import Path
 import stat
 import sys
 import tempfile
+from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'deploy'))
@@ -11,6 +12,32 @@ import backup_development as backup
 
 
 class BackupGuards(unittest.TestCase):
+    def test_disabled_game_with_a_retained_save_still_requires_the_game_profile(self):
+        with tempfile.TemporaryDirectory() as directory:
+            game=Path(directory)/'game'
+            with patch.object(backup,'GAME_STATE',game):
+                self.assertFalse(backup.game_state_retained({}))
+                self.assertTrue(backup.game_state_retained(dict(game_origin='https://game.home.arpa')))
+                game.mkdir();(game/'state.sqlite.lock').touch()
+                self.assertFalse(backup.game_state_retained({}))
+                (game/'state.sqlite').write_bytes(b'save')
+                self.assertTrue(backup.game_state_retained({}))
+                (game/'state.sqlite').unlink();(game/'state.sqlite.lock').unlink();game.rmdir()
+                game.write_bytes(b'unexpected file')
+                with self.assertRaises(ValueError):backup.game_state_retained({})
+
+    def test_temporary_checkpoint_socket_stops_even_when_backup_fails(self):
+        for status in [b'inactive',b'active']:
+            with self.subTest(status=status),patch.object(backup.subprocess,'run',return_value=SimpleNamespace(stdout=status)),patch.object(backup,'run') as run:
+                with self.assertRaisesRegex(RuntimeError,'backup failed'):
+                    with backup.checkpoint_socket(True):raise RuntimeError('backup failed')
+                actions=[call.args[0][1] for call in run.call_args_list]
+                self.assertEqual(actions,['start','stop'] if status==b'inactive' else [])
+        with patch.object(backup.subprocess,'run',return_value=SimpleNamespace(stdout=b'failed')),patch.object(backup,'run') as run:
+            with self.assertRaises(ValueError):
+                with backup.checkpoint_socket(True):self.fail('Invalid socket state was admitted')
+            run.assert_not_called()
+
     def test_unprivileged_invocation_cannot_start_maintenance(self):
         with patch.object(backup.os,'geteuid',return_value=1000,create=True),patch.object(backup.subprocess,'run') as process:
             with self.assertRaises(ValueError):backup.backup('/unused.age','age1fixture')

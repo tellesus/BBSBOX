@@ -1,6 +1,6 @@
 # Development work ledger
 
-Version 1.1.0 · 2026-10-25 · Locked roadmap. M01–M10 and M12 software providers Complete. M00, M11 and M13 In progress. Other modules Unstarted. Execution updated 2026-11-04.
+Version 1.1.0 · 2026-10-25 · Locked roadmap. M01–M10 and M12 software providers Complete. M00, M11 and M13 In progress. Other modules Unstarted. Execution updated 2026-11-06.
 
 Evidence log — not an independent source of scope authority. Current choices live in the canonical roadmap and user instructions.
 
@@ -20,7 +20,7 @@ Design review is complete and the first M00 prototype has real local implementat
 | [M08](modules/M08-friends-events.md) | Approved | Complete | A–C: local feeds, friendships, events, invitations and calendar pass signed Debian CI 41808835341 | G1 device acceptance |
 | [M09](modules/M09-clans-cohorts.md) | Approved | Complete | A–C: roster privacy, consent, handover and typed membership pass signed Debian CI 41810057605 | M11/M18 bind game consumers |
 | [M10](modules/M10-local-files.md) | Approved | Complete | A–C: permission, streaming, quota and restore pass signed Debian CI 41811437491 | M15/M16 own actual exchange tests |
-| [M11](modules/M11-local-games.md) | Approved | In progress | Signed Debian enablement and isolated game backup pass CI 41891954359 | Confirm fresh game recovery and implement game-aware installed update |
+| [M11](modules/M11-local-games.md) | Approved | In progress | Signed Debian enablement and isolated game backup pass CI 41891954359 | Confirm complete game recovery and coordinated installed update/rollback in corrected Debian fixture |
 | [M13](modules/M13-encrypted-forums.md) | Approved | In progress | A: signed framing, owner controls and epoch roster checks pass locally | Bind durable opaque host admission and trusted client integration |
 | [M14](modules/M14-complaints-moderation.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
 | [M15](modules/M15-selected-federation.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
@@ -676,3 +676,11 @@ C05 v1.1.1 specifies the required signed post extension and its MLS authenticate
 C05 v1.1.2 binds each initial control event to its ForumRoot, exact MLS payload, epoch and parent event. Tests reject another forum root or node key, detect competing successors without relying on arrival order, and require the matching forum owner before merging a real MLS commit. Membership proofs, causal storage and the trusted client remain open.
 
 C05 v1.1.3 adds signed membership changes that bind portable device credentials to epoch roles and MLS leaf keys. Local fixtures reject missing credentials, unauthorized moderator purposes and reused active leaf keys. Removing a credential prevents authoring at the new epoch while retaining the prior epoch's recorded membership. Host storage still has to enforce causal revocation and the native client has to verify MLS leaf state.
+
+## 2026-11-06 — M11 coordinated game update and rollback
+
+Continued under the standing roadmap authorization, using M11/C01/C04 and the existing M12 recovery coordinator. Installed updates now record their snapshot scope and capture retained game state together with the core. The current provider requires the same signed worker executable and service files. It stages and verifies the matching game save before releasing the staged core, stops worker processes before replacement, and retains displaced game data. Explicit rollback also decrypt-verifies a complete current archive before selecting the older pair.
+
+Portable guards cover incompatible worker/unit bytes, legacy plan scope, disabled retained saves, checkpoint socket cleanup and interrupted game placement. The local compiled upgrade fixture and two-player HTTPS game/restart/encrypted-recovery fixture pass. The full Rust workspace tests and strict lint pass. All 62 Python checks pass, with eight platform/tooling checks skipped locally. The Debian replacement fixture now exercises a real signed game update, further play, rollback and recovery of the separately retained newer save.
+
+The four recent Linux runs through 41896365815 stopped after successful replacement provisioning at a stale hard-coded migration count. The check now compares every applied module, version and SQL digest against the verified signed release profile. Complete replacement/update/rollback confirmation awaits the containing Linux run. M11 remains In progress and milestone phone evidence remains pending.

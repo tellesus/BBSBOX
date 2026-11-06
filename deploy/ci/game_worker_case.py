@@ -59,6 +59,12 @@ def denied():
         pass
 
 
+def play_more():
+    with connect() as connection, connection.makefile('rb') as incoming:
+        result = request(connection,incoming,1,'act',player=[2]*16,command=[10]*16,action='explore')
+        assert result['state']['chamber']==2
+
+
 def probe():
     account = pwd.getpwnam('bbsbox')
     worker = pwd.getpwnam('bbsbox-game')
@@ -110,4 +116,4 @@ def probe():
 
 
 if __name__ == '__main__':
-    {'probe': probe, 'play': play, 'denied': denied}[sys.argv[1]]()
+    {'probe': probe, 'play': play, 'denied': denied, 'play-more': play_more}[sys.argv[1]]()

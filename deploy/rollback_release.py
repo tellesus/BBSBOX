@@ -35,10 +35,17 @@ def rollback_locked(operation,identity,reason):
     executable=update.APPLICATION/'releases'/selected/'bbsbox-node'
     previous=update.APPLICATION/'releases'/original['previous']
     update.installed_release(previous,original['previous_authority'],original['previous'])
+    scope=original.get('snapshot_scope','foundation-node')
+    game=scope=='game-node'
+    config=update.install.enrollment.read_json(update.CONFIGURATION/'node.json')
+    if update.install.backup.game_state_retained(config)!=game:
+        raise ValueError('Current game state differs from the historical snapshot scope')
+    if game:update.compatible_game_package(previous,executable.parent)
+    restore='restore-game-node' if game else 'restore'
     recipient=update.command(executable,'backup-public','--identity-file',identity,timeout=20)['recipient']
     # Validate the selected historical snapshot/key/registry before stopping a healthy current node.
     with tempfile.TemporaryDirectory(prefix='rollback-check-',dir=update.MAINTENANCE) as temporary:
-        checked=update.command(previous/'bbsbox-node','restore','--archive',source/'before.age','--node',original['node'],'--identity-file',identity,'--output',Path(temporary)/'checked','--staging',update.MAINTENANCE)
+        checked=update.command(previous/'bbsbox-node',restore,'--archive',source/'before.age','--node',original['node'],'--identity-file',identity,'--output',Path(temporary)/'checked','--staging',update.MAINTENANCE)
         if checked.get('inventory_sha256')!=original['snapshot']:raise ValueError('Historical snapshot differs from the completed update plan')
         update.configuration_matches(Path(temporary)/'checked/configuration')
     active=update.service('is-active',False)
@@ -47,16 +54,17 @@ def rollback_locked(operation,identity,reason):
     directory.mkdir(mode=0o700);update.sync(directory.parent)
     # Immutable encrypted input remains separate from both live node data and release control.
     os.link(source/'before.age',directory/'before.age');update.sync(directory)
-    plan=dict(format='bbsbox.offline-rollback-plan/v1',request=request,node=original['node'],previous=original['previous'],previous_authority=original['previous_authority'],candidate=selected,sequence=current['highest_sequence'],snapshot=original['snapshot'],begin_revision=current['revision'],service_was_active=active==b'active',reason=reason,source_operation=operation)
+    plan=dict(format='bbsbox.offline-rollback-plan/v1',request=request,node=original['node'],previous=original['previous'],previous_authority=original['previous_authority'],candidate=selected,sequence=current['highest_sequence'],snapshot=original['snapshot'],snapshot_scope=scope,begin_revision=current['revision'],service_was_active=active==b'active',reason=reason,source_operation=operation)
     update.save(directory,plan,'preparing')
     try:
         update.service('stop')
         # Retain accepted post-update data for separate reconciliation; never claim it was merged.
-        retained=update.command(executable,'backup','--config',update.CONFIGURATION/'node.json','--node',plan['node'],'--recipient',recipient,'--output',directory/'displaced-before.age','--staging',update.MAINTENANCE)
-        if retained.get('node')!=plan['node'] or retained.get('format')!='bbsbox.node-backup/v1':raise ValueError('Could not retain the current node snapshot')
+        with update.install.backup.checkpoint_socket(game):
+            retained=update.command(executable,'backup-game-node' if game else 'backup','--config',update.CONFIGURATION/'node.json','--node',plan['node'],'--recipient',recipient,'--output',directory/'displaced-before.age','--staging',update.MAINTENANCE)
+        if retained.get('node')!=plan['node'] or retained.get('format')!='bbsbox.node-backup/v1' or retained.get('scope')!=scope:raise ValueError('Could not retain the current node snapshot')
         update.sync(directory)
         with tempfile.TemporaryDirectory(prefix='rollback-current-',dir=update.MAINTENANCE) as temporary:
-            checked=update.command(executable,'restore','--archive',directory/'displaced-before.age','--node',plan['node'],'--identity-file',identity,'--output',Path(temporary)/'checked','--staging',update.MAINTENANCE)
+            checked=update.command(executable,restore,'--archive',directory/'displaced-before.age','--node',plan['node'],'--identity-file',identity,'--output',Path(temporary)/'checked','--staging',update.MAINTENANCE)
             if checked.get('inventory_sha256')!=retained['inventory_sha256']:raise ValueError('Current retained snapshot could not be verified')
         update.save(directory,plan,'snapshot-ready',retained_inventory=retained['inventory_sha256'])
         pending=update.state('recover','--revision',str(current['revision']),'--request',request,'--release-id',plan['previous'],'--snapshot',plan['snapshot'],'--reason',reason,'--at',str(int(time.time())))

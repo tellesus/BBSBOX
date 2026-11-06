@@ -18,7 +18,7 @@ def context(fixture,verifier,output):
     candidate.command([verifier,'release-inspect','--bundle',fixture/'bundle','--public-key',public['public_key']])
     output.mkdir(mode=0o755);output.chmod(0o755)
     sources={'Dockerfile':ROOT/'deploy/ci/Dockerfile.release','bootstrap/bbsbox-operator':verifier}
-    for name in ['install_release.py','update_release.py','rollback_release.py','install_development.py','backup_development.py','backup_node.py','enrollment.py','configure_network.py','network_profile.py','local_tls.py','renew_tls.py','maintenance_lock.py','diagnose.py']:
+    for name in ['install_release.py','update_release.py','rollback_release.py','restore_provisioning.py','install_development.py','backup_development.py','backup_node.py','enrollment.py','configure_network.py','network_profile.py','local_tls.py','renew_tls.py','maintenance_lock.py','diagnose.py']:
         sources['deploy/'+name]=ROOT/'deploy'/name
     for name in ['runtime_bundle.py','release_candidate.py','release_materials.py']:
         sources['tools/'+name]=ROOT/'tools'/name

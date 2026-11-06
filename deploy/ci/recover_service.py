@@ -21,6 +21,17 @@ sys.path.insert(0,str(ROOT/'tools'))
 import release_candidate as candidate
 
 
+def game_maintenance_context(root,fixture):
+    shutil.copytree(fixture/'game_update',root/'root/bbsbox-ci-game-update',copy_function=os.link)
+    for name in ['backup_node.py','update_release.py','rollback_release.py','restore_provisioning.py','install_release.py','install_development.py','enrollment.py','local_tls.py','backup_development.py','maintenance_lock.py']:
+        (root/'src/deploy'/name).write_bytes((ROOT/'deploy'/name).read_bytes())
+    for name in ['runtime_bundle.py','release_candidate.py','release_materials.py']:
+        (root/'src/tools'/name).write_bytes((ROOT/'tools'/name).read_bytes())
+    probe=root/'usr/local/lib/bbsbox-game-worker-probe.py'
+    probe.parent.mkdir(parents=True,exist_ok=True)
+    probe.write_bytes((ROOT/'deploy/ci/game_worker_case.py').read_bytes());probe.chmod(0o644)
+
+
 def exercise(source,fixture,verifier,root,output,game_node=False):
     if sys.platform!='linux' or os.geteuid()!=0:raise ValueError('Run only on the disposable Linux CI host as root')
     work=(ROOT/'work').resolve()
@@ -97,14 +108,7 @@ def exercise(source,fixture,verifier,root,output,game_node=False):
             assert database.execute('SELECT chamber FROM dungeon').fetchone()==(1,)
             assert database.execute('SELECT count(*) FROM players').fetchone()==(2,)
             assert database.execute('SELECT count(*) FROM receipts').fetchone()==(1,)
-        shutil.copytree(fixture/'game_update',root/'root/bbsbox-ci-game-update',copy_function=os.link)
-        for name in ['update_release.py','rollback_release.py','restore_provisioning.py','install_release.py','install_development.py','enrollment.py','local_tls.py','backup_development.py','maintenance_lock.py']:
-            (root/'src/deploy'/name).write_bytes((ROOT/'deploy'/name).read_bytes())
-        for name in ['release_candidate.py','release_materials.py']:
-            (root/'src/tools'/name).write_bytes((ROOT/'tools'/name).read_bytes())
-        probe=root/'usr/local/lib/bbsbox-game-worker-probe.py'
-        probe.parent.mkdir(parents=True,exist_ok=True)
-        probe.write_bytes((ROOT/'deploy/ci/game_worker_case.py').read_bytes());probe.chmod(0o644)
+        game_maintenance_context(root,fixture)
     def verify_boot(pid,guest,node):
         operator='/opt/bbsbox/maintenance/bbsbox-operator'
         checked=json.loads(boot_service.enter(pid,guest,[operator,'release-control-boot']).stdout)

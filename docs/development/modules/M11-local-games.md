@@ -1,8 +1,8 @@
 # M11 — Game host and local multiplayer example
 
-Brief revision 1.1.16 · Roadmap baseline 1.1.0 · 2026-11-06 · Locked scope · Product baseline 0.6.0.
+Brief revision 1.1.17 · Roadmap baseline 1.1.0 · 2026-11-06 · Locked scope · Product baseline 0.6.0.
 
-**State:** In progress. Debian confirms isolated game backup, signed installation and fresh appliance enablement. Complete replacement recovery and coordinated installed update/rollback await the corrected Linux fixture.
+**State:** Complete for the software provider. Local browser/recovery checks and signed Debian installation, enablement, complete replacement recovery and coordinated game/core update/rollback pass. G1 physical/phone acceptance remains pending.
 
 ## Read only this packet
 
@@ -49,6 +49,8 @@ Use the listed contracts. Disabling a game retains its state.
 - A command retry changes game state once.
 - Logging out invalidates outstanding tickets and sessions from that sign-in.
 - Profile settings hide game/character summaries; local groups remain local.
+
+[CI 42310888214](https://github.com/tellesus/BBSBOX/actions/runs/42310888214) passes all four jobs through `a29d174`. It verifies isolation, complete replacement, update, further play, matching-pair rollback and retained newer play. Edge gameplay and third-user board access pass locally. G1 phones remain pending.
 
 ## Locked defaults and verification
 

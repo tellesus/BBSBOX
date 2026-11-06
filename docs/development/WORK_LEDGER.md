@@ -1,6 +1,6 @@
 # Development work ledger
 
-Version 1.1.0 · 2026-10-25 · Locked roadmap. M01–M10 and M12 software providers Complete. M00, M11 and M13 In progress. Other modules Unstarted. Execution updated 2026-11-06.
+Version 1.1.0 · 2026-10-25 · Locked roadmap. M01–M12 software providers Complete. M00 and M13 In progress. Other modules Unstarted. Execution updated 2026-11-06.
 
 Evidence log — not an independent source of scope authority. Current choices live in the canonical roadmap and user instructions.
 
@@ -20,8 +20,8 @@ Design review is complete and the first M00 prototype has real local implementat
 | [M08](modules/M08-friends-events.md) | Approved | Complete | A–C: local feeds, friendships, events, invitations and calendar pass signed Debian CI 41808835341 | G1 device acceptance |
 | [M09](modules/M09-clans-cohorts.md) | Approved | Complete | A–C: roster privacy, consent, handover and typed membership pass signed Debian CI 41810057605 | M11/M18 bind game consumers |
 | [M10](modules/M10-local-files.md) | Approved | Complete | A–C: permission, streaming, quota and restore pass signed Debian CI 41811437491 | M15/M16 own actual exchange tests |
-| [M11](modules/M11-local-games.md) | Approved | In progress | Signed Debian enablement and isolated game backup pass CI 41891954359 | Confirm complete game recovery and coordinated installed update/rollback in corrected Debian fixture |
-| [M13](modules/M13-encrypted-forums.md) | Approved | In progress | A: signed framing, epoch history and durable governance fixtures pass locally | Bind application admission, runtime and trusted client integration |
+| [M11](modules/M11-local-games.md) | Approved | Complete | A–C and signed game/core replacement, update and rollback pass CI 42310888214 | G1 physical/phone checks are due. M18 owns cross-node portability |
+| [M13](modules/M13-encrypted-forums.md) | Approved | In progress | A: signed framing, epoch history and durable governance fixtures pass Linux CI 42310888214 | Bind application admission, runtime and trusted client integration |
 | [M14](modules/M14-complaints-moderation.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
 | [M15](modules/M15-selected-federation.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
 | [M16](modules/M16-pigeons-lump-drops.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
@@ -696,3 +696,11 @@ Three real SQLite fixtures pass, covering restart, out-of-order controls, duplic
 ## 2026-11-06 — M11 replacement fixture maintenance commands
 
 Linux run 42307601758 passed the corrected exact-registry check, foundation replacement boot and offline network renewal. The complete game replacement also booted successfully. Its following backup check exposed a missing `backup_node.py` wrapper in the exported test image. The replacement context now includes backup, update and rollback commands plus their local imports. A portable regression invokes all three real command entry points from a fresh copied context before the expensive Debian fixture. This regression passes locally. Complete game update/rollback confirmation remains pending the corrected run.
+
+## 2026-11-06 — M11 software completion and M13 handoff
+
+[CI 42310888214](https://github.com/tellesus/BBSBOX/actions/runs/42310888214) passed all four jobs at `a29d174`, which was promoted to `main` after exact-commit, job and ancestry checks. The complete game replacement fixture backed up the disabled retained save, applied a signed update, played another turn, rolled back the matching game/core pair and reopened the separately retained newer save. The replacement game then passed offline IPv4/IPv6 network access, local TLS renewal and reboot. The former migration-count and missing-wrapper fixture failures are corrected.
+
+M01–M12 software providers are Complete. The G1 integrated local-alpha milestone now needs physical appliance/router and actual Android Chrome/iOS Safari enrollment and use checks under U22. Local evidence includes 222 passing workspace tests, strict lint, ten OpenMLS fixtures, the Edge two-player check and 63 Python checks with eight platform/tooling skips.
+
+M13 remains In progress with durable governance confirmed by Linux CI. Its next trust-boundary work needs a real independently bundled native client. This workstation lacks Microsoft C++ Build Tools and the Windows SDK required by the selected Windows Tauri path. Permission to install them is pending. Application admission, native client integration and G2 acceptance remain open. The current game updater requires identical worker/service bytes, and the initial governance provider retains its documented per-scope history budget. These are provider compatibility/capacity limits, not completed support for game migrations or unbounded history.

@@ -12,7 +12,7 @@ use bbsbox_event_core::{
 use bbsbox_private_forum::{
     Error,
     control::{COMMIT, CONTROL_EXTENSION, Control, GENESIS},
-    governance::Governance,
+    governance::{Governance, Stop},
     membership::{MEMBERSHIP_EXTENSION, Roster},
 };
 use bbsbox_storage::Migration;
@@ -233,6 +233,23 @@ impl Module for Host<'_> {
     }
 
     fn reduce(&self, tx: &Transaction<'_>, event: &CompleteEvent) -> events::Result<Relevance> {
+        let control = Control::inspect(event).map_err(|_| events::Error::CorruptRecord)?;
+        let &(forum, distribution) = self
+            .forums
+            .iter()
+            .find(|(forum, distribution)| control.belongs_to(*forum, *distribution))
+            .ok_or(events::Error::WrongModule)?;
+        let history = self.history(tx, forum, distribution)?;
+        let advances = match control.header().parent {
+            None => history.stop() == Stop::MissingGenesis,
+            Some(parent) => {
+                history.stop() == Stop::Tip
+                    && history
+                        .epochs()
+                        .last()
+                        .is_some_and(|row| row.control().id() == parent)
+            }
+        };
         tx.execute(
             "INSERT INTO private_forum_controls VALUES(?1,?2,?3)",
             params![
@@ -241,7 +258,11 @@ impl Module for Host<'_> {
                 event.metadata().scope.distribution as u8
             ],
         )?;
-        Ok(Relevance::DependencyOnly)
+        Ok(if advances {
+            Relevance::Relevant
+        } else {
+            Relevance::DependencyOnly
+        })
     }
 
     fn invalidate_fork(&self, _: &Transaction<'_>, _: &Fork) -> events::Result<()> {

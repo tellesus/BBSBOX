@@ -141,7 +141,7 @@ fn durable_history_stages_missing_parents_deduplicates_and_withdraws_conflicted_
     for event in [&genesis, &first, &second] {
         assert!(
             matches!(deliver(&mut database,&host,&resolver,event).unwrap(),
-            Integration::Accepted(receipt) if receipt.relevance==Relevance::DependencyOnly)
+            Integration::Accepted(receipt) if receipt.relevance==Relevance::Relevant)
         );
     }
     assert!(matches!(
@@ -171,7 +171,7 @@ fn durable_history_stages_missing_parents_deduplicates_and_withdraws_conflicted_
     );
     assert!(matches!(
         deliver(&mut database, &host, &resolver, &competing).unwrap(),
-        Integration::Accepted(_)
+        Integration::Accepted(receipt) if receipt.relevance == Relevance::DependencyOnly
     ));
     let history = host
         .history(&reader, resource, Distribution::Local)

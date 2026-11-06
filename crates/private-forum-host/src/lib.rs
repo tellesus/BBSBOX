@@ -240,16 +240,10 @@ impl Module for Host<'_> {
             .find(|(forum, distribution)| control.belongs_to(*forum, *distribution))
             .ok_or(events::Error::WrongModule)?;
         let history = self.history(tx, forum, distribution)?;
-        let advances = match control.header().parent {
-            None => history.stop() == Stop::MissingGenesis,
-            Some(parent) => {
-                history.stop() == Stop::Tip
-                    && history
-                        .epochs()
-                        .last()
-                        .is_some_and(|row| row.control().id() == parent)
-            }
-        };
+        let changes_history = history.stop()
+            != Stop::Conflict {
+                parent: control.header().parent,
+            };
         tx.execute(
             "INSERT INTO private_forum_controls VALUES(?1,?2,?3)",
             params![
@@ -258,7 +252,7 @@ impl Module for Host<'_> {
                 event.metadata().scope.distribution as u8
             ],
         )?;
-        Ok(if advances {
+        Ok(if changes_history {
             Relevance::Relevant
         } else {
             Relevance::DependencyOnly

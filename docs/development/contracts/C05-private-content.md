@@ -32,6 +32,6 @@ Ordinary browser login uses same-origin cookies/CSRF protection. The independent
 
 ## Governance and backup recovery
 
-Require [forum-root authorization](../../../protocol/private-forum-application-v1.md#owner-authorization) and [membership changes](../../../protocol/private-forum-application-v1.md#epoch-membership) before MLS merge. Reconstruct accepted history after conflicts/forks. Ambiguous branches cannot advance. New unambiguous governance transitions can qualify as relevant changes. M13 owns application admission, causal revocation, runtime integration and delegated proposals.
+Require [forum-root authorization](../../../protocol/private-forum-application-v1.md#owner-authorization) and [membership changes](../../../protocol/private-forum-application-v1.md#epoch-membership) before MLS merge. Reconstruct accepted history after conflicts/forks. Ambiguous branches cannot advance. New governance or conflict changes can qualify as relevant. M13 owns application admission, causal revocation, runtime integration and delegated proposals.
 
 An explicit backup restore starts receive-only. Require a fresh owner-authorized MLS join with new client state before sending or proposing governance; replaying a commit alone is insufficient. Lost post-snapshot replay knowledge requires application-ID reconciliation. This guard affects only the restored client; other members continue posting.

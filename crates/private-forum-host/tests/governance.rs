@@ -171,7 +171,7 @@ fn durable_history_stages_missing_parents_deduplicates_and_withdraws_conflicted_
     );
     assert!(matches!(
         deliver(&mut database, &host, &resolver, &competing).unwrap(),
-        Integration::Accepted(receipt) if receipt.relevance == Relevance::DependencyOnly
+        Integration::Accepted(receipt) if receipt.relevance == Relevance::Relevant
     ));
     let history = host
         .history(&reader, resource, Distribution::Local)
@@ -183,6 +183,20 @@ fn durable_history_stages_missing_parents_deduplicates_and_withdraws_conflicted_
         }
     );
     assert_eq!(history.epochs().len(), 1);
+    let further_conflict = control(
+        &key,
+        6,
+        ControlHeader {
+            epoch: 1,
+            parent: Some(genesis.id()),
+        },
+        Default::default(),
+        b"another approval at the existing conflict",
+    );
+    assert!(
+        matches!(deliver(&mut database, &host, &resolver, &further_conflict).unwrap(),
+        Integration::Accepted(receipt) if receipt.relevance == Relevance::DependencyOnly)
+    );
     assert!(!host.dependency_effective(&reader, first.id()).unwrap());
     assert!(!host.dependency_effective(&reader, second.id()).unwrap());
     assert_eq!(
@@ -208,7 +222,7 @@ fn durable_history_stages_missing_parents_deduplicates_and_withdraws_conflicted_
             .query_row("SELECT count(*) FROM private_forum_controls", [], |row| row
                 .get::<_, i64>(0))
             .unwrap(),
-        4
+        5
     );
 }
 

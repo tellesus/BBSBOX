@@ -145,6 +145,10 @@ pub struct Roster {
 }
 
 impl Roster {
+    pub fn control(&self) -> &Control {
+        &self.control
+    }
+
     /// Apply an accepted control branch. The caller resolves competing approvals before calling.
     pub fn apply(
         control: Control,

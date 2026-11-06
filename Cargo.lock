@@ -488,6 +488,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "bbsbox-private-forum-host"
+version = "0.1.0"
+dependencies = [
+ "bbsbox-client-identity",
+ "bbsbox-credentials",
+ "bbsbox-event-codec",
+ "bbsbox-event-core",
+ "bbsbox-private-forum",
+ "bbsbox-storage",
+ "ed25519-dalek",
+ "rusqlite",
+ "tempfile",
+]
+
+[[package]]
 name = "bbsbox-profiles"
 version = "0.1.0"
 dependencies = [

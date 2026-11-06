@@ -1,6 +1,6 @@
 # C05 — Private content, profiles and complaint access
 
-Version 1.1.3 · Accepted for implementation · Owners M07, M13 and M14.
+Version 1.1.4 · Accepted for implementation · Owners M07, M13 and M14.
 
 ## Privacy surfaces
 
@@ -32,6 +32,6 @@ Ordinary browser login uses same-origin cookies/CSRF protection. The independent
 
 ## Governance and backup recovery
 
-Before merging an MLS governance change, require [forum-root authorization](../../../protocol/private-forum-application-v1.md#owner-authorization) of the commit and [membership changes](../../../protocol/private-forum-application-v1.md#epoch-membership). Competing valid successors block advancement. M13 still owns durable admission and delegated proposals.
+Require [forum-root authorization](../../../protocol/private-forum-application-v1.md#owner-authorization) and [membership changes](../../../protocol/private-forum-application-v1.md#epoch-membership) before MLS merge. Reconstruct accepted history after conflicts/forks. Ambiguous branches cannot advance. Governance supplies dependency evidence. M13 owns application admission, causal revocation, runtime integration and delegated proposals.
 
 An explicit backup restore starts receive-only. Require a fresh owner-authorized MLS join with new client state before sending or proposing governance; replaying a commit alone is insufficient. Lost post-snapshot replay knowledge requires application-ID reconciliation. This guard affects only the restored client; other members continue posting.

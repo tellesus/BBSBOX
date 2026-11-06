@@ -1,0 +1,19 @@
+[package]
+name = "bbsbox-private-forum-host"
+version = "0.1.0"
+edition = "2024"
+license = "AGPL-3.0-or-later"
+publish = false
+
+[dependencies]
+bbsbox-credentials = { path = "../credentials" }
+bbsbox-event-codec = { path = "../event-codec" }
+bbsbox-event-core = { path = "../event-core" }
+bbsbox-private-forum = { path = "../private-forum" }
+bbsbox-storage = { path = "../storage" }
+rusqlite = "0.41"
+
+[dev-dependencies]
+bbsbox-client-identity = { path = "../../client/identity" }
+ed25519-dalek = "3"
+tempfile = "3"

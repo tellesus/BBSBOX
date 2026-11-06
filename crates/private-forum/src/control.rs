@@ -119,6 +119,10 @@ impl Control {
         self.header
     }
 
+    pub fn belongs_to(&self, forum: ForumId, distribution: Distribution) -> bool {
+        self.forum == forum && self.distribution == distribution
+    }
+
     pub fn is_successor_of(&self, parent: &Self) -> bool {
         self.forum == parent.forum
             && self.distribution == parent.distribution

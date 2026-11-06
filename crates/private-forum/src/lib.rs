@@ -6,6 +6,7 @@ use bbsbox_event_codec::{
     Actor, CompleteEvent, Dependency, Distribution, Draft, EventId, Extension, Role, Scope,
 };
 pub mod control;
+pub mod governance;
 pub mod membership;
 
 pub const AUDIENCE: &str = "forum-members";

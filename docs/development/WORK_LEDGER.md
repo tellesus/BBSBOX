@@ -21,7 +21,7 @@ Design review is complete and the first M00 prototype has real local implementat
 | [M09](modules/M09-clans-cohorts.md) | Approved | Complete | A–C: roster privacy, consent, handover and typed membership pass signed Debian CI 41810057605 | M11/M18 bind game consumers |
 | [M10](modules/M10-local-files.md) | Approved | Complete | A–C: permission, streaming, quota and restore pass signed Debian CI 41811437491 | M15/M16 own actual exchange tests |
 | [M11](modules/M11-local-games.md) | Approved | In progress | Signed Debian enablement and isolated game backup pass CI 41891954359 | Confirm complete game recovery and coordinated installed update/rollback in corrected Debian fixture |
-| [M13](modules/M13-encrypted-forums.md) | Approved | In progress | A: signed framing, owner controls and epoch roster checks pass locally | Bind durable opaque host admission and trusted client integration |
+| [M13](modules/M13-encrypted-forums.md) | Approved | In progress | A: signed framing, epoch history and durable governance fixtures pass locally | Bind application admission, runtime and trusted client integration |
 | [M14](modules/M14-complaints-moderation.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
 | [M15](modules/M15-selected-federation.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
 | [M16](modules/M16-pigeons-lump-drops.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
@@ -684,3 +684,11 @@ Continued under the standing roadmap authorization, using M11/C01/C04 and the ex
 Portable guards cover incompatible worker/unit bytes, legacy plan scope, disabled retained saves, checkpoint socket cleanup and interrupted game placement. The local compiled upgrade fixture and two-player HTTPS game/restart/encrypted-recovery fixture pass. The full Rust workspace tests and strict lint pass. All 62 Python checks pass, with eight platform/tooling checks skipped locally. The Debian replacement fixture now exercises a real signed game update, further play, rollback and recovery of the separately retained newer save.
 
 The four recent Linux runs through 41896365815 stopped after successful replacement provisioning at a stale hard-coded migration count. The check now compares every applied module, version and SQL digest against the verified signed release profile. Complete replacement/update/rollback confirmation awaits the containing Linux run. M11 remains In progress and milestone phone evidence remains pending.
+
+## 2026-11-06 — M13 A durable owner governance
+
+Continued the approved M13 A admission slice under C02 and C05 v1.1.4. Shared metadata reconstructs the unique owner-led epoch chain independently of arrival order. Missing credentials preserve the unambiguous prefix. Late competing approvals remove their branch and descendants from the derived view while retaining earlier epochs for stale-author checks.
+
+The separate host adapter uses the existing M04 signed intake, dependency checks, fork readiness, immutable receipts and M02 writer transaction. It indexes opaque governance only for configured forum/distribution pairs. Governance records are dependency-only and do not earn message credit. Reads reconstruct from accepted, currently chain-valid evidence. The initial provider enforces a caller-selected history budget up to 4,096 controls per hosted scope and rolls back intake on overflow.
+
+Three real SQLite fixtures pass, covering restart, out-of-order controls, duplicate receipts, late conflicts, same-stream forks, delayed credential proofs, unconfigured resources, invalid membership, bounded admission and forced index-write rollback. Shared framing/governance tests and all ten pinned OpenMLS fixtures pass. Application admission, paged history, delegated proposals, client pairing and native distribution remain open. Microsoft C++ Build Tools and the Windows SDK are absent on this workstation. Installation permission was requested while portable work continued. G1/G2 device acceptance remains pending.

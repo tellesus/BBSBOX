@@ -2,10 +2,13 @@
 
 This experiment builds a real Tauri 2 client with locally bundled UI and the existing Rust client identity provider. A generated person root stays in the native process. The UI reads its public PersonId through a native command. The automatic check attempts to navigate to replacement web content, then verifies that navigation was denied and the bundled document still owns the window.
 
-On Windows, prepare Microsoft C++ Build Tools, the Windows SDK, WebView2 and the pinned MSVC Rust toolchain. From the repository root, using its configured Cargo/Rustup directories, run these commands.
+On Windows, prepare Microsoft C++ Build Tools, the Windows SDK, WebView2 and the pinned MSVC Rust toolchain. For the repository-local tool installation verified on this workstation, run these commands from the repository root.
 
 ```powershell
-cargo +1.99.1-x86_64-pc-windows-msvc build --locked --offline --manifest-path spikes/m00/native/Cargo.toml
+$env:CARGO_HOME = "$PWD/.tooling/cargo"
+$env:RUSTUP_HOME = "$PWD/.tooling/rustup"
+New-Item -ItemType Directory -Path work -Force | Out-Null
+& .tooling/cargo/bin/cargo.exe +1.99.1-x86_64-pc-windows-msvc build --locked --offline --manifest-path spikes/m00/native/Cargo.toml
 python spikes/m00/native/check.py --binary spikes/m00/native/target/debug/bbsbox-native-probe.exe
 ```
 

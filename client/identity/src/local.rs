@@ -45,7 +45,7 @@ impl Session {
         let key = DeviceKey::generate();
         let credential = root.issue_device(key.public(), purposes)?;
         let device = key.activate(root.person_id(), credential)?;
-        let sealer = Sealer::create(engine, DOMAIN, MAX_PLAINTEXT, pass)?;
+        let (sealer, _permit) = Sealer::create(engine, DOMAIN, MAX_PLAINTEXT, pass)?;
         Ok(Self {
             root,
             device,
@@ -71,7 +71,8 @@ impl Session {
     }
 
     pub fn open(engine: &Engine, encoded: &[u8], pass: Zeroizing<String>) -> Result<Opened, Error> {
-        let (sealer, plaintext) = Sealer::open(engine, DOMAIN, 76, MAX_PLAINTEXT, encoded, pass)?;
+        let (sealer, plaintext, _permit) =
+            Sealer::open(engine, DOMAIN, 76, MAX_PLAINTEXT, encoded, pass)?;
         if plaintext[0] != 1 {
             return Err(Error::UnsupportedProfile);
         }

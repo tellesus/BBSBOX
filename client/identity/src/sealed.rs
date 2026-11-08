@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Shared fixed-profile encrypted client records. Only ciphertext leaves this module.
-use crate::recovery::{Engine, Error, derive, passphrase};
+use crate::recovery::{Engine, Error, Permit, derive, passphrase};
 use chacha20poly1305::{
     XChaCha20Poly1305, XNonce,
     aead::{Aead, KeyInit, Payload},
@@ -33,32 +33,36 @@ fn header(domain: &str, salt: [u8; 16], nonce: [u8; 24]) -> Vec<Value> {
 }
 
 impl Sealer {
-    pub(crate) fn create(
-        engine: &Engine,
+    // Callers retain the permit until their complete plaintext/key operation has finished.
+    pub(crate) fn create<'a>(
+        engine: &'a Engine,
         domain: &'static str,
         maximum: usize,
         pass: Zeroizing<String>,
-    ) -> Result<Self, Error> {
+    ) -> Result<(Self, Permit<'a>), Error> {
         passphrase(&pass)?;
-        let _permit = engine.permit()?;
+        let permit = engine.permit()?;
         let mut salt = [0; 16];
         OsRng.fill_bytes(&mut salt);
-        Ok(Self {
-            domain,
-            maximum,
-            salt,
-            key: derive(&pass, &salt)?,
-        })
+        Ok((
+            Self {
+                domain,
+                maximum,
+                salt,
+                key: derive(&pass, &salt)?,
+            },
+            permit,
+        ))
     }
 
-    pub(crate) fn open(
-        engine: &Engine,
+    pub(crate) fn open<'a>(
+        engine: &'a Engine,
         domain: &'static str,
         minimum: usize,
         maximum: usize,
         encoded: &[u8],
         pass: Zeroizing<String>,
-    ) -> Result<(Self, Zeroizing<Vec<u8>>), Error> {
+    ) -> Result<(Self, Zeroizing<Vec<u8>>, Permit<'a>), Error> {
         passphrase(&pass)?;
         if encoded.len() > maximum + 256 {
             return Err(Error::InvalidKit);
@@ -91,7 +95,7 @@ impl Sealer {
         {
             return Err(Error::InvalidKit);
         }
-        let _permit = engine.permit()?;
+        let permit = engine.permit()?;
         let key = derive(&pass, &salt)?;
         let cipher =
             XChaCha20Poly1305::new_from_slice(key.as_slice()).map_err(|_| Error::InvalidKit)?;
@@ -115,6 +119,7 @@ impl Sealer {
                 key,
             },
             plaintext,
+            permit,
         ))
     }
 

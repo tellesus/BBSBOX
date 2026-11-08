@@ -128,7 +128,8 @@ impl Engine {
         if client_state.len() > MAX_CLIENT_STATE {
             return Err(Error::InvalidKit);
         }
-        let sealer = crate::sealed::Sealer::create(self, DOMAIN, MAX_CLIENT_STATE + 32, pass)?;
+        let (sealer, _permit) =
+            crate::sealed::Sealer::create(self, DOMAIN, MAX_CLIENT_STATE + 32, pass)?;
         let seed = Zeroizing::new(root.0.to_bytes());
         let mut plaintext = Zeroizing::new(Vec::with_capacity(32 + client_state.len()));
         plaintext.extend_from_slice(seed.as_slice());
@@ -136,7 +137,7 @@ impl Engine {
         sealer.seal(&plaintext)
     }
     pub fn import(&self, encoded: &[u8], pass: Zeroizing<String>) -> Result<RestoredIdentity> {
-        let (_, plaintext) =
+        let (_, plaintext, _permit) =
             crate::sealed::Sealer::open(self, DOMAIN, 32, MAX_CLIENT_STATE + 32, encoded, pass)?;
         let mut seed = Zeroizing::new([0; 32]);
         seed.copy_from_slice(&plaintext[..32]);

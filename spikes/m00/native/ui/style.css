@@ -1,0 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+:root { color-scheme: dark; font: 1rem system-ui, sans-serif; background: #08080b; color: #f4f4fa; }
+main { max-width: 38rem; margin: 3rem auto; padding: 1rem; }
+h1 { color: #ff41d3; }
+#person { overflow-wrap: anywhere; color: #65e7ff; }

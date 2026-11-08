@@ -1,6 +1,6 @@
 # M00 — Foundational feasibility and decisions
 
-Version 1.1.0 · 2026-10-25 · Locked development baseline · Product baseline 0.6.0.
+Brief revision 1.1.1 · Roadmap baseline 1.1.0 · 2026-11-08 · Product baseline 0.6.0.
 
 **State:** In progress under U22. G0-local is passed for local development; M00 trusted-client/device work and G2 remain open. Evidence is recorded in WORK_LEDGER.
 
@@ -44,9 +44,9 @@ M00 experiments live under spikes/m00/; core storage starts separately in M02. C
 
 Use the selected stack. Test Debian x86-64, desktop browsers, Android Chrome and iOS Safari; test the Tauri private-client path separately on each OS. Exact supported versions and capacity numbers come from results. G0-local needs desktop A/B and isolated-runtime evidence; failed private-client/MLS experiments are recorded blockers for G2, not blockers for independent local development. Pin dependency versions/lockfiles in the implementation commit, using maintained compatible releases.
 
-## Current local evidence — 2026-10-30
+## Current local evidence — 2026-11-08
 
-The node/UI checks pass on Windows and Ubuntu CI. Eight OpenMLS fixtures cover delayed work, removal, 32-epoch retention, forks and encrypted snapshots. Recovery is receive-only until fresh owner-authorized join; raw MLS does not enforce forum ownership. Six Python checks validate the auditor; Linux CI also passes actual isolated IPv4/IPv6 runtime checks. G0-local enables local development. Phone tests wait for G1/G2. Trusted clients and production admission/recovery remain open.
+The node/UI checks pass on Windows and Ubuntu CI. Ten OpenMLS fixtures cover delayed work, removal, 32-epoch retention, forks and encrypted snapshots. Recovery is receive-only until fresh owner-authorized join; raw MLS does not enforce forum ownership. Six Python checks validate the auditor; Linux CI also passes actual isolated IPv4/IPv6 runtime checks. G0-local enables local development. Phone tests wait for G1/G2. The [Windows native experiment](../../../spikes/m00/native/README.md) passes bundled UI/native identity calls and denied remote navigation. Key persistence, signed client distribution and production admission/recovery remain open.
 
 ## Handoff
 

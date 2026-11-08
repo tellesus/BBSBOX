@@ -1,6 +1,6 @@
 # Development work ledger
 
-Version 1.1.0 · 2026-10-25 · Locked roadmap. M01–M12 software providers Complete. M00 and M13 In progress. Other modules Unstarted. Execution updated 2026-11-06.
+Version 1.1.0 · 2026-10-25 · Locked roadmap. M01–M12 software providers Complete. M00 and M13 In progress. Other modules Unstarted. Execution updated 2026-11-08.
 
 Evidence log — not an independent source of scope authority. Current choices live in the canonical roadmap and user instructions.
 
@@ -8,7 +8,7 @@ Design review is complete and the first M00 prototype has real local implementat
 
 | Module | Scope | Execution state | Evidence / commit | Next action |
 | --- | --- | --- | --- | --- |
-| [M00](modules/M00-foundation-spikes.md) | Approved | In progress | 2026-10-30: Rust/API/store and HTTPS browser checks pass; see run record below | G0-local passed; trusted-client study and phone checks at G1/G2 remain |
+| [M00](modules/M00-foundation-spikes.md) | Approved | In progress | Rust/API/store, HTTPS and Windows bundled-client/navigation checks pass; see run records below | G0-local passed; trusted-client study and phone checks at G1/G2 remain |
 | [M01](modules/M01-offline-appliance.md) | Approved | Complete | A–C software: offline Debian install/network/renewal/reboot/capture plus two fresh-media installs; CI 41342863072 passed | M12 consumes the provider; physical router/radio/phone acceptance remains G1 |
 | [M02](modules/M02-storage-jobs.md) | Approved | Complete | A–C: 25 Windows/26 Linux integration tests; CI 41167864139 passed | Consumers own HTTP/module integration; M12 owns full-node backup activation |
 | [M03](modules/M03-identity-access.md) | Approved | Complete | A–C: 68 Windows/70 Linux workspace checks and independent vectors; CI 41172025063 passed | Consumers integrate current v2/legacy v1 profiles; native/HTTP/MLS gates remain downstream |
@@ -704,3 +704,11 @@ Linux run 42307601758 passed the corrected exact-registry check, foundation repl
 M01–M12 software providers are Complete. The G1 integrated local-alpha milestone now needs physical appliance/router and actual Android Chrome/iOS Safari enrollment and use checks under U22. Local evidence includes 222 passing workspace tests, strict lint, ten OpenMLS fixtures, the Edge two-player check and 63 Python checks with eight platform/tooling skips.
 
 M13 remains In progress with durable governance confirmed by Linux CI. Its next trust-boundary work needs a real independently bundled native client. This workstation lacks Microsoft C++ Build Tools and the Windows SDK required by the selected Windows Tauri path. Permission to install them is pending. Application admission, native client integration and G2 acceptance remain open. The current game updater requires identical worker/service bytes, and the initial governance provider retains its documented per-scope history budget. These are provider compatibility/capacity limits, not completed support for game migrations or unbounded history.
+
+## 2026-11-08 — M00 B Windows native toolchain and bundled-client check
+
+The user approved installation of the requested Windows development tools. Visual Studio Build Tools 2022 17.14.44, MSVC 14.44.35207 and Windows SDK 10.0.26100.0 installed successfully. Setup reports complete/launchable with no reboot required. The repository-local Rust 1.99.1 MSVC toolchain is installed. WebView2 157.0.4341.42 was already present. This resolves the November 6 installation-permission/tooling blocker.
+
+The isolated `spikes/m00/native/` experiment pins Tauri 2.12.5 and tauri-build 2.7.4 with its own Cargo.lock. Its real Windows build uses the installed compiler and SDK resource compiler. A hidden WebView loads the embedded UI, retrieves a public PersonId from the existing Rust client identity provider and attempts replacement navigation. The native navigation guard denies the request and verifies the original bundled document still owns the window. The local check and strict native lint pass. The generated root remains ephemeral in Rust. A separate Windows CI job repeats the actual build and WebView check.
+
+M00/M13 remain In progress. Persistent client state, independent signed distribution, pinned node TLS, paired native sessions and Android/iOS private-client acceptance remain open. G1 public phone/hardware checks remain due under U22. No product scope or wire contract changes in this slice.

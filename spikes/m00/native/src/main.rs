@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! M00 desktop trust-boundary experiment. Keys are ephemeral and stay in Rust.
-use bbsbox_client_identity::RootKey;
-use serde::Serialize;
+//! M00 native client trust and encrypted persistence experiment.
+mod backend;
+use backend::{Backend, Fixture, Status};
 use std::{
     path::PathBuf,
     sync::{
@@ -10,17 +10,13 @@ use std::{
     },
 };
 use tauri::{Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
+use zeroize::Zeroizing;
 
 struct Probe {
-    root: RootKey,
+    backend: Arc<Backend>,
     output: Option<PathBuf>,
+    fixture: Option<Fixture>,
     denied: Arc<AtomicBool>,
-}
-
-#[derive(Serialize)]
-struct Status {
-    person: String,
-    checking: bool,
 }
 
 fn bundled(url: &tauri::Url) -> bool {
@@ -32,11 +28,42 @@ fn bundled(url: &tauri::Url) -> bool {
 }
 
 #[tauri::command]
-fn probe_status(state: tauri::State<'_, Probe>) -> Status {
-    Status {
-        person: state.root.person_id().to_string(),
-        checking: state.output.is_some(),
+fn probe_status(state: tauri::State<'_, Probe>) -> Result<Status, String> {
+    state.backend.status(state.output.is_some())
+}
+
+#[tauri::command]
+async fn open_identity(
+    state: tauri::State<'_, Probe>,
+    passphrase: String,
+    create: bool,
+) -> Result<Status, String> {
+    let pass = Zeroizing::new(passphrase);
+    let backend = state.backend.clone();
+    let checking = state.output.is_some();
+    tauri::async_runtime::spawn_blocking(move || backend.open(pass, create, checking))
+        .await
+        .map_err(|error| error.to_string())?
+}
+
+#[tauri::command]
+async fn prepare_check(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, Probe>,
+) -> Result<Status, String> {
+    let fixture = state
+        .fixture
+        .clone()
+        .ok_or("No automated check requested")?;
+    let backend = state.backend.clone();
+    let result = tauri::async_runtime::spawn_blocking(move || backend.check(&fixture))
+        .await
+        .map_err(|error| error.to_string())?;
+    if let Err(error) = &result {
+        eprintln!("Native client check failed: {error}");
+        app.exit(2);
     }
+    result
 }
 
 #[tauri::command]
@@ -51,19 +78,23 @@ fn finish_check(
         .as_ref()
         .ok_or("No automated check requested")?;
     let current = window.url().map_err(|error| error.to_string())?;
+    let mut report = state.backend.evidence()?;
     if !bundled(&current)
         || current.as_str() != document_url
-        || person != state.root.person_id().to_string()
+        || report["person"].as_str() != Some(&person)
         || !state.denied.load(Ordering::SeqCst)
     {
         return Err("Bundled UI or navigation check failed".into());
     }
-    let report = serde_json::json!({
-        "format":"bbsbox.native-client-probe/v1", "person":person,
-        "bundled_url":current.as_str(), "native_identity_command":true,
-        "remote_navigation_denied":true, "key_persistence":"pending",
-        "signed_distribution":"pending"
-    });
+    let fields = report.as_object_mut().ok_or("Invalid native report")?;
+    fields.extend(
+        serde_json::json!({"format":"bbsbox.native-client-probe/v1","bundled_url":current.as_str(),
+        "native_identity_command":true,"remote_navigation_denied":true,
+        "key_persistence":"encrypted-local-vault/v1","signed_distribution":"pending"})
+        .as_object()
+        .unwrap()
+        .clone(),
+    );
     let mut file = std::fs::OpenOptions::new()
         .write(true)
         .create_new(true)
@@ -77,22 +108,46 @@ fn finish_check(
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let arguments = std::env::args_os().skip(1).collect::<Vec<_>>();
-    let output = match arguments.as_slice() {
-        [] => None,
-        [option, path] if option == "--check" => Some(PathBuf::from(path)),
-        _ => return Err("Usage: bbsbox-native-probe [--check FRESH_REPORT_PATH]".into()),
+    let (output, fixture) = match arguments.as_slice() {
+        [] => (None, None),
+        [option, path, request, input] if option == "--check" && request == "--request" => (
+            Some(PathBuf::from(path)),
+            Some(serde_json::from_slice::<Fixture>(&backend::read_bounded(
+                &PathBuf::from(input),
+                16384,
+            )?)?),
+        ),
+        _ => {
+            return Err(
+                "Usage: bbsbox-native-probe [--check FRESH_REPORT --request FIXTURE_JSON]".into(),
+            );
+        }
     };
     let checking = output.is_some();
     let denied = Arc::new(AtomicBool::new(false));
     let navigation_denied = denied.clone();
     tauri::Builder::default()
-        .manage(Probe {
-            root: RootKey::generate(),
-            output,
-            denied,
-        })
-        .invoke_handler(tauri::generate_handler![probe_status, finish_check])
+        .invoke_handler(tauri::generate_handler![
+            probe_status,
+            open_identity,
+            prepare_check,
+            finish_check
+        ])
         .setup(move |app| {
+            let path = match &fixture {
+                Some(fixture) => fixture.vault.clone(),
+                None => {
+                    let directory = app.path().app_local_data_dir()?;
+                    std::fs::create_dir_all(&directory)?;
+                    directory.join("identity.sqlite")
+                }
+            };
+            app.manage(Probe {
+                backend: Arc::new(Backend::new(path)),
+                output,
+                fixture,
+                denied,
+            });
             WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
                 .title("BBSBOX Native Check")
                 .visible(!checking)

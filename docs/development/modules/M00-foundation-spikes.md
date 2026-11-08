@@ -1,6 +1,6 @@
 # M00 — Foundational feasibility and decisions
 
-Brief revision 1.1.1 · Roadmap baseline 1.1.0 · 2026-11-08 · Product baseline 0.6.0.
+Brief revision 1.1.2 · Roadmap baseline 1.1.0 · 2026-11-08 · Product baseline 0.6.0.
 
 **State:** In progress under U22. G0-local is passed for local development; M00 trusted-client/device work and G2 remain open. Evidence is recorded in WORK_LEDGER.
 
@@ -46,7 +46,7 @@ Use the selected stack. Test Debian x86-64, desktop browsers, Android Chrome and
 
 ## Current local evidence — 2026-11-08
 
-The node/UI checks pass on Windows and Ubuntu CI. Ten OpenMLS fixtures cover delayed work, removal, 32-epoch retention, forks and encrypted snapshots. Recovery is receive-only until fresh owner-authorized join; raw MLS does not enforce forum ownership. Six Python checks validate the auditor; Linux CI also passes actual isolated IPv4/IPv6 runtime checks. G0-local enables local development. Phone tests wait for G1/G2. The [Windows native experiment](../../../spikes/m00/native/README.md) passes bundled UI/native identity calls and denied remote navigation. Key persistence, signed client distribution and production admission/recovery remain open.
+The node/UI checks pass on Windows and Ubuntu CI. Ten OpenMLS fixtures cover delayed work, removal, 32-epoch retention, forks and encrypted snapshots. Recovery is receive-only until fresh owner-authorized join; raw MLS does not enforce forum ownership. Six Python checks validate the auditor; Linux CI also passes actual isolated IPv4/IPv6 runtime checks. G0-local enables local development. Phone tests wait for G1/G2. The [Windows native experiment](../../../spikes/m00/native/README.md) passes bundled UI/native identity calls and denied remote navigation. Encrypted local identity/state persistence and backup-recovery restart checks also pass locally. Signed client distribution and production admission/group recovery remain open.
 
 ## Handoff
 

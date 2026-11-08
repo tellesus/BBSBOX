@@ -1,9 +1,9 @@
 name: Native client experiment
 on:
   push:
-    paths: ['spikes/m00/native/**', 'client/identity/**', 'crates/credentials/**', '.github/workflows/native-client.yml']
+    paths: ['spikes/m00/native/**', 'client/identity/**', 'client/vault/**', 'crates/credentials/**', 'crates/storage/**', '.github/workflows/native-client.yml']
   pull_request:
-    paths: ['spikes/m00/native/**', 'client/identity/**', 'crates/credentials/**', '.github/workflows/native-client.yml']
+    paths: ['spikes/m00/native/**', 'client/identity/**', 'client/vault/**', 'crates/credentials/**', 'crates/storage/**', '.github/workflows/native-client.yml']
 permissions:
   contents: read
 jobs:
@@ -13,11 +13,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: rustup toolchain install 1.99.1-x86_64-pc-windows-msvc --profile minimal --component rustfmt --component clippy
+      - run: cargo +1.99.1-x86_64-pc-windows-msvc fetch --locked
+      - run: cargo +1.99.1-x86_64-pc-windows-msvc test --locked --offline -p bbsbox-client-identity -p bbsbox-client-vault
       - run: cargo +1.99.1-x86_64-pc-windows-msvc fetch --locked --manifest-path spikes/m00/native/Cargo.toml
       - run: cargo +1.99.1-x86_64-pc-windows-msvc fmt --manifest-path spikes/m00/native/Cargo.toml -- --check
       - run: cargo +1.99.1-x86_64-pc-windows-msvc build --locked --offline --manifest-path spikes/m00/native/Cargo.toml
       - run: cargo +1.99.1-x86_64-pc-windows-msvc clippy --locked --offline --manifest-path spikes/m00/native/Cargo.toml --all-targets -- -D warnings
-      - name: Check bundled WebView and blocked remote navigation
+      - name: Check native encrypted persistence, restart, recovery and blocked navigation
         run: |
           New-Item -ItemType Directory -Path work -Force | Out-Null
           python spikes/m00/native/check.py --binary spikes/m00/native/target/debug/bbsbox-native-probe.exe > work/native-client.json

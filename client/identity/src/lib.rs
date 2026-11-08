@@ -6,7 +6,9 @@ use bbsbox_credentials::{
 use ed25519_dalek::{Signer, SigningKey};
 use rand_core::{OsRng, RngCore};
 use zeroize::Zeroizing;
+pub mod local;
 pub mod recovery;
+mod sealed;
 
 fn generate() -> SigningKey {
     let mut seed = Zeroizing::new([0; 32]);

@@ -248,6 +248,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "bbsbox-client-vault"
+version = "0.1.0"
+dependencies = [
+ "bbsbox-client-identity",
+ "bbsbox-credentials",
+ "bbsbox-storage",
+ "rusqlite",
+ "tempfile",
+ "zeroize",
+]
+
+[[package]]
 name = "bbsbox-credentials"
 version = "0.1.0"
 dependencies = [

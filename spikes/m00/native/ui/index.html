@@ -12,6 +12,12 @@
     <h1>Native client check</h1>
     <p id="status">Starting…</p>
     <p id="person"></p>
+    <form id="identity">
+      <label for="passphrase">Identity passphrase</label>
+      <input id="passphrase" type="password" autocomplete="current-password" minlength="15" maxlength="1024" required>
+      <button type="submit">Unlock identity</button>
+      <button id="create" type="button">Create identity</button>
+    </form>
   </main>
 </body>
 </html>

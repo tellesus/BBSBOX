@@ -1118,5 +1118,5 @@
       "scope": "Desktop/core and isolated-runtime evidence; G1/G2 device, appliance and private-client acceptance remain open"
     }
   },
-  "execution_revision": "1.1.31"
+  "execution_revision": "1.1.32"
 }

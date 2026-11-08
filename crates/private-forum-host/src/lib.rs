@@ -18,13 +18,21 @@ use bbsbox_private_forum::{
 use bbsbox_storage::Migration;
 use rusqlite::{Connection, Transaction, params};
 use std::collections::BTreeMap;
+pub mod posts;
 
-pub fn migrations() -> [Migration; 1] {
-    [Migration {
-        module: "private-forum",
-        version: 1,
-        sql: include_str!("schema.sql"),
-    }]
+pub fn migrations() -> [Migration; 2] {
+    [
+        Migration {
+            module: "private-forum",
+            version: 1,
+            sql: include_str!("schema.sql"),
+        },
+        Migration {
+            module: "private-forum",
+            version: 2,
+            sql: include_str!("posts.sql"),
+        },
+    ]
 }
 
 /// A caller configures the forum/distribution pairs it hosts and its resource budget.

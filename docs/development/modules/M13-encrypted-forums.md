@@ -1,8 +1,8 @@
 # M13 — Trusted clients and encrypted forums
 
-Brief revision 1.1.5 · Roadmap baseline 1.1.0 · 2026-11-08 · Locked scope · Product baseline 0.6.0.
+Brief revision 1.1.6 · Roadmap baseline 1.1.0 · 2026-11-08 · Locked scope · Product baseline 0.6.0.
 
-**State:** In progress. Signed framing and forum-root authorization pass pinned MLS fixtures. Membership history and durable governance admission pass local database fixtures. Application admission, trusted client runtime and hardware evidence remain open.
+**State:** In progress. Signed framing/owner proofs pass MLS fixtures; durable governance and opaque create/reply admission pass database fixtures. Runtime, remaining actions and device evidence remain open.
 
 ## Read only this packet
 
@@ -23,7 +23,7 @@ Implement the selected MLS/OpenMLS path with shared Rust/native crypto and a sep
 
 ## Ownership and interfaces
 
-`crates/private-forum/` owns framing and epoch reconstruction. `crates/private-forum-host/` indexes opaque governance through M04 transactions, with configured scope/budget. Runtime/application integration and paged history remain open. See WORK_LEDGER for provider limits. Planned `client/crypto/` owns client group/key state, invitations and encrypted backups. `client/vault/` supplies encrypted atomic checkpoints. [Local format](../../../protocol/client-local-vault-v1.md). Hosts own ciphertext indexes only.
+`crates/private-forum/` owns framing/epoch reconstruction. `crates/private-forum-host/` supplies bounded governance and opaque create/reply admission through M04 transactions. [Host reference](../../../protocol/private-forum-host-v1.md). Runtime, other application actions and paged history remain open. Planned `client/crypto/` owns group state/invitations; `client/vault/` supplies encrypted atomic checkpoints. [Local format](../../../protocol/client-local-vault-v1.md). Hosts index ciphertext only.
 
 Consume the listed contracts, update affected consumers with any change, and retain optional-module data when disabled.
 

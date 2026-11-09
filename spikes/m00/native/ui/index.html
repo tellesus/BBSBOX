@@ -10,13 +10,16 @@
 <body>
   <main>
     <h1>Native client check</h1>
-    <p id="status">Starting…</p>
+    <p id="status" role="status" aria-live="polite" aria-atomic="true">This screen requires the BBSBOX desktop app.</p>
+    <p id="launch-help">Close this browser tab and open <strong>Start BBSBOX.cmd</strong> in the native client folder.</p>
     <p id="person"></p>
-    <form id="identity">
+    <form id="identity" hidden aria-busy="false">
+      <fieldset id="controls" disabled>
       <label for="passphrase">Identity passphrase</label>
       <input id="passphrase" type="password" autocomplete="current-password" minlength="15" maxlength="1024" required>
       <button type="submit">Unlock identity</button>
       <button id="create" type="button">Create identity</button>
+      </fieldset>
     </form>
   </main>
 </body>

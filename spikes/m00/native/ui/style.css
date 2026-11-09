@@ -3,6 +3,16 @@
 main { max-width: 38rem; margin: 3rem auto; padding: 1rem; }
 h1 { color: #ff41d3; }
 #person { overflow-wrap: anywhere; color: #65e7ff; }
-form { display: grid; gap: .75rem; max-width: 26rem; }
+form { max-width: 26rem; }
+fieldset { display: grid; gap: .75rem; min-width: 0; margin: 0; padding: 0; border: 0; }
 form[hidden] { display: none; }
 input, button { font: inherit; padding: .7rem; border: 1px solid #65e7ff; border-radius: .3rem; background: #11111a; color: inherit; }
+button { cursor: pointer; transition: background-color 80ms, transform 80ms; }
+button:hover:enabled { background: #19323c; }
+button:active:enabled { background: #285465; transform: translateY(2px); }
+button:focus-visible, input:focus-visible { outline: 2px solid #ff41d3; outline-offset: 3px; }
+fieldset:disabled { opacity: .6; }
+fieldset:disabled button, fieldset:disabled input { cursor: wait; }
+.working::before { content: ''; display: inline-block; width: .7em; height: .7em; margin-right: .6em; border: 2px solid #65e7ff; border-right-color: transparent; border-radius: 50%; animation: spin 800ms linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { button { transition: none; } .working::before { animation: none; } }

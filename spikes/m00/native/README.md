@@ -1,5 +1,7 @@
 # M00 native client experiment
 
+To open the built desktop app on Windows, double-click **Start BBSBOX.cmd** in this folder. Opening `ui/index.html` directly in a browser shows launch instructions; identity operations require the desktop app.
+
 This experiment builds a real Tauri 2 client with locally bundled UI and the existing Rust client identity provider. Root/device keys stay in the native process and persist in a passphrase-encrypted local vault. The UI offers create/unlock and reads public identity status through native commands. The automatic check attempts to navigate to replacement web content, then verifies that navigation was denied and the bundled document still owns the window.
 
 On Windows, prepare Microsoft C++ Build Tools, the Windows SDK, WebView2 and the pinned MSVC Rust toolchain. For the repository-local tool installation verified on this workstation, run these commands from the repository root.

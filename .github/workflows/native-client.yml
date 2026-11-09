@@ -1,9 +1,9 @@
 name: Native client experiment
 on:
   push:
-    paths: ['spikes/m00/native/**', 'client/identity/**', 'client/vault/**', 'crates/credentials/**', 'crates/storage/**', 'crates/maintenance/**', 'tools/client_materials.py', 'tools/release_materials.py', 'tools/test_client_materials.py', 'deploy/client-materials/**', '.gitattributes', '.github/workflows/native-client.yml']
+    paths: ['spikes/m00/native/**', 'client/identity/**', 'client/vault/**', 'crates/credentials/**', 'crates/storage/**', 'crates/maintenance/src/**', 'crates/maintenance/Cargo.toml', 'crates/maintenance/examples/client_package.rs', 'crates/maintenance/tests/client_distribution.rs', 'crates/identity/**', 'Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', '.cargo/**', 'LICENSE.md', 'LICENSES/**', 'deploy/materials/**', 'tools/client_materials.py', 'tools/release_materials.py', 'tools/test_client_materials.py', 'deploy/client-materials/**', '.gitattributes', '.github/workflows/native-client.yml']
   pull_request:
-    paths: ['spikes/m00/native/**', 'client/identity/**', 'client/vault/**', 'crates/credentials/**', 'crates/storage/**', 'crates/maintenance/**', 'tools/client_materials.py', 'tools/release_materials.py', 'tools/test_client_materials.py', 'deploy/client-materials/**', '.gitattributes', '.github/workflows/native-client.yml']
+    paths: ['spikes/m00/native/**', 'client/identity/**', 'client/vault/**', 'crates/credentials/**', 'crates/storage/**', 'crates/maintenance/src/**', 'crates/maintenance/Cargo.toml', 'crates/maintenance/examples/client_package.rs', 'crates/maintenance/tests/client_distribution.rs', 'crates/identity/**', 'Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', '.cargo/**', 'LICENSE.md', 'LICENSES/**', 'deploy/materials/**', 'tools/client_materials.py', 'tools/release_materials.py', 'tools/test_client_materials.py', 'deploy/client-materials/**', '.gitattributes', '.github/workflows/native-client.yml']
 permissions:
   contents: read
 jobs:

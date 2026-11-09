@@ -38,6 +38,8 @@ Prepared material archives and notices have their own `bbsbox.client-materials/v
 
 ## Fixtures and remaining gate evidence
 
+The [public byte vector](fixtures/client-release-v1.json) is checked independently in Rust and [Node crypto](../tools/verify_client_release_vectors.mjs), including exact canonical bytes, signer fingerprint, the signed 64-bit sequence limit and cross-domain rejection. Its seed and file commitments are explicitly synthetic.
+
 Rust fixtures cover authority/domain separation, canonical bytes, paths, payload changes, PE targets, single-writer exclusion, restart, request retries, rollback fencing, key rotation and transactional failure. Windows checks include a real directory junction. The `client_package` example is a developer bootstrap/fixture, not a production issuer UI. Its `fixture-package` command generates an ephemeral test signer without saving its private key.
 
 The [actual distribution check](../spikes/m00/native/check_distribution.py) verifies prepared materials, packages the real bundled executable, enrolls the independent fixture authority, resumes an interrupted install, and runs the existing six-process identity/recovery check through the installed bootstrap. It also tests changed installed bytes and independence from later transport changes. Passing this fixture is narrower than G2: production trust enrollment, independent delivery of the bootstrap, native update UI, pinned node TLS/pairing, actual MLS-state integration and supported-device acceptance remain open.

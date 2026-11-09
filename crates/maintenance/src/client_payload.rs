@@ -49,7 +49,7 @@ pub fn read_manifest(root: &Path) -> Result<Vec<u8>> {
     }
     Ok(bytes)
 }
-fn inventory(root: &Path, signed: &SignedClient) -> Result<()> {
+fn inventory(root: &Path, signed: &SignedClient, runtime: bool) -> Result<()> {
     let mut files = signed
         .manifest()
         .files
@@ -89,6 +89,13 @@ fn inventory(root: &Path, signed: &SignedClient) -> Result<()> {
         return Err("client package is incomplete".into());
     }
     for record in &signed.manifest().files {
+        let metadata = fs::symlink_metadata(root.join(&record.path))?;
+        if !metadata.is_file() || linked(&metadata) || metadata.len() != record.size {
+            return Err("client file differs from its signed commitment".into());
+        }
+        if runtime && client_release::MATERIALS.contains(&record.path.as_str()) {
+            continue;
+        }
         if archive::hash_file(&root.join(&record.path), record.size)?
             != (record.size, record.sha256.clone())
         {
@@ -104,7 +111,16 @@ fn inventory(root: &Path, signed: &SignedClient) -> Result<()> {
 pub fn verify(root: &Path, expected: &[u8; 32]) -> Result<SignedClient> {
     let root = directory(root)?;
     let signed = client_release::verify(&read_manifest(&root)?, expected)?;
-    inventory(&root, &signed)?;
+    inventory(&root, &signed, false)?;
+    Ok(signed)
+}
+/// Runtime-only authentication after full installation verification. The three reserved material
+/// files are rebuild inputs, never runtime code; they retain name/type/size checks here. Rebuilding
+/// or auditing them requires full verification through `verify` and the material source checker.
+pub fn verify_runtime(root: &Path, expected: &[u8; 32]) -> Result<SignedClient> {
+    let root = directory(root)?;
+    let signed = client_release::verify(&read_manifest(&root)?, expected)?;
+    inventory(&root, &signed, true)?;
     Ok(signed)
 }
 fn check_executable(path: &Path) -> Result<()> {

@@ -38,7 +38,7 @@ def distribution(binary, bootstrap, materials, commit):
                 assert result.returncode != 0 and error in message, message
                 return None
             if result.returncode:
-                raise RuntimeError(message[-4096:])
+                raise RuntimeError(f'Bootstrap exited with {result.returncode}: {message[-4096:]}')
             return json.loads(result.stdout)
 
         issued = tool('fixture-package', binary, ROOT, materials, commit, package, public_file)
@@ -58,7 +58,10 @@ def distribution(binary, bootstrap, materials, commit):
         active = tool('activate', store, request)
         assert active['pending'] is None and active['highest_sequence'] == 1
         installed = Path(tool('path', store)['executable'])
-        assert installed.resolve().is_relative_to(store.resolve())
+        # Rust canonical Windows paths may use the \\?\ prefix. Compare filesystem identity
+        # rather than treating two spellings of the same store as different directories.
+        assert installed.name == 'bbsbox-client.exe' and installed.parent.name == issued['release_id']
+        assert installed.parent.parent.name == 'releases' and installed.parents[2].samefile(store)
         with redirect_stdout(io.StringIO()) as captured:
             check(bootstrap, store)
         native = json.loads(captured.getvalue())

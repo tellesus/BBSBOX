@@ -355,7 +355,7 @@ impl Store {
             Ok(())
         })
     }
-    /// Recheck complete installed bytes immediately before a trusted caller starts the executable.
+    /// Recheck the signed runtime immediately before a trusted caller starts the executable.
     /// This does not defend against an attacker with local write access to the pinned store itself.
     pub fn executable(&self) -> Result<PathBuf> {
         let state = self.state()?;
@@ -366,10 +366,11 @@ impl Store {
             .active
             .as_ref()
             .ok_or("no client release is installed")?;
-        self.selected(active)?;
-        Ok(self
-            .releases()?
-            .join(hex::encode(active.id))
-            .join(client_release::ENTRY))
+        let root = self.releases()?.join(hex::encode(active.id));
+        let signed = client_payload::verify_runtime(&root, &active.authority)?;
+        if Selection::of(&signed) != *active {
+            return Err("installed client differs from its selection".into());
+        }
+        Ok(root.join(client_release::ENTRY))
     }
 }

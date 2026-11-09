@@ -14,10 +14,11 @@ from urllib.parse import urlsplit
 ROOT=Path(__file__).resolve().parents[3]
 
 
-def check(binary, installed_store=None):
+def check(binary, installed_store=None, restart_binary=None):
     (ROOT/'work').mkdir(exist_ok=True)
     binary=binary.resolve(strict=True)
     command=[str(binary)] if installed_store is None else [str(binary),'run',str(installed_store.resolve(strict=True)),'--']
+    restart_command=[str(restart_binary.resolve(strict=True))] if restart_binary else command
     with tempfile.TemporaryDirectory(prefix='native-client-',dir=ROOT/'work') as temporary:
         directory=Path(temporary)
         password=directory/'local.pass'
@@ -30,12 +31,13 @@ def check(binary, installed_store=None):
             request=directory/(name+'-request.json');output=directory/(name+'-report.json')
             request.write_text(json.dumps(dict(action=action,vault=str(path),passphrase_file=str(password),**options)),encoding='utf-8')
             flags=subprocess.CREATE_NO_WINDOW if os.name=='nt' else 0
-            result=subprocess.run([*command,'--check',str(output),'--request',str(request)],
+            runner=restart_command if action=='unlock' else command
+            result=subprocess.run([*runner,'--check',str(output),'--request',str(request)],
                                   capture_output=True,timeout=120 if installed_store else 45,creationflags=flags)
             if not expect:
                 assert result.returncode!=0 and not output.exists()
                 return
-            if result.returncode:raise RuntimeError(result.stderr[-4096:].decode(errors='replace'))
+            if result.returncode:raise RuntimeError(f"Native check exited with {result.returncode}: "+result.stderr[-4096:].decode(errors='replace'))
             report=json.loads(output.read_text(encoding='utf-8'))
             assert report['format']=='bbsbox.native-client-probe/v1'
             assert re.fullmatch(r'person:[0-9a-f]{64}',report['person'])
@@ -75,5 +77,8 @@ if __name__=='__main__':
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--binary',type=Path,required=True)
     parser.add_argument('--installed-store',type=Path)
+    parser.add_argument('--restart-binary',type=Path)
     args=parser.parse_args()
-    check(args.binary,args.installed_store)
+    if args.installed_store and args.restart_binary:
+        parser.error('Use either installed-store or a second direct restart binary')
+    check(args.binary,args.installed_store,args.restart_binary)

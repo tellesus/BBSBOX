@@ -129,6 +129,45 @@ fn manifest_checks_authority_domain_profile_canonical_bytes_and_windows_aliases(
     for manifest in invalid {
         assert!(client_release::sign(manifest, &key).is_err());
     }
+    let mut material_code = base;
+    material_code.files.push(FileRecord {
+        path: "materials/plugin.dll".into(),
+        size: 1,
+        sha256: "00".repeat(32),
+    });
+    material_code.files.sort_by(|a, b| a.path.cmp(&b.path));
+    assert!(client_release::sign(material_code, &key).is_err());
+}
+
+#[test]
+fn full_installation_checks_material_bytes_while_launch_authenticates_runtime_files() {
+    let temp = tempfile::tempdir().unwrap();
+    let key = signer(49);
+    let source = temp.path().join("source");
+    let signed = package(&source, &key, 1, None);
+    let root = temp.path().join("client");
+    let store = Store::initialize(&root, key.public()).unwrap();
+    store.prepare(0, [1; 16], &source).unwrap();
+    let installed = root.join("releases").join(hex::encode(signed.id()));
+    let archive = installed.join("materials/dependencies.tar");
+    let original = fs::read(&archive).unwrap();
+    let mut changed = original.clone();
+    changed[0] ^= 1;
+    fs::write(&archive, &changed).unwrap();
+    assert!(store.activate(1, [1; 16]).is_err());
+    fs::write(&archive, &original).unwrap();
+    store.activate(1, [1; 16]).unwrap();
+    fs::write(&archive, &changed).unwrap();
+    assert!(store.executable().is_ok()); // reserved archives are not executable inputs
+    assert!(client_payload::verify(&installed, &key.public()).is_err());
+    fs::write(&archive, b"truncated").unwrap();
+    assert!(store.executable().is_err());
+    fs::write(&archive, &original).unwrap();
+    fs::write(installed.join("unlisted.dll"), b"code").unwrap();
+    assert!(store.executable().is_err());
+    fs::remove_file(installed.join("unlisted.dll")).unwrap();
+    fs::write(installed.join(client_release::ENTRY), b"changed code").unwrap();
+    assert!(store.executable().is_err());
 }
 
 #[test]

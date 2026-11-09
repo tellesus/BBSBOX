@@ -15,6 +15,11 @@ pub const DOMAIN: &str = "bbsbox.client-release/v1";
 pub const TARGET: &str = "windows-x86_64-msvc";
 pub const ENTRY: &str = "bbsbox-client.exe";
 pub const MAX_MANIFEST: usize = 65536;
+pub const MATERIALS: [&str; 3] = [
+    "materials/dependencies.tar",
+    "materials/notices.json",
+    "materials/source.tar",
+];
 pub const REQUIRED: [&str; 7] = [
     "LICENSE.md",
     "LICENSES/AGPL-3.0-or-later.txt",
@@ -70,6 +75,7 @@ impl Manifest {
         for file in &self.files {
             // Windows paths are case-insensitive. Reject aliases even on a Unix verifier.
             if !inventory::valid_path(&file.path)
+                || (file.path.starts_with("materials/") && !MATERIALS.contains(&file.path.as_str()))
                 || !digest(&file.sha256, 64)
                 || previous.is_some_and(|name: &str| name >= file.path.as_str())
                 || file.path.eq_ignore_ascii_case("manifest.cose")

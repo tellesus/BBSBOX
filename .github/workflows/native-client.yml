@@ -9,7 +9,7 @@ permissions:
 jobs:
   windows-native:
     runs-on: windows-latest
-    timeout-minutes: 35
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - run: rustup toolchain install 1.99.1-x86_64-pc-windows-msvc --profile minimal --component rustfmt --component clippy
@@ -31,6 +31,11 @@ jobs:
           python tools/client_materials.py build --commit "$env:GITHUB_SHA" --vendor work/client-release-vendor --output work/client-release-materials > work/client-materials.json
       - name: Check signed installation and actual installed-client restart/recovery
         run: python spikes/m00/native/check_distribution.py --binary spikes/m00/native/target/debug/bbsbox-native-probe.exe --bootstrap target/debug/examples/client_package.exe --materials work/client-release-materials --commit "$env:GITHUB_SHA" > work/signed-native-client.json
+      - name: Rebuild the client from verified materials with a fresh offline dependency cache
+        run: |
+          $bbsboxCargo = rustup which cargo
+          $bbsboxRustc = rustup which rustc
+          python spikes/m00/native/rebuild_distribution.py --materials work/client-release-materials --commit "$env:GITHUB_SHA" --cargo "$bbsboxCargo" --rustc "$bbsboxRustc" --original-binary spikes/m00/native/target/debug/bbsbox-native-probe.exe > work/offline-native-client.json
       - uses: actions/upload-artifact@v4
         with:
           name: windows-native-client-evidence
@@ -38,3 +43,4 @@ jobs:
             work/native-client.json
             work/client-materials.json
             work/signed-native-client.json
+            work/offline-native-client.json

@@ -71,7 +71,7 @@ impl fmt::Display for KeyId {
     }
 }
 pub struct ReleaseSigner {
-    key: SigningKey,
+    pub(crate) key: SigningKey,
     id: KeyId,
 }
 impl ReleaseSigner {

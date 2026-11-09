@@ -14,9 +14,10 @@ from urllib.parse import urlsplit
 ROOT=Path(__file__).resolve().parents[3]
 
 
-def check(binary):
+def check(binary, installed_store=None):
     (ROOT/'work').mkdir(exist_ok=True)
     binary=binary.resolve(strict=True)
+    command=[str(binary)] if installed_store is None else [str(binary),'run',str(installed_store.resolve(strict=True)),'--']
     with tempfile.TemporaryDirectory(prefix='native-client-',dir=ROOT/'work') as temporary:
         directory=Path(temporary)
         password=directory/'local.pass'
@@ -29,8 +30,8 @@ def check(binary):
             request=directory/(name+'-request.json');output=directory/(name+'-report.json')
             request.write_text(json.dumps(dict(action=action,vault=str(path),passphrase_file=str(password),**options)),encoding='utf-8')
             flags=subprocess.CREATE_NO_WINDOW if os.name=='nt' else 0
-            result=subprocess.run([str(binary),'--check',str(output),'--request',str(request)],
-                                  capture_output=True,timeout=45,creationflags=flags)
+            result=subprocess.run([*command,'--check',str(output),'--request',str(request)],
+                                  capture_output=True,timeout=120 if installed_store else 45,creationflags=flags)
             if not expect:
                 assert result.returncode!=0 and not output.exists()
                 return
@@ -73,4 +74,6 @@ def check(binary):
 if __name__=='__main__':
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--binary',type=Path,required=True)
-    check(parser.parse_args().binary)
+    parser.add_argument('--installed-store',type=Path)
+    args=parser.parse_args()
+    check(args.binary,args.installed_store)

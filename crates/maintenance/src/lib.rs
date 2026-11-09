@@ -4,6 +4,9 @@ use std::{fmt, io};
 
 pub mod archive;
 pub mod checkpoints;
+pub mod client_install;
+pub mod client_payload;
+pub mod client_release;
 pub mod continuation;
 pub mod game_snapshot;
 pub mod inventory;

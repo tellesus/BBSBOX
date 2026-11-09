@@ -1,20 +1,22 @@
 name: Native client experiment
 on:
   push:
-    paths: ['spikes/m00/native/**', 'client/identity/**', 'client/vault/**', 'crates/credentials/**', 'crates/storage/**', '.github/workflows/native-client.yml']
+    paths: ['spikes/m00/native/**', 'client/identity/**', 'client/vault/**', 'crates/credentials/**', 'crates/storage/**', 'crates/maintenance/**', 'tools/client_materials.py', 'tools/release_materials.py', 'tools/test_client_materials.py', 'deploy/client-materials/**', '.gitattributes', '.github/workflows/native-client.yml']
   pull_request:
-    paths: ['spikes/m00/native/**', 'client/identity/**', 'client/vault/**', 'crates/credentials/**', 'crates/storage/**', '.github/workflows/native-client.yml']
+    paths: ['spikes/m00/native/**', 'client/identity/**', 'client/vault/**', 'crates/credentials/**', 'crates/storage/**', 'crates/maintenance/**', 'tools/client_materials.py', 'tools/release_materials.py', 'tools/test_client_materials.py', 'deploy/client-materials/**', '.gitattributes', '.github/workflows/native-client.yml']
 permissions:
   contents: read
 jobs:
   windows-native:
     runs-on: windows-latest
-    timeout-minutes: 20
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
       - run: rustup toolchain install 1.99.1-x86_64-pc-windows-msvc --profile minimal --component rustfmt --component clippy
       - run: cargo +1.99.1-x86_64-pc-windows-msvc fetch --locked
       - run: cargo +1.99.1-x86_64-pc-windows-msvc test --locked --offline -p bbsbox-client-identity -p bbsbox-client-vault
+      - run: cargo +1.99.1-x86_64-pc-windows-msvc test --locked --offline -p bbsbox-maintenance --test client_distribution
+      - run: cargo +1.99.1-x86_64-pc-windows-msvc build --locked --offline -p bbsbox-maintenance --example client_package
       - run: cargo +1.99.1-x86_64-pc-windows-msvc fetch --locked --manifest-path spikes/m00/native/Cargo.toml
       - run: cargo +1.99.1-x86_64-pc-windows-msvc fmt --manifest-path spikes/m00/native/Cargo.toml -- --check
       - run: cargo +1.99.1-x86_64-pc-windows-msvc build --locked --offline --manifest-path spikes/m00/native/Cargo.toml
@@ -23,7 +25,16 @@ jobs:
         run: |
           New-Item -ItemType Directory -Path work -Force | Out-Null
           python spikes/m00/native/check.py --binary spikes/m00/native/target/debug/bbsbox-native-probe.exe > work/native-client.json
+      - name: Prepare complete offline client materials
+        run: |
+          cargo +1.99.1-x86_64-pc-windows-msvc vendor --locked --offline --versioned-dirs --sync spikes/m00/native/Cargo.toml work/client-release-vendor
+          python tools/client_materials.py build --commit "$env:GITHUB_SHA" --vendor work/client-release-vendor --output work/client-release-materials > work/client-materials.json
+      - name: Check signed installation and actual installed-client restart/recovery
+        run: python spikes/m00/native/check_distribution.py --binary spikes/m00/native/target/debug/bbsbox-native-probe.exe --bootstrap target/debug/examples/client_package.exe --materials work/client-release-materials --commit "$env:GITHUB_SHA" > work/signed-native-client.json
       - uses: actions/upload-artifact@v4
         with:
           name: windows-native-client-evidence
-          path: work/native-client.json
+          path: |
+            work/native-client.json
+            work/client-materials.json
+            work/signed-native-client.json

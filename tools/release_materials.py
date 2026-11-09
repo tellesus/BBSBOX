@@ -245,7 +245,7 @@ def build_source(repository, commit, destination):
     return commit
 
 
-def inspect_source(path, commit, consume=None):
+def inspect_source(path, commit, consume=None, *, extra_paths=()):
     entries = iter(tar_entries(path, SOURCE_FILES + 1, SOURCE_MEMBER, SOURCE_TOTAL))
     name, raw, _ = next(entries)
     if name != 'source-proof.json':
@@ -264,7 +264,7 @@ def inspect_source(path, commit, consume=None):
             raise ValueError('Source content/mode does not match commit tree')
         if consume:
             consume(name, raw, mode)
-        if relative in ('Cargo.lock', WEB_LOCK, WEB_NOTICE, 'deploy/materials/supplements.json') or relative.startswith('deploy/materials/licenses/'):
+        if relative in ('Cargo.lock', WEB_LOCK, WEB_NOTICE, 'deploy/materials/supplements.json') or relative in extra_paths or relative.startswith('deploy/materials/licenses/'):
             selected[relative] = raw
     if remaining or 'Cargo.lock' not in selected:
         raise ValueError('Incomplete source archive')
@@ -394,11 +394,16 @@ def download_web_package(package):
     return raw
 
 
-def inspect_dependencies(entries, selected, consume=None):
+def inspect_dependencies(entries, selected, consume=None, *, extra_locks=(), instructions=None):
     packages = locked_packages(selected['Cargo.lock'])
+    for raw in extra_locks:
+        for name, package in locked_packages(raw).items():
+            if name in packages and packages[name]['checksum'] != package['checksum']:
+                raise ValueError('Conflicting locked dependency: ' + name)
+            packages[name] = package
     web = {web_path(checksum): (checksum, package) for checksum, package in locked_web_packages(selected.get(WEB_LOCK)).items()}
     web_records = []
-    build_instructions = BUILD + (WEB_BUILD if web else b'')
+    build_instructions = instructions if instructions is not None else BUILD + (WEB_BUILD if web else b'')
     observed = {name: {} for name in packages}
     metadata = {name: {} for name in packages}
     licenses = {name: [] for name in packages}

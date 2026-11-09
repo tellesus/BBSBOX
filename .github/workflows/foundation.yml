@@ -90,6 +90,7 @@ jobs:
       - run: cargo build --locked --offline -p bbsbox-node-runtime -p bbsbox-demo-worker --bins --examples
       - run: python3 -m unittest discover -s tools -p test_update_release.py -v
       - run: python3 -m unittest discover -s tools -p test_release_materials.py -v
+      - run: python3 -m unittest discover -s tools -p test_client_materials.py -v
       - run: python3 -m unittest discover -s tools -p test_release_candidate.py -v
       - run: cargo vendor --locked --versioned-dirs work/release-vendor
       - run: python3 tools/release_materials.py build --vendor work/release-vendor --output work/release-materials > work/release-materials-evidence.json

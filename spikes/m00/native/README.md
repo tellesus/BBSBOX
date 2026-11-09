@@ -17,3 +17,6 @@ python spikes/m00/native/check.py --binary spikes/m00/native/target/debug/bbsbox
 The check uses fresh temporary profiles and several real hidden WebViews. It exercises create, restart, wrong-password refusal, encrypted backup recovery into a new vault and restart of the recovered identity. Running the executable without arguments shows create/unlock for its local application-data profile.
 
 This evidence covers the bundled-document/native-command boundary and denied remote navigation. The [vault format](../../../protocol/client-local-vault-v1.md) records encryption and recovery rules. Independent release signatures, pinned node TLS, client pairing, MLS integration and Android/iOS acceptance remain in M00/M13. The experiment's `Cargo.lock` is independent of the node workspace. [Tauri's prerequisites](https://v2.tauri.app/start/prerequisites/) describe the native build dependencies.
+
+
+The [independent client-release reference](../../../protocol/client-release-v1.md) describes the Windows manifest, bootstrap and material providers. `check_distribution.py` runs the real desktop identity checks through a separately pinned installed copy; its signer is explicitly a synthetic fixture authority. Production bootstrap delivery and release-key enrollment remain open.

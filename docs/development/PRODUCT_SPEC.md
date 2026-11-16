@@ -9,7 +9,7 @@
 | Product owner | Michael |
 | Canonical location | `docs/development/PRODUCT_SPEC.md` in [tellesus/BBSBOX](https://github.com/tellesus/BBSBOX) |
 | Authority | Product requirements within the canonical roadmap; latest applicable user instructions take precedence |
-| Implementation status | G0-local passed; M02/M03/M04 providers Complete; M00/M01 In progress; module/device/release evidence in WORK_LEDGER |
+| Implementation status | G0-local passed; M01–M12 software providers Complete; M00/M13 In progress; module/device/release evidence in WORK_LEDGER |
 | Software license | **AGPL-3.0-or-later**; project design prose **CC-BY-SA-4.0**; see the [license notice](../../LICENSE.md) |
 
 ## 1. Purpose and authority
@@ -71,6 +71,7 @@ The source anchors below use distinctive user wording so they can be found in th
 
 | U21 | 2026-10-30 request: begin building the first roadmap step |
 | U22 | Continue local development/testing; defer phone tests until a major milestone and identify tools that would improve efficiency |
+| U23 | 2026-11-15 request, after a status review that weighed limited resources and the project's intent: resequence toward a small neighborhood alpha. Run the G1 hardware/phone checks now, bring public exchange and one Pigeon ahead of encrypted forums, pause M13 at its checkpoint and schedule no O module before the pilot. Scope and gates are unchanged |
 
 ### 1.3 Bounded implementation documents
 
@@ -462,7 +463,7 @@ These entries are parked in this edition to protect the foundation. “Deferred�
 | N11 | Making a host-business purchase mandatory for ordinary participation, selling social reach through game bonuses, or redeeming host-business codes at a different BBS | R22/U13; game-economy design itself remains open |
 | N12 | Treating historical brainstorming or unspecified future ideas as approved beyond the explicit U19 selections; claiming approval proves implementation or testing | §1, R23/R28 |
 
-Phone testing follows U22: public browser/enrollment checks at the G1 integrated local-node alpha, and private-client Android/iOS checks at G2 before private release. Continue local work and record deferred device evidence explicitly.
+Phone testing follows U22: public browser/enrollment checks at the G1 integrated local-node alpha, and private-client Android/iOS checks at G2 before private release. Continue local work and record deferred device evidence explicitly. Under U23 the G1 checks are current work.
 
 ## 13. Development phases
 
@@ -480,6 +481,8 @@ Phone testing follows U22: public browser/enrollment checks at the G1 integrated
 Maintenance/restore belongs in the standalone alpha and client/encryption research starts in Phase 0. The accepted technical choices are recorded in the live decision register. The [development index](README.md) owns detailed dependencies and gates; this table summarizes those phases. Module numbers are stable identifiers, not permission to bypass dependencies.
 
 Prototype sequencing may change through a recorded planning revision. In particular, real mesh transport experiments or encryption research may run earlier without bypassing the applicable implementation/verification gates. Encrypted forums must not be labeled available until the relevant privacy/authority checks pass.
+
+**Current planning revision — U23.** After Phase 1 device acceptance, the public slices of M15 and M16 run before Phase 2 to reach a neighborhood alpha: two physical nodes, one selected public forum/feed, one direct offline link and one carried lump. Phase 2 then resumes, and Phase 3 completes with private/case exchange. Phase exit evidence is unchanged. The [development index](README.md#neighborhood-alpha-schedule) owns the schedule and its limits.
 
 No numeric latency, uptime, simultaneous-user, storage, battery-life, or radio-range promise exists yet. Phase 1/4 measurements should establish realistic targets for specified hardware and links.
 
@@ -557,6 +560,8 @@ Document versions are independent of software/protocol versions. Patch revisions
 | 0.6.0 | 1.1.0 / execution 1.1.1 | 2026-10-31 | Continued development authority: M02–M04 providers complete; M01 now explicitly depends on them for its real node runtime and precedes M12. Scope/T decisions unchanged. C02 v1.4.1 clarifies reassessment/accepted receipts; provider/replay and appliance execution evidence remains in WORK_LEDGER. |
 
 | 0.6.0 | 1.1.0 / execution 1.1.2 | 2026-11-01 | M01 completes its software-provider interface with actual Debian offline install/network/renewal/reboot/capture and fresh-media evidence; M12 A begins. G1 physical router/radio/phone acceptance remains pending. No product/T decision changes. |
+
+| 0.6.0 | 1.1.0 / execution 1.1.35 | 2026-11-15 | U23: neighborhood-alpha schedule. G1 device acceptance is current work; M15 A–B and M16 A–B public slices precede the rest of M13; no O module before G4. Requirements, acceptance criteria, T decisions, contracts, completion prerequisites and gates are unchanged. |
 
 Earlier decisions, source audits and CR-001–CR-003 are preserved in the [historical record](../archive/product-history-through-0.5.0.md). Historical statements never override current canon.
 

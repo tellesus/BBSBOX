@@ -1,8 +1,8 @@
 # M15 — Selected offline peer exchange
 
-Version 1.1.0 · 2026-10-25 · Locked development baseline · Product baseline 0.6.0.
+Brief revision 1.1.1 · Roadmap baseline 1.1.0 · 2026-11-15 · Locked scope · Product baseline 0.6.0.
 
-**State:** Approved for implementation under U19; unstarted. Runtime and hardware evidence remains pending.
+**State:** Approved for implementation under U19; unstarted. Runtime and hardware evidence remains pending. U23 schedules public slices A–B for the [neighborhood alpha](../README.md#neighborhood-alpha-schedule) ahead of M13/M14. Slice C and completion still require them.
 
 ## Read only this packet
 
@@ -32,6 +32,8 @@ Paths above are planned implementation locations, not existing code. Consume the
 1. A: two-node public forum/feed exchange and subscription changes.
 2. B: resumable/reordered chunks, missing dependencies and mixed versions.
 3. C: encrypted forum/case traffic plus local responsiveness under sustained ingress.
+
+Alpha use of A–B is between operator-controlled test nodes. C repeats exchange with M14 suppression applied to sync responses.
 
 ## Completion evidence
 

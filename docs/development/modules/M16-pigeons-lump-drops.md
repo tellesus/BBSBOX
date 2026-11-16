@@ -1,8 +1,8 @@
 # M16 — Pigeon installation, lumps and credit
 
-Version 1.1.0 · 2026-10-25 · Locked development baseline · Product baseline 0.6.0.
+Brief revision 1.1.1 · Roadmap baseline 1.1.0 · 2026-11-15 · Locked scope · Product baseline 0.6.0.
 
-**State:** Approved for implementation under U19; unstarted. Runtime and hardware evidence remains pending.
+**State:** Approved for implementation under U19; unstarted. Runtime and hardware evidence remains pending. U23 schedules slices A–B for public streams in the [neighborhood alpha](../README.md#neighborhood-alpha-schedule), after M15 A–B and starting with the file-based lump export/import. C–E, encrypted-envelope evidence and completion still require complete M15.
 
 ## Read only this packet
 

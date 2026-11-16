@@ -21,10 +21,10 @@ Design review is complete and the first M00 prototype has real local implementat
 | [M09](modules/M09-clans-cohorts.md) | Approved | Complete | A–C: roster privacy, consent, handover and typed membership pass signed Debian CI 41810057605 | M11/M18 bind game consumers |
 | [M10](modules/M10-local-files.md) | Approved | Complete | A–C: permission, streaming, quota and restore pass signed Debian CI 41811437491 | M15/M16 own actual exchange tests |
 | [M11](modules/M11-local-games.md) | Approved | Complete | A–C and signed game/core replacement, update and rollback pass CI 42310888214 | G1 physical/phone checks are due. M18 owns cross-node portability |
-| [M13](modules/M13-encrypted-forums.md) | Approved | In progress | A: governance/create/reply admission pass Linux CI 42525314220; client persistence passes Windows CI 42523423248 | Complete remaining application actions, runtime and trusted client integration |
+| [M13](modules/M13-encrypted-forums.md) | Approved | In progress | A: governance/create/reply admission pass Linux CI 42525314220; client persistence passes Windows CI 42523423248 | Paused under U23 at the signed-client checkpoint. After GA: pinned TLS/pairing, then remaining application actions, runtime and trusted client integration |
 | [M14](modules/M14-complaints-moderation.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
-| [M15](modules/M15-selected-federation.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
-| [M16](modules/M16-pigeons-lump-drops.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
+| [M15](modules/M15-selected-federation.md) | Approved | Unstarted | No runtime evidence | U23: begin public slices A–B after G1 device acceptance; C waits for M13/M14 |
+| [M16](modules/M16-pigeons-lump-drops.md) | Approved | Unstarted | No runtime evidence | U23: begin public slices A–B after M15 A–B; C–E wait for complete M15 |
 | [M17](modules/M17-peer-trust.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
 | [M18](modules/M18-game-passports.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
 | [M19](modules/M19-neighborhood-pilot.md) | Approved | Unstarted | No runtime evidence | Begin A after applicable prerequisite evidence |
@@ -797,3 +797,14 @@ The Windows workflow's inputs now explicitly include bootstrap/native runtime so
 [Windows CI 42558910230](https://github.com/tellesus/BBSBOX/actions/runs/42558910230) passed the actual signed installation, original-to-rebuilt identity continuity and installed recovery using a cold offline build of `053647e`. All four [Linux jobs 42558910115](https://github.com/tellesus/BBSBOX/actions/runs/42558910115) also passed: workspace checks, pinned MLS, UI/network boundaries, offline node rebuild, signed installation/update/rollback and complete game/core recovery. The earlier `6b1bd47` native run encountered the extended-Windows-path assertion corrected in this checkpoint; it is not the promoted confirmation. Exact source, job results and ancestry were checked before promoting `053647e` to `main`.
 
 The subsequent verification-only commit adds the public client byte fixture, independent Rust/Node checks, explicit CI input ownership and these notes. Its locally executed checks pass; runtime implementation bytes remain those verified at `053647e`. Local evidence includes 238 workspace tests before the final launch refinement, 55 maintenance regressions after it, the six MSVC distribution fixtures, the additional Rust vector test, 12 material checks and strict workspace/MSVC lint. G1 phone/hardware and G2 private-client acceptance remain pending. Next is pinned node TLS/device pairing and then real MLS state/application integration; production bootstrap/key enrollment and update UI remain open.
+
+
+## 2026-11-15 — U23 scheduling: neighborhood alpha
+
+Planning record only. No code, contract, wire format or test evidence changed, and no module status changed.
+
+A status review found M01–M12 confirmed only in CI and one workstation, with no physical appliance, router or phone yet used. It also found that the current M13 path gates public exchange and Pigeons, and that the private client exists only for Windows. Under U23 the working order becomes G1 device acceptance, M15 A–B public exchange, M16 A–B public carriage, the GA check, then M13 onward. The [index](README.md#neighborhood-alpha-schedule) owns the schedule and its limits. Completion prerequisites, gates G1–G5, T decisions and C01–C05 are unchanged.
+
+M13 pauses at runtime checkpoint `053647e` and its verification-only follow-up. Its recorded next steps are unchanged: pinned node TLS and device pairing, then real MLS state/application integration, production bootstrap/key enrollment and update UI.
+
+Next bounded slice: G1 device acceptance. Choose the reused computer and router, install from signed offline media, then record equipment, firmware, phone models/browsers and each AC result here. A failed check blocks only the claims that depend on it.

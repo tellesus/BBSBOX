@@ -1,8 +1,8 @@
 # Locked BBSBOX development roadmap
 
-Index revision 1.1.34 · Roadmap baseline 1.1.0 · 2026-11-08 · Product baseline 0.6.0 · Scope approved under U19; canon clarified under U20. [Historical lock record](../decisions/ADR-0001-roadmap-lock.md).
+Index revision 1.1.35 · Roadmap baseline 1.1.0 · 2026-11-15 · Product baseline 0.6.0 · Scope approved under U19; canon clarified under U20; current schedule under U23. [Historical lock record](../decisions/ADR-0001-roadmap-lock.md).
 
-All named module scopes and T decisions are approved. G0-local passed. M01–M12 software providers are Complete. M00 and M13 are In progress. Current module/device/release evidence is in WORK_LEDGER. Read [START_HERE](START_HERE.md), one brief and its contracts. Use the live [decisions](DECISIONS.md), derived [coverage](COVERAGE.md) and [ledger](WORK_LEDGER.md) as needed. The [old technical plan](../archive/technical-plan-1.0.0.md) and [earlier review](../archive/review-2026-10-25.md) are historical archives.
+All named module scopes and T decisions are approved. G0-local passed. M01–M12 software providers are Complete. M00 and M13 are In progress; M13 is paused under U23 while the [neighborhood alpha](#neighborhood-alpha-schedule) is built. Current module/device/release evidence is in WORK_LEDGER. Read [START_HERE](START_HERE.md), one brief and its contracts. Use the live [decisions](DECISIONS.md), derived [coverage](COVERAGE.md) and [ledger](WORK_LEDGER.md) as needed. The [old technical plan](../archive/technical-plan-1.0.0.md) and [earlier review](../archive/review-2026-10-25.md) are historical archives.
 
 ## Canon and document ownership
 
@@ -23,11 +23,27 @@ There are two sources of project canon: **the current roadmap and the user’s a
 
 Do not resolve a conflict by choosing whichever file sounds more authoritative. Apply the latest applicable user decision and reconcile every affected canonical component. If the intended change is genuinely unclear, keep the affected decision open and ask; continue unrelated work. A reference link alone never promotes material into canon.
 
-Phone tests are scheduled for the G1 integrated local-node alpha and G2 private-client release gates under U22. They remain required there and do not block preceding desktop/local implementation.
+Phone tests are scheduled for the G1 integrated local-node alpha and G2 private-client release gates under U22. M01–M12 are that G1 milestone: under U23 the G1 hardware and phone checks are the current work. G2 private-client checks remain required at G2.
 
 ## Execution order and dependencies
 
 M00 → M02 → M03 → M04 → M01 → M12 → M05 → M06 → M07 → M08 → M09 → M10 → M11 → M13 → M14 → M15 → M16 → M17 → M18 → M19. M01 integrates the completed M02–M04 runtime providers before M12 maintenance integration. G0-local evidence enables independent local work even if G2 private-client research remains open. M00 supplies G0-local for M01–M03 provider work and full relevant private-client/MLS evidence for M13. Other dependencies require completed provider interfaces; bounded earlier research uses fixtures and claims no integration.
+
+### Neighborhood alpha schedule
+
+U23 (2026-11-15) changes the working order, not the scope, completion prerequisites or gates. The aim is the smallest thing neighbors can actually use and that shows what makes BBSBOX different, reached with one developer's time and reused hardware. The module order above still governs completion.
+
+1. **G1 device acceptance.** Install the signed release on a physical reused computer with an isolated Wi-Fi router. Enroll and use it from Android Chrome and iOS Safari. Record the exact equipment and results.
+2. **M15 slices A–B, public streams only.** Two nodes exchange one selected public forum/feed over a direct offline link.
+3. **M16 slices A–B, public streams only.** One Pigeon carries a signed lump between the two nodes, starting with the file-based export/import workflow.
+4. **GA check**, then resume M13 → M14 → M15 C → remaining M16 → M17 onward.
+
+Limits while this schedule applies:
+
+- GA exchange runs between test nodes under the project operator's control. It is not the G3 gate or the M19 pilot, and encrypted forums are not advertised.
+- M15 and M16 are not Complete until their private/case slices pass after M13/M14. M14 suppression of sync responses is rechecked there.
+- M13 work stops at the confirmed signed-client checkpoint. Its code, fixtures and CI stay in place.
+- No O module is scheduled before the G4 core pilot unless a later user instruction pulls it forward. Every O scope stays approved.
 
 | Module | Gate | Prerequisites for completion | Decisions |
 | --- | --- | --- | --- |
@@ -58,6 +74,7 @@ M00 → M02 → M03 → M04 → M01 → M12 → M05 → M06 → M07 → M08 → 
 | --- | --- |
 | G0-local | M00 desktop access/HTTPS, durable storage, signed-event checks and isolated-runtime IPv4/IPv6 evidence recorded. Enables local development; private-client research and milestone phone checks remain explicit pending work. |
 | G1 | Integrated local-node alpha, including public Android Chrome/iOS Safari access/enrollment tests. M01–M12 local integration: AC01–AC03, AC08–AC09, AC15, AC20 and local portions AC04/AC10/AC21/AC22. Source/license materials AC17 are required for each distributed release. |
+| GA | Neighborhood alpha under U23: G1 passed on named physical equipment and phones; two physical nodes exchange one selected public forum/feed over a direct offline link and by one carried signed lump, while an unselected forum and all files stay local. Public portions of AC05/AC06 only. A scheduling checkpoint: it completes no module and replaces no gate. |
 | G2 | M13/M14 plus M08 encrypted audience adapter: local AC11/AC13/AC14/AC19 and actual independent client/device evidence, including private Android/iOS checks before private-client release. |
 | G3 | M15–M17: AC04–AC07, AC12/AC18, actual courier variants and private/case transport checks. Restore replay, scoped streams and suppression cannot bypass policy. |
 | G4 | M18/M19 core pilot: full AC10/AC22 and the core game/profile portions of AC21 and all applicable core checks. Approved G5 expansions are honestly listed as pending, including AC16 until O11. |
@@ -65,7 +82,7 @@ M00 → M02 → M03 → M04 → M01 → M12 → M05 → M06 → M07 → M08 → 
 
 ## Approved expansion sequence — optional activation
 
-O01 → O02 → O03 → O04 → O05 → O06 → O07 → O08 → O09 → O10 → O11 → O12. Every listed scope is approved; do not ask again merely because its ID starts with O. These are independently developed slices with operator opt-in. D01–D07 remain parked. An approved module may be pulled forward once its dependencies pass through a recorded scheduling update.
+O01 → O02 → O03 → O04 → O05 → O06 → O07 → O08 → O09 → O10 → O11 → O12. Every listed scope is approved; do not ask again merely because its ID starts with O. These are independently developed slices with operator opt-in. Under U23 none is scheduled before G4. D01–D07 remain parked. An approved module may be pulled forward once its dependencies pass through a recorded scheduling update.
 
 | Module | Prerequisites | Acceptance |
 | --- | --- | --- |

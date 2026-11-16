@@ -1,8 +1,8 @@
 # M13 — Trusted clients and encrypted forums
 
-Brief revision 1.1.6 · Roadmap baseline 1.1.0 · 2026-11-08 · Locked scope · Product baseline 0.6.0.
+Brief revision 1.1.7 · Roadmap baseline 1.1.0 · 2026-11-15 · Locked scope · Product baseline 0.6.0.
 
-**State:** In progress. Signed framing/owner proofs pass MLS fixtures; durable governance and opaque create/reply admission pass database fixtures. Runtime, remaining actions and device evidence remain open.
+**State:** In progress. Signed framing/owner proofs pass MLS fixtures; durable governance and opaque create/reply admission pass database fixtures. Runtime, remaining actions and device evidence remain open. Paused under U23 at the confirmed signed-client checkpoint; resumes after the [neighborhood alpha](../README.md#neighborhood-alpha-schedule).
 
 ## Read only this packet
 

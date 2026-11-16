@@ -1,7 +1,7 @@
 {
   "version": "1.1.0",
   "product_spec_version": "0.6.0",
-  "authority": "U19 scope; U20 canon; U22 local development and milestone phone testing",
+  "authority": "U19 scope; U20 canon; U22 local development and milestone phone testing; U23 neighborhood-alpha schedule",
   "status": "locked_for_implementation",
   "implementation_status": "in_progress",
   "modules": [
@@ -1118,5 +1118,21 @@
       "scope": "Desktop/core and isolated-runtime evidence; G1/G2 device, appliance and private-client acceptance remain open"
     }
   },
-  "execution_revision": "1.1.34"
+  "current_schedule": {
+    "authority": "U23",
+    "name": "Neighborhood alpha",
+    "checkpoint": "GA",
+    "steps": [
+      "G1 device acceptance on physical hardware, Android Chrome and iOS Safari",
+      "M15 slices A-B, public streams only",
+      "M16 slices A-B, public streams only, file-based lump first",
+      "GA check, then resume M13"
+    ],
+    "paused": [
+      "M13"
+    ],
+    "changes_completion_order": false,
+    "optional_modules": "none scheduled before G4"
+  },
+  "execution_revision": "1.1.35"
 }
